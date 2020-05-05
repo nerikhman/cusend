@@ -26,17 +26,16 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "sender/connect.hpp"
-#include "sender/is_receiver.hpp"
-#include "sender/is_receiver_of.hpp"
-#include "sender/sender_traits.hpp"
-#include "sender/set_done.hpp"
-#include "sender/set_error.hpp"
-#include "sender/set_value.hpp"
-#include "sender/start.hpp"
-#include "sender/submit.hpp"
+CUDEX_NAMESPACE_OPEN_BRACE
 
-#include "detail/epilogue.hpp"
+
+namespace unspecified { struct sender_base {}; }
+using unspecified::sender_base;
+
+
+CUDEX_NAMESPACE_CLOSE_BRACE
+
+#include "../detail/epilogue.hpp"
 

@@ -34,6 +34,7 @@
 #include "detail/combinators/then/dispatch_then.hpp"
 #include "detail/execution.hpp"
 #include "sender/connect.hpp"
+#include "sender/sender_traits.hpp"
 #include "sender/submit.hpp"
 
 
@@ -120,19 +121,9 @@ class chaining_sender
 };
 
 
-namespace detail
-{
-namespace execution
-{
-
-
 // specialize sender_traits
 template<class Sender>
 struct sender_traits<chaining_sender<Sender>> : sender_traits<Sender> {};
-
-
-} // end execution
-} // end detail
 
 
 // this utility allows clients (such as the sender combinator CPOs) to ensure that the senders they return
