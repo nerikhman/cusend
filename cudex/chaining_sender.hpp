@@ -30,6 +30,8 @@
 
 #include <type_traits>
 #include <utility>
+#include "../sender/connect.hpp"
+#include "../sender/submit.hpp"
 #include "detail/combinators/on/dispatch_on.hpp"
 #include "detail/combinators/then/dispatch_then.hpp"
 #include "detail/execution.hpp"
@@ -79,9 +81,9 @@ class chaining_sender
             >
     CUDEX_ANNOTATION
     auto connect(Receiver&& receiver) &&
-      -> decltype(detail::execution::connect(std::move(sender_), std::forward<Receiver>(receiver)))
+      -> decltype(CUDEX_NAMESPACE::connect(std::move(sender_), std::forward<Receiver>(receiver)))
     {
-      return detail::execution::connect(std::move(sender_), std::forward<Receiver>(receiver));
+      return CUDEX_NAMESPACE::connect(std::move(sender_), std::forward<Receiver>(receiver));
     }
 
 
@@ -91,7 +93,7 @@ class chaining_sender
     CUDEX_ANNOTATION
     void submit(Receiver&& receiver) &&
     {
-      detail::execution::submit(std::move(sender_), std::forward<Receiver>(receiver));
+      CUDEX_NAMESPACE::submit(std::move(sender_), std::forward<Receiver>(receiver));
     }
 
 
