@@ -30,6 +30,7 @@
 
 #include <utility>
 #include "../../../sender/is_receiver.hpp"
+#include "../../../sender/is_receiver_of.hpp"
 #include "../../execution.hpp"
 #include "../../functional/invoke.hpp"
 #include "../../type_traits/decay.hpp"
@@ -90,7 +91,7 @@ class then_receiver
     // Function returns void case
     template<class... Args, class Result = invoke_result_t<Function, Args&&...>,
              CUDEX_REQUIRES(std::is_void<Result>::value),
-             CUDEX_REQUIRES(execution::is_receiver_of<Receiver, Result>::value)
+             CUDEX_REQUIRES(is_receiver_of<Receiver, Result>::value)
             >
     void set_value(Args&&... args) &&
       noexcept(is_nothrow_invocable<Function, Args...>::value and is_nothrow_receiver_of<Receiver>::value)
@@ -102,7 +103,7 @@ class then_receiver
     // Function returns non-void case
     template<class... Args, class Result = invoke_result_t<Function, Args&&...>,
              CUDEX_REQUIRES(!std::is_void<Result>::value),
-             CUDEX_REQUIRES(execution::is_receiver_of<Receiver, Result>::value)
+             CUDEX_REQUIRES(is_receiver_of<Receiver, Result>::value)
             >
     CUDEX_ANNOTATION
     void set_value(Args&&... args) &&

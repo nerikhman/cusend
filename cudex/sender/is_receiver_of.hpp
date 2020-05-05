@@ -26,16 +26,36 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "sender/connect.hpp"
-#include "sender/is_receiver.hpp"
-#include "sender/is_receiver_of.hpp"
-#include "sender/set_done.hpp"
-#include "sender/set_error.hpp"
-#include "sender/set_value.hpp"
-#include "sender/start.hpp"
-#include "sender/submit.hpp"
+#include <type_traits>
+#include "../detail/type_traits/conjunction.hpp"
+#include "../detail/type_traits/is_detected.hpp"
+#include "is_receiver.hpp"
+#include "set_value.hpp"
 
-#include "detail/epilogue.hpp"
+
+CUDEX_NAMESPACE_OPEN_BRACE
+
+
+template<class R, class... Args>
+struct is_receiver_of : detail::conjunction<
+  is_receiver<R>,
+  detail::is_detected<set_value_t, R, Args...>
+>
+{};
+
+
+// specialization for receiver of void
+template<class R>
+struct is_receiver_of<R,void> : detail::conjunction<
+  is_receiver<R>,
+  detail::is_detected<set_value_t, R>
+>
+{};
+
+
+CUDEX_NAMESPACE_CLOSE_BRACE
+
+#include "../detail/epilogue.hpp"
 

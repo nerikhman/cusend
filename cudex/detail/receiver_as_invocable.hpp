@@ -31,6 +31,7 @@
 #include <exception>
 #include <utility>
 #include "../sender/is_receiver.hpp"
+#include "../sender/is_receiver_of.hpp"
 #include "execution.hpp"
 #include "type_traits.hpp"
 #include "utility/move_if_noexcept.hpp"
@@ -130,7 +131,7 @@ class receiver_as_invocable
 
 #if CUDEX_HAS_EXCEPTIONS
     template<class... Args,
-             CUDEX_REQUIRES(execution::is_receiver_of<receiver_type, Args&&...>::value)
+             CUDEX_REQUIRES(is_receiver_of<receiver_type, Args&&...>::value)
             >
     CUDEX_ANNOTATION
     void operator()(Args&&... args)
@@ -148,7 +149,7 @@ class receiver_as_invocable
     }
 #else
     template<class... Args,
-             CUDEX_REQUIRES(execution::is_receiver_of<receiver_type, Args&&...>::value)
+             CUDEX_REQUIRES(is_receiver_of<receiver_type, Args&&...>::value)
             >
     CUDEX_ANNOTATION
     void operator()(Args&&... args)
