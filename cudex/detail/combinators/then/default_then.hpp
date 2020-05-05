@@ -29,6 +29,7 @@
 #include "../../prologue.hpp"
 
 #include <utility>
+#include "../../../sender/is_receiver.hpp"
 #include "../../execution.hpp"
 #include "../../functional/invoke.hpp"
 #include "../../type_traits/decay.hpp"
@@ -111,7 +112,7 @@ class then_receiver
     }
 
     template<class Error,
-             CUDEX_REQUIRES(execution::is_receiver<Receiver, Error>::value)
+             CUDEX_REQUIRES(is_receiver<Receiver, Error>::value)
             >
     CUDEX_ANNOTATION
     void set_error(Error&& error) && noexcept
@@ -168,7 +169,7 @@ class then_sender : public execution::sender_base
     ~then_sender() = default;
 
     template<class Receiver,
-             CUDEX_REQUIRES(execution::is_receiver<Receiver>::value),
+             CUDEX_REQUIRES(is_receiver<Receiver>::value),
              CUDEX_REQUIRES(execution::is_sender_to<Sender, then_receiver<Receiver, Function>>::value)
             >
     CUDEX_ANNOTATION
@@ -181,7 +182,7 @@ class then_sender : public execution::sender_base
     // this overload allows makes then_sender a "multi-shot" sender when both the predecessor and continuation are copyable
     // XXX should introduce is_multishot_sender or something
     template<class Receiver,
-             CUDEX_REQUIRES(execution::is_receiver<Receiver>::value),
+             CUDEX_REQUIRES(is_receiver<Receiver>::value),
              CUDEX_REQUIRES(execution::is_sender_to<Sender, then_receiver<Receiver, Function>>::value)
             >
     CUDEX_ANNOTATION

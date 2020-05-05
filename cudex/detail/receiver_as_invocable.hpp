@@ -30,6 +30,7 @@
 
 #include <exception>
 #include <utility>
+#include "../sender/is_receiver.hpp"
 #include "execution.hpp"
 #include "type_traits.hpp"
 #include "utility/move_if_noexcept.hpp"
@@ -48,7 +49,7 @@ class receiver_as_invocable
   private:
     using receiver_type = remove_cvref_t<R>;
 
-    static_assert(execution::is_receiver<receiver_type>::value, "Error.h");
+    static_assert(is_receiver<receiver_type>::value, "Error.h");
 
     // XXX better to replace these members with a __host__ __device__ optional<receiver_type> type when available
     //     once we do that, we can eliminate the CUDEX_EXEC_CHECK_DISABLE below
@@ -160,7 +161,7 @@ class receiver_as_invocable
 
 
 template<class R,
-         CUDEX_REQUIRES(detail::execution::is_receiver<R>::value)
+         CUDEX_REQUIRES(is_receiver<R>::value)
         >
 CUDEX_ANNOTATION
 receiver_as_invocable<R&&> as_invocable(R&& r)

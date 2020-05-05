@@ -30,11 +30,11 @@
 
 #include <type_traits>
 #include <utility>
-#include "../sender/connect.hpp"
-#include "../sender/submit.hpp"
 #include "detail/combinators/on/dispatch_on.hpp"
 #include "detail/combinators/then/dispatch_then.hpp"
 #include "detail/execution.hpp"
+#include "sender/connect.hpp"
+#include "sender/submit.hpp"
 
 
 CUDEX_NAMESPACE_OPEN_BRACE

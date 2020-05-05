@@ -26,15 +26,30 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../prologue.hpp"
 
-#include "sender/connect.hpp"
-#include "sender/is_receiver.hpp"
-#include "sender/set_done.hpp"
-#include "sender/set_error.hpp"
-#include "sender/set_value.hpp"
-#include "sender/start.hpp"
-#include "sender/submit.hpp"
+#include <type_traits>
+#include "disjunction.hpp"
 
-#include "detail/epilogue.hpp"
+
+CUDEX_NAMESPACE_OPEN_BRACE
+
+
+namespace detail
+{
+
+
+template<class T>
+using is_nothrow_move_or_copy_constructible = disjunction<
+  std::is_nothrow_move_constructible<T>,
+  std::is_copy_constructible<T>
+>;
+
+
+} // end detail
+
+
+CUDEX_NAMESPACE_CLOSE_BRACE
+
+#include "../epilogue.hpp"
 

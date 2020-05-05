@@ -26,15 +26,32 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "sender/connect.hpp"
-#include "sender/is_receiver.hpp"
-#include "sender/set_done.hpp"
-#include "sender/set_error.hpp"
-#include "sender/set_value.hpp"
-#include "sender/start.hpp"
-#include "sender/submit.hpp"
+#include <exception>
+#include <type_traits>
+#include <utility>
+#include "../detail/type_traits/conjunction.hpp"
+#include "../detail/type_traits/is_detected.hpp"
+#include "../detail/type_traits/is_nothrow_move_or_copy_constructible.hpp"
+#include "../detail/type_traits/remove_cvref.hpp"
+#include "set_done.hpp"
+#include "set_error.hpp"
 
-#include "detail/epilogue.hpp"
+
+CUDEX_NAMESPACE_OPEN_BRACE
+
+
+template<class R, class E = std::exception_ptr>
+using is_receiver = detail::conjunction<
+  std::is_move_constructible<detail::remove_cvref_t<R>>,
+  detail::is_nothrow_move_or_copy_constructible<detail::remove_cvref_t<R>>,
+  detail::is_detected<set_done_t, R>,
+  detail::is_detected<set_error_t, R, E>
+>;
+
+
+CUDEX_NAMESPACE_CLOSE_BRACE
+
+#include "../detail/epilogue.hpp"
 
