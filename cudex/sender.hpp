@@ -29,6 +29,7 @@
 #include "detail/prologue.hpp"
 
 #include "sender/connect.hpp"
+#include "sender/start.hpp"
 
 #include "detail/epilogue.hpp"
 
