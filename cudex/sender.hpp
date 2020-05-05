@@ -34,6 +34,7 @@
 #include "sender/is_sender.hpp"
 #include "sender/is_sender_to.hpp"
 #include "sender/is_typed_sender.hpp"
+#include "sender/is_typed_sender_to.hpp"
 #include "sender/sender_traits.hpp"
 #include "sender/set_done.hpp"
 #include "sender/set_error.hpp"
