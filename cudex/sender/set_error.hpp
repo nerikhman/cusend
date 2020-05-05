@@ -40,44 +40,46 @@ namespace detail
 {
 
 
-template<class R, class... Args>
-using set_value_member_function_t = decltype(std::declval<R>().set_value(std::declval<Args>()...));
-
-template<class R, class... Args>
-using has_set_value_member_function = is_detected<set_value_member_function_t, R, Args...>;
+template<class R, class E>
+using set_error_member_t = decltype(std::declval<R>().set_error(std::declval<E>()));
 
 
-template<class R, class... Args>
-using set_value_free_function_t = decltype(set_value(std::declval<R>(), std::declval<Args>()...));
-
-template<class R, class... Args>
-using has_set_value_free_function = is_detected<set_value_free_function_t, R, Args...>;
+template<class R, class E>
+using has_set_error_member = is_detected<set_error_member_t, R, E>;
 
 
-// this is the type of set_value
-struct dispatch_set_value
+template<class R, class E>
+using set_error_free_function_t = decltype(set_error(std::declval<R>(), std::declval<E>()));
+
+
+template<class R, class E>
+using has_set_error_free_function = is_detected<set_error_free_function_t, R, E>;
+
+
+// this is the type of set_error
+struct dispatch_set_error
 {
   CUDEX_EXEC_CHECK_DISABLE
-  template<class R, class... Args,
-           CUDEX_REQUIRES(has_set_value_member_function<R&&,Args&&...>::value)
+  template<class R, class E,
+           CUDEX_REQUIRES(has_set_error_member<R&&,E&&>::value)
           >
   CUDEX_ANNOTATION
-  constexpr auto operator()(R&& r, Args&&... args) const ->
-    decltype(std::forward<R>(r).set_value(std::forward<Args>(args)...))
+  constexpr auto operator()(R&& r, E&& e) const ->
+    decltype(std::forward<R>(r).set_error(std::forward<E>(e)))
   {
-    return std::forward<R>(r).set_value(std::forward<Args>(args)...);
+    return std::forward<R>(r).set_error(std::forward<E>(e));
   }
 
   CUDEX_EXEC_CHECK_DISABLE
-  template<class R, class... Args,
-           CUDEX_REQUIRES(!has_set_value_member_function<R&&,Args&&...>::value and
-                          has_set_value_free_function<R&&,Args&&...>::value)
-           >
+  template<class R, class E,
+           CUDEX_REQUIRES(!has_set_error_member<R&&,E&&>::value and
+                          has_set_error_free_function<R&&,E&&>::value)
+          >
   CUDEX_ANNOTATION
-  constexpr auto operator()(R&& r, Args&&... args) const ->
-    decltype(set_value(std::forward<R>(r), std::forward<Args>(args)...))
+  constexpr auto operator()(R&& r, E&& e) const ->
+    decltype(set_error(std::forward<R>(r), std::forward<E>(e)))
   {
-    return set_value(std::forward<R>(r), std::forward<Args>(args)...);
+    return set_error(std::forward<R>(r), std::forward<E>(e));
   }
 };
 
@@ -85,24 +87,23 @@ struct dispatch_set_value
 } // end detail
 
 
-
 namespace
 {
 
 
-// define the set_value customization point object
+// define the set_error customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& set_value = detail::static_const<detail::dispatch_set_value>::value;
+constexpr auto const& set_error = detail::static_const<detail::dispatch_set_error>::value;
 #else
-const __device__ detail::dispatch_set_value set_value;
+const __device__ detail::dispatch_set_error set_error;
 #endif
 
 
 } // end anonymous namespace
 
 
-template<class T, class... Args>
-using set_value_t = decltype(CUDEX_NAMESPACE::set_value(std::declval<T>(), std::declval<Args>()...));
+template<class T, class E>
+using set_error_t = decltype(CUDEX_NAMESPACE::set_error(std::declval<T>(), std::declval<E>()));
 
 
 CUDEX_NAMESPACE_CLOSE_BRACE

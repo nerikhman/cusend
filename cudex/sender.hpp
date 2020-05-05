@@ -29,6 +29,7 @@
 #include "detail/prologue.hpp"
 
 #include "sender/connect.hpp"
+#include "sender/set_error.hpp"
 #include "sender/set_value.hpp"
 #include "sender/start.hpp"
 
