@@ -26,19 +26,42 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "sender/connect.hpp"
-#include "sender/is_receiver.hpp"
-#include "sender/is_receiver_of.hpp"
-#include "sender/is_sender.hpp"
-#include "sender/is_sender_to.hpp"
-#include "sender/sender_traits.hpp"
-#include "sender/set_done.hpp"
-#include "sender/set_error.hpp"
-#include "sender/set_value.hpp"
-#include "sender/start.hpp"
-#include "sender/submit.hpp"
+#include <type_traits>
+#include "sender_traits.hpp"
+#include "../detail/type_traits/remove_cvref.hpp"
 
-#include "detail/epilogue.hpp"
+
+CUDEX_NAMESPACE_OPEN_BRACE
+
+
+namespace detail
+{
+
+
+template<class T, class Enable = void>
+struct sender_traits_is_specialized : std::true_type {};
+
+template<class T>
+struct sender_traits_is_specialized<
+  T,
+  typename sender_traits<T>::__unspecialized
+> : std::false_type
+{};
+
+
+} // end detail
+
+
+template<class S>
+using is_sender = detail::conjunction<
+  std::is_move_constructible<detail::remove_cvref_t<S>>,
+  detail::sender_traits_is_specialized<detail::remove_cvref_t<S>>
+>;
+
+
+CUDEX_NAMESPACE_CLOSE_BRACE
+
+#include "../detail/epilogue.hpp"
 
