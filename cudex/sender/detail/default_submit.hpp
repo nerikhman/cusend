@@ -26,14 +26,41 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include "sender/connect.hpp"
-#include "sender/set_done.hpp"
-#include "sender/set_error.hpp"
-#include "sender/set_value.hpp"
-#include "sender/start.hpp"
-#include "sender/submit.hpp"
+#include <utility>
+#include "../../detail/type_traits/is_detected.hpp"
+#include "../connect.hpp"
+#include "../start.hpp"
 
-#include "detail/epilogue.hpp"
+
+CUDEX_NAMESPACE_OPEN_BRACE
+
+
+namespace detail
+{
+
+
+template<class S, class R,
+         CUDEX_REQUIRES(is_detected<connect_t, S&&, R&&>::value),
+         CUDEX_REQUIRES(is_detected<start_t, connect_t<S&&,R&&>>::value)
+        >
+CUDEX_ANNOTATION
+void default_submit(S&& sender, R&& receiver)
+{
+  CUDEX_NAMESPACE::start(CUDEX_NAMESPACE::connect(std::forward<S>(sender), std::forward<R>(receiver)));
+}
+
+
+template<class S, class R>
+using default_submit_t = decltype(detail::default_submit(std::declval<S>(), std::declval<R>()));
+
+
+} // end detail
+
+
+CUDEX_NAMESPACE_CLOSE_BRACE
+
+
+#include "../../detail/epilogue.hpp"
 
