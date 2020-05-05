@@ -31,6 +31,7 @@
 #include <type_traits>
 #include <utility>
 #include "../../../sender/is_receiver_of.hpp"
+#include "../../../sender/sender_base.hpp"
 #include "../../execute_operation.hpp"
 #include "../../functional/closure.hpp"
 #include "../../functional/compose.hpp"
@@ -48,7 +49,7 @@ namespace detail
 
 // this is a sender that invokes a function on an executor and sends the result to a receiver
 template<class Executor, class Invocable>
-class invoke_sender : public execution::sender_base
+class invoke_sender : public sender_base
 {
   public:
     template<class OtherInvocable,

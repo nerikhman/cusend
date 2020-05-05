@@ -32,8 +32,8 @@
 #include <utility>
 #include "detail/combinators/on/dispatch_on.hpp"
 #include "detail/combinators/then/dispatch_then.hpp"
-#include "detail/execution.hpp"
 #include "sender/connect.hpp"
+#include "sender/is_sender.hpp"
 #include "sender/sender_traits.hpp"
 #include "sender/submit.hpp"
 
@@ -51,7 +51,7 @@ class chaining_sender
   public:
     CUDEX_EXEC_CHECK_DISABLE
     template<class OtherSender,
-             CUDEX_REQUIRES(detail::execution::is_sender<OtherSender&&>::value),
+             CUDEX_REQUIRES(is_sender<OtherSender&&>::value),
              CUDEX_REQUIRES(std::is_constructible<Sender,OtherSender&&>::value)
             >
     CUDEX_ANNOTATION
@@ -78,7 +78,7 @@ class chaining_sender
 
 
     template<class Receiver,
-             CUDEX_REQUIRES(detail::execution::is_sender_to<Sender&&,Receiver&&>::value)
+             CUDEX_REQUIRES(is_sender_to<Sender&&,Receiver&&>::value)
             >
     CUDEX_ANNOTATION
     auto connect(Receiver&& receiver) &&
@@ -89,7 +89,7 @@ class chaining_sender
 
 
     template<class Receiver,
-             CUDEX_REQUIRES(detail::execution::is_sender_to<Sender&&,Receiver&&>::value)
+             CUDEX_REQUIRES(is_sender_to<Sender&&,Receiver&&>::value)
             >
     CUDEX_ANNOTATION
     void submit(Receiver&& receiver) &&
@@ -130,7 +130,7 @@ struct sender_traits<chaining_sender<Sender>> : sender_traits<Sender> {};
 // aren't multiply-wrapped chaining_senders
 // i.e., chaining_sender<chaining_sender<...>> is unhelpful, so let's avoid creating those
 template<class Sender,
-         CUDEX_REQUIRES(detail::execution::is_sender<Sender&&>::value),
+         CUDEX_REQUIRES(is_sender<Sender&&>::value),
          CUDEX_REQUIRES(std::is_rvalue_reference<Sender&&>::value)
         >
 CUDEX_ANNOTATION

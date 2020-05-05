@@ -30,6 +30,9 @@
 
 #include <type_traits>
 #include <utility>
+#include "../../../sender/is_sender.hpp"
+#include "../../../sender/is_sender_to.hpp"
+#include "../../../sender/sender_base.hpp"
 #include "../../execution.hpp"
 #include "../../functional/closure.hpp"
 
@@ -42,7 +45,7 @@ namespace detail
 
 
 template<class Sender, class Executor>
-class on_sender : public execution::sender_base
+class on_sender : public sender_base
 {
   public:
     CUDEX_EXEC_CHECK_DISABLE
@@ -92,7 +95,7 @@ class on_sender : public execution::sender_base
     };
 
     template<class Receiver,
-             CUDEX_REQUIRES(execution::is_sender_to<Sender&&,Receiver&&>::value)
+             CUDEX_REQUIRES(is_sender_to<Sender&&,Receiver&&>::value)
             >
     CUDEX_ANNOTATION
     operation<decay_t<Receiver>> connect(Receiver&& r) &&
@@ -126,7 +129,7 @@ class on_sender : public execution::sender_base
 
 
 template<class Sender, class Executor,
-         CUDEX_REQUIRES(detail::execution::is_sender<Sender>::value),
+         CUDEX_REQUIRES(is_sender<Sender>::value),
          CUDEX_REQUIRES(detail::execution::is_executor<Executor>::value)
         >
 CUDEX_ANNOTATION

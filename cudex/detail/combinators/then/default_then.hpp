@@ -29,9 +29,14 @@
 #include "../../prologue.hpp"
 
 #include <utility>
+#include "../../../sender/connect.hpp"
 #include "../../../sender/is_receiver.hpp"
 #include "../../../sender/is_receiver_of.hpp"
-#include "../../execution.hpp"
+#include "../../../sender/is_sender_to.hpp"
+#include "../../../sender/sender_base.hpp"
+#include "../../../sender/set_done.hpp"
+#include "../../../sender/set_error.hpp"
+#include "../../../sender/set_value.hpp"
 #include "../../functional/invoke.hpp"
 #include "../../type_traits/decay.hpp"
 #include "../../type_traits/invoke_result.hpp"
@@ -97,7 +102,7 @@ class then_receiver
       noexcept(is_nothrow_invocable<Function, Args...>::value and is_nothrow_receiver_of<Receiver>::value)
     {
       detail::invoke(std::move(f_), std::forward<Args>(args)...);
-      execution::set_value(std::move(receiver_));
+      CUDEX_NAMESPACE::set_value(std::move(receiver_));
     }
 
     // Function returns non-void case
@@ -109,7 +114,7 @@ class then_receiver
     void set_value(Args&&... args) &&
       noexcept(is_nothrow_invocable<Function, Args...>::value and is_nothrow_receiver_of<Receiver, Result>::value)
     {
-      execution::set_value(std::move(receiver_), detail::invoke(std::move(f_), std::forward<Args>(args)...));
+      CUDEX_NAMESPACE::set_value(std::move(receiver_), detail::invoke(std::move(f_), std::forward<Args>(args)...));
     }
 
     template<class Error,
@@ -118,13 +123,13 @@ class then_receiver
     CUDEX_ANNOTATION
     void set_error(Error&& error) && noexcept
     {
-      execution::set_error(std::move(receiver_), std::forward<Error>(error));
+      CUDEX_NAMESPACE::set_error(std::move(receiver_), std::forward<Error>(error));
     }
 
     CUDEX_ANNOTATION
     void set_done() && noexcept
     {
-      execution::set_done(std::move(receiver_));
+      CUDEX_NAMESPACE::set_done(std::move(receiver_));
     }
 
   private:
@@ -142,7 +147,7 @@ then_receiver<decay_t<Receiver>, decay_t<Function>> make_then_receiver(Receiver&
 
 
 template<class Sender, class Function>
-class then_sender : public execution::sender_base
+class then_sender : public sender_base
 {
   private:
     Sender predecessor_;
@@ -171,32 +176,32 @@ class then_sender : public execution::sender_base
 
     template<class Receiver,
              CUDEX_REQUIRES(is_receiver<Receiver>::value),
-             CUDEX_REQUIRES(execution::is_sender_to<Sender, then_receiver<Receiver, Function>>::value)
+             CUDEX_REQUIRES(is_sender_to<Sender, then_receiver<Receiver, Function>>::value)
             >
     CUDEX_ANNOTATION
     auto connect(Receiver&& r) &&
-      -> decltype(execution::connect(std::move(predecessor_), detail::make_then_receiver(std::move(r), std::move(continuation_))))
+      -> decltype(CUDEX_NAMESPACE::connect(std::move(predecessor_), detail::make_then_receiver(std::move(r), std::move(continuation_))))
     {
-      return execution::connect(std::move(predecessor_), detail::make_then_receiver(std::move(r), std::move(continuation_)));
+      return CUDEX_NAMESPACE::connect(std::move(predecessor_), detail::make_then_receiver(std::move(r), std::move(continuation_)));
     }
 
     // this overload allows makes then_sender a "multi-shot" sender when both the predecessor and continuation are copyable
     // XXX should introduce is_multishot_sender or something
     template<class Receiver,
              CUDEX_REQUIRES(is_receiver<Receiver>::value),
-             CUDEX_REQUIRES(execution::is_sender_to<Sender, then_receiver<Receiver, Function>>::value)
+             CUDEX_REQUIRES(is_sender_to<Sender, then_receiver<Receiver, Function>>::value)
             >
     CUDEX_ANNOTATION
     auto connect(Receiver&& r) const &
-      -> decltype(execution::connect(predecessor_, detail::make_then_receiver(std::move(r), continuation_)))
+      -> decltype(CUDEX_NAMESPACE::connect(predecessor_, detail::make_then_receiver(std::move(r), continuation_)))
     {
-      return execution::connect(std::move(predecessor_), detail::make_then_receiver(std::move(r), continuation_));
+      return CUDEX_NAMESPACE::connect(std::move(predecessor_), detail::make_then_receiver(std::move(r), continuation_));
     }
 };
 
 
 template<class Sender, class Function,
-         CUDEX_REQUIRES(execution::is_sender_to<Sender, then_receiver<discard_receiver, Function>>::value)
+         CUDEX_REQUIRES(is_sender_to<Sender, then_receiver<discard_receiver, Function>>::value)
         >
 CUDEX_ANNOTATION
 detail::then_sender<detail::decay_t<Sender>, detail::decay_t<Function>>
