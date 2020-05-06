@@ -30,7 +30,6 @@
 
 #include <type_traits>
 #include <utility>
-#include "../execution.hpp"
 
 CUDEX_NAMESPACE_OPEN_BRACE
 
