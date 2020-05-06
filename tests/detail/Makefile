@@ -1,8 +1,7 @@
 CXX = clang
 NVCC = nvcc
 INCLUDES = -I../../ -I/usr/local/cuda/include
-#CCFLAGS = -std=c++11 -Wall -Werror -ferror-limit=3 $(INCLUDES) -Wno-mismatched-tags
-CCFLAGS = -std=c++11 -Wall -ferror-limit=1 $(INCLUDES) -Wno-mismatched-tags
+CCFLAGS = -std=c++11 -Wall -Werror -ferror-limit=3 $(INCLUDES) -Wno-mismatched-tags
 NVCCFLAGS = -ccbin=$(CXX) --expt-extended-lambda -rdc=true -arch=sm_35 -Xcompiler "$(CCFLAGS)"
 
 # this first builds all the tests, then runs them, then prints if everything ran successfully
