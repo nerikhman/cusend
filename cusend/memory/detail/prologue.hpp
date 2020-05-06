@@ -24,32 +24,35 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
 
-#include "detail/prologue.hpp"
+// note that this header file is special and does not use #pragma once
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
+#ifndef CUMEM_INCLUDE_LEVEL
 
+// the first time this header is #included, this branch is processed
 
-CUSEND_NAMESPACE_OPEN_BRACE
+// this definition communicates that the stack is empty
+// and that these macros should be undefined by epilogue.hpp
+#define CUMEM_INCLUDE_LEVEL 0
 
+// allow importers of this library to provide a special header to
+// be included before the prologue
+#if __has_include("foreword.hpp")
+#include "foreword.hpp"
+#endif
 
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
-{
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
-}
+// include preprocessor headers
+#include "preprocessor.hpp"
 
+#else
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+// any other time this header is #included, this branch is processed
 
+// this push to the stack communicates with epilogue.hpp
+// that these macros are not ready to be undefined.
+#pragma push_macro("CUMEM_INCLUDE_LEVEL")
+#undef CUMEM_INCLUDE_LEVEL
+#define CUMEM_INCLUDE_LEVEL 1
 
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "detail/epilogue.hpp"
+#endif
 

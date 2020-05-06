@@ -28,82 +28,84 @@
 
 #include "../detail/prologue.hpp"
 
-#include "../detail/launch_kernel.hpp"
-#include "../detail/stream.hpp"
-#include "is_executor.hpp"
+#include <cstdint>
 
 
-CUDEX_NAMESPACE_OPEN_BRACE
+CUMEM_NAMESPACE_OPEN_BRACE
 
 
-class stream_executor
+// heterogeneous_resource uses a different primitive resource depending on
+// whether its operations are called from __host__ or __device__ code.
+template<class HostResource, class DeviceResource>
+class heterogeneous_resource
 {
   public:
-    CUDEX_ANNOTATION
-    inline stream_executor(cudaStream_t stream, int device)
-      : stream_{device, stream}
+    using host_resource_type = HostResource;
+    using device_resource_type = DeviceResource;
+
+    CUMEM_EXEC_CHECK_DISABLE
+    CUMEM_ANNOTATION
+    heterogeneous_resource() :
+#ifndef __CUDA_ARCH__
+      host_resource_{}
+#else
+      device_resource_{}
+#endif
     {}
 
-    CUDEX_ANNOTATION
-    inline explicit stream_executor(cudaStream_t stream)
-      : stream_executor(stream, 0)
-    {}
-
-    CUDEX_ANNOTATION
-    inline stream_executor()
-      : stream_executor(cudaStream_t{0})
-    {}
-
-    stream_executor(const stream_executor&) = default;
-
-    template<class Function,
-             CUDEX_REQUIRES(std::is_trivially_copyable<Function>::value)
-            >
-    CUDEX_ANNOTATION
-    void execute(Function f) const noexcept
+    CUMEM_ANNOTATION
+    void* allocate(std::size_t num_bytes)
     {
-      detail::launch_kernel(f, dim3(1), dim3(1), 0, stream_.native_handle(), stream_.device());
+#ifndef __CUDA_ARCH__
+      return host_resource_.allocate(num_bytes);
+#else
+      return device_resource_.allocate(num_bytes);
+#endif
     }
 
-    CUDEX_ANNOTATION
-    bool operator==(const stream_executor& other) const
+    CUMEM_ANNOTATION
+    void deallocate(void* ptr, std::size_t num_bytes)
     {
-      return stream_ == other.stream_;
+#ifndef __CUDA_ARCH__
+      host_resource_.deallocate(ptr, num_bytes);
+#else
+      device_resource_.deallocate(ptr, num_bytes);
+#endif
     }
 
-    CUDEX_ANNOTATION
-    bool operator!=(const stream_executor& other) const
+    CUMEM_ANNOTATION
+    bool is_equal(const heterogeneous_resource& other) const
+    {
+#ifndef __CUDA_ARCH__
+      return host_resource_.is_equal(other.host_resource_);
+#else
+      return device_resource_.is_equal(other.device_resource_);
+#endif
+    }
+
+    CUMEM_ANNOTATION
+    bool operator==(const heterogeneous_resource& other) const
+    {
+      return is_equal(other);
+    }
+
+    CUMEM_ANNOTATION
+    bool operator!=(const heterogeneous_resource& other) const
     {
       return !(*this == other);
     }
 
-    CUDEX_ANNOTATION
-    cudaStream_t stream() const
-    {
-      return stream_.native_handle();
-    }
-
-    CUDEX_ANNOTATION
-    void stream_wait_for(cudaEvent_t e) const
-    {
-      stream_.wait_for(e);
-    }
-
-    CUDEX_ANNOTATION
-    int device() const
-    {
-      return stream_.device();
-    }
-
   private:
-    detail::stream_view stream_;
+#ifndef __CUDA_ARCH__
+    host_resource_type host_resource_;
+#else
+    device_resource_type device_resource_;
+#endif
 };
 
 
-static_assert(is_executor<stream_executor>::value, "Error.");
+CUMEM_NAMESPACE_CLOSE_BRACE
 
-
-CUDEX_NAMESPACE_CLOSE_BRACE
 
 #include "../detail/epilogue.hpp"
 

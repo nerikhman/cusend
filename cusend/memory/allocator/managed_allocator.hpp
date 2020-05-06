@@ -26,30 +26,46 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
-
-
-CUSEND_NAMESPACE_OPEN_BRACE
+#include "../resource/managed_resource.hpp"
+#include "allocator_adaptor.hpp"
 
 
+CUMEM_NAMESPACE_OPEN_BRACE
+
+
+// managed_allocator<T> allocates CUDA managed memory.
 template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
+class managed_allocator : public allocator_adaptor<T, managed_resource>
 {
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
-}
+  private:
+    using super_t = allocator_adaptor<T, managed_resource>;
+
+  public:
+    explicit managed_allocator(int device)
+      : super_t{device}
+    {}
+
+    managed_allocator()
+      : managed_allocator(0)
+    {}
+
+    managed_allocator(const managed_allocator&) = default;
+
+    template<class U>
+    managed_allocator(const managed_allocator<U>& other)
+      : super_t(other)
+    {}
+
+    int device() const
+    {
+      return super_t::resource().device();
+    }
+};
 
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+CUMEM_NAMESPACE_CLOSE_BRACE
 
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 

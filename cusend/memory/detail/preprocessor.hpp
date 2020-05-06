@@ -24,32 +24,20 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
 
-#include "detail/prologue.hpp"
+// note that this header file is special and does not use #pragma once
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
+// This header #includes all header files underneath the detail/preprocessor directory.
+// The only headers that should #include this file are detail/prologue.hpp and detail/epilogue.hpp
+//
+// A simple way to redefine configuration macros like CUMEM_NAMESPACE et al is to replace this
+// header file with one containing custom definitions for all macros defined beneath the
+// detail/config directory.
 
-
-CUSEND_NAMESPACE_OPEN_BRACE
-
-
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
-{
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
-}
-
-
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
-
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "detail/epilogue.hpp"
+#include "preprocessor/annotation.hpp"
+#include "preprocessor/exec_check_disable.hpp"
+#include "preprocessor/has_cudart.hpp"
+#include "preprocessor/has_exceptions.hpp"
+#include "preprocessor/namespace.hpp"
+#include "preprocessor/requires.hpp"
 

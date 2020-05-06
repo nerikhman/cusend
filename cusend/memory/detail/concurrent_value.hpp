@@ -28,79 +28,57 @@
 
 #include "prologue.hpp"
 
+#include <mutex>
+#include <type_traits>
 #include <utility>
-#include "../execution/executor/execute.hpp"
-#include "../execution/executor/is_executor.hpp"
-#include "../execution/executor/is_executor_of.hpp"
 
 
-CUSEND_NAMESPACE_OPEN_BRACE
+CUMEM_NAMESPACE_OPEN_BRACE
 
 
-namespace detail
+namespace CUMEM_DETAIL_NAMESPACE
 {
 
 
-template<class Executor, class Invocable>
-class execute_operation
+template<class T>
+class concurrent_value
 {
-  public:
-    template<class OtherInvocable,
-             CUSEND_REQUIRES(std::is_constructible<Invocable,OtherInvocable&&>::value)
-            >
-    CUSEND_ANNOTATION
-    execute_operation(const Executor& ex, OtherInvocable&& f)
-      : ex_(ex), f_(std::forward<OtherInvocable>(f))
-    {}
-
-    execute_operation(const execute_operation&) = default;
-
-    CUSEND_ANNOTATION
-    execute_operation(execute_operation&& other)
-      : ex_(std::move(other.ex_)), f_(std::move(other.f_))
-    {}
-
-    template<CUSEND_REQUIRES(execution::is_executor_of<Executor,Invocable&&>::value)>
-    CUSEND_ANNOTATION
-    void start() &&
-    {
-      CUSEND_NAMESPACE::execution::execute(ex_, std::move(f_));
-    }
-
-    template<CUSEND_REQUIRES(execution::is_executor_of<Executor,const Invocable&>::value)>
-    CUSEND_ANNOTATION
-    void start() const &
-    {
-      CUSEND_NAMESPACE::execution::execute(ex_, f_);
-    }
-
-    template<CUSEND_REQUIRES(execution::is_executor_of<Executor,Invocable&>::value)>
-    CUSEND_ANNOTATION
-    void start() &
-    {
-      CUSEND_NAMESPACE::execution::execute(ex_, f_);
-    }
-
   private:
-    Executor ex_;
-    Invocable f_;
+    std::mutex mutex_;
+    T value_;
+
+  public:
+    template<class... Args,
+             CUMEM_REQUIRES(std::is_constructible<T,Args&&...>::value)
+            >
+    explicit concurrent_value(Args&&... args)
+      : value_(std::forward<Args>(args)...)
+    {}
+
+    template<class Function>
+    auto exclusive_invoke(Function&& f)
+      -> decltype(std::forward<Function>(f)(value_))
+    {
+      // acquire the mutex associated with the singleton
+      std::lock_guard<std::mutex> lock(mutex_);
+
+      // invoke the function on the value while we have the mutex
+      return std::forward<Function>(f)(value_);
+    }
+
+    template<class Function>
+    auto unsafe_invoke(Function&& f) const
+      -> decltype(std::forward<Function>(f)(value_))
+    {
+      return std::forward<Function>(f)(value_);
+    }
 };
 
 
-template<class Executor, class Invocable,
-         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
-        >
-CUSEND_ANNOTATION
-execute_operation<Executor, typename std::decay<Invocable>::type> make_execute_operation(const Executor& ex, Invocable&& f)
-{
-  return {ex, std::forward<Invocable>(f)};
-}
+} // end CUMEM_DETAIL_NAMESPACE
 
 
-} // end detail
-
-
-CUSEND_NAMESPACE_CLOSE_BRACE
+CUMEM_NAMESPACE_CLOSE_BRACE
 
 
 #include "epilogue.hpp"

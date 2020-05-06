@@ -26,30 +26,29 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
+#include <memory>
+#include "deallocate.hpp"
+#include "destroy.hpp"
+
+CUMEM_NAMESPACE_OPEN_BRACE
 
 
-CUSEND_NAMESPACE_OPEN_BRACE
-
-
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
+template<class Alloc, class P>
+CUMEM_ANNOTATION
+void allocator_delete(Alloc& alloc, P ptr)
 {
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
+  using T = typename std::pointer_traits<P>::element_type;
+  using allocator_type = typename std::allocator_traits<Alloc>::template rebind_alloc<T>;
+  allocator_type alloc_copy = alloc;
+
+  CUMEM_NAMESPACE::destroy(alloc_copy, ptr);
+  CUMEM_NAMESPACE::deallocate(alloc_copy, ptr, 1);
 }
 
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+CUMEM_NAMESPACE_CLOSE_BRACE
 
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 

@@ -24,32 +24,31 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
 
-#include "detail/prologue.hpp"
+// note that this header file is special and does not use #pragma once
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
+#if CUMEM_INCLUDE_LEVEL == 1
 
+// any time this header is #included in a nested fashion, this branch is processed
 
-CUSEND_NAMESPACE_OPEN_BRACE
+// pop from the stack
+#pragma pop_macro("CUMEM_INCLUDE_LEVEL")
 
+#else
 
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
-{
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
-}
+// the final time this header is processed, this branch is taken
 
+#undef CUMEM_INCLUDE_LEVEL
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+// include preprocessor headers
 
+#include "preprocessor.hpp"
 
-CUSEND_NAMESPACE_CLOSE_BRACE
+// allow importers of this library to provide a special header to
+// be included after the epilogue
+#if __has_include("afterword.hpp")
+#include "afterword.hpp"
+#endif
 
-
-#include "detail/epilogue.hpp"
+#endif
 

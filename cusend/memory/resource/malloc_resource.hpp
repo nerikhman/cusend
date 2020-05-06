@@ -26,30 +26,63 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
-
-
-CUSEND_NAMESPACE_OPEN_BRACE
+#include <cstdint>
+#include <stdlib.h>
+#include "../detail/throw_runtime_error.hpp"
 
 
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
+CUMEM_NAMESPACE_OPEN_BRACE
+
+
+// malloc_resource is a memory resource backed by malloc and free.
+// As such, memory allocated through malloc_resource::allocate called from a __device__
+// function must be deallocated through malloc_resource::deallocate called from a __device__
+// function, and vice versa for __host__ functions.
+struct malloc_resource
 {
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
-}
+  CUMEM_ANNOTATION
+  inline void* allocate(std::size_t num_bytes)
+  {
+    void* result = malloc(num_bytes);
+
+    if(result == nullptr)
+    {
+      CUMEM_DETAIL_NAMESPACE::throw_runtime_error("malloc_resource::allocate: malloc failed.\n");
+    }
+
+    return result;
+  }
+
+  CUMEM_ANNOTATION
+  inline void deallocate(void* ptr, std::size_t)
+  {
+    free(ptr);
+  }
+
+  CUMEM_ANNOTATION
+  inline bool is_equal(const malloc_resource&) const
+  {
+    return true;
+  }
+
+  CUMEM_ANNOTATION
+  inline bool operator==(const malloc_resource& other) const
+  {
+    return is_equal(other);
+  }
+
+  CUMEM_ANNOTATION
+  inline bool operator!=(const malloc_resource& other) const
+  {
+    return !(*this == other);
+  }
+};
 
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+CUMEM_NAMESPACE_CLOSE_BRACE
 
 
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 

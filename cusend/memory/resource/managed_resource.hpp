@@ -28,82 +28,74 @@
 
 #include "../detail/prologue.hpp"
 
-#include "../detail/launch_kernel.hpp"
-#include "../detail/stream.hpp"
-#include "is_executor.hpp"
+#include <cstdint>
+#include <cuda_runtime.h>
+#include "../detail/invoke_with_current_device.hpp"
 
 
-CUDEX_NAMESPACE_OPEN_BRACE
+CUMEM_NAMESPACE_OPEN_BRACE
 
 
-class stream_executor
+class managed_resource
 {
   public:
-    CUDEX_ANNOTATION
-    inline stream_executor(cudaStream_t stream, int device)
-      : stream_{device, stream}
+    // note that this does not check that the device actually exists
+    inline explicit managed_resource(int device)
+      : device_(device)
     {}
 
-    CUDEX_ANNOTATION
-    inline explicit stream_executor(cudaStream_t stream)
-      : stream_executor(stream, 0)
+    inline managed_resource()
+      : managed_resource{0}
     {}
 
-    CUDEX_ANNOTATION
-    inline stream_executor()
-      : stream_executor(cudaStream_t{0})
-    {}
+    managed_resource(const managed_resource&) = default;
 
-    stream_executor(const stream_executor&) = default;
-
-    template<class Function,
-             CUDEX_REQUIRES(std::is_trivially_copyable<Function>::value)
-            >
-    CUDEX_ANNOTATION
-    void execute(Function f) const noexcept
+    inline void* allocate(std::size_t num_bytes) const
     {
-      detail::launch_kernel(f, dim3(1), dim3(1), 0, stream_.native_handle(), stream_.device());
+      return CUMEM_DETAIL_NAMESPACE::invoke_with_current_device(device(), [=]
+      {
+        void* result = nullptr;
+
+        CUMEM_DETAIL_NAMESPACE::throw_on_error(cudaMallocManaged(&result, num_bytes, cudaMemAttachGlobal), "managed_resource::allocate: CUDA error after cudaMallocManaged");
+
+        return result;
+      });
     }
 
-    CUDEX_ANNOTATION
-    bool operator==(const stream_executor& other) const
+    inline void deallocate(void* ptr, std::size_t) const
     {
-      return stream_ == other.stream_;
+      CUMEM_DETAIL_NAMESPACE::invoke_with_current_device(device(), [=]
+      {
+        CUMEM_DETAIL_NAMESPACE::throw_on_error(cudaFree(ptr), "managed_resource::deallocate: CUDA error after cudaFree");
+      });
     }
 
-    CUDEX_ANNOTATION
-    bool operator!=(const stream_executor& other) const
+    inline int device() const
+    {
+      return device_;
+    }
+
+    inline bool is_equal(const managed_resource& other) const
+    {
+      return device() == other.device();
+    }
+
+    inline bool operator==(const managed_resource& other) const
+    {
+      return is_equal(other);
+    }
+
+    inline bool operator!=(const managed_resource& other) const
     {
       return !(*this == other);
     }
 
-    CUDEX_ANNOTATION
-    cudaStream_t stream() const
-    {
-      return stream_.native_handle();
-    }
-
-    CUDEX_ANNOTATION
-    void stream_wait_for(cudaEvent_t e) const
-    {
-      stream_.wait_for(e);
-    }
-
-    CUDEX_ANNOTATION
-    int device() const
-    {
-      return stream_.device();
-    }
-
   private:
-    detail::stream_view stream_;
+    int device_;
 };
 
+CUMEM_NAMESPACE_CLOSE_BRACE
 
-static_assert(is_executor<stream_executor>::value, "Error.");
-
-
-CUDEX_NAMESPACE_CLOSE_BRACE
 
 #include "../detail/epilogue.hpp"
 

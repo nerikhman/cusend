@@ -26,30 +26,47 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
-
-
-CUSEND_NAMESPACE_OPEN_BRACE
+#include "../resource/system_resource.hpp"
+#include "../resource/managed_resource.hpp"
+#include "heterogeneous_allocator.hpp"
 
 
+CUMEM_NAMESPACE_OPEN_BRACE
+
+
+// allocator<T> is the default allocator type. It is an alias for the following recipe:
+//
+//     heterogeneous_allocator<T, system_resource<managed_resource>>>
+//
+// That means that when on the host, allocator allocates CUDA managed memory through a system-wide memory pool.
+// When on the device, allocator allocates CUDA __device__ memory through malloc.
 template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
+class allocator : public heterogeneous_allocator<T, system_resource<managed_resource>>
 {
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
-}
+  private:
+    using super_t = heterogeneous_allocator<T, system_resource<managed_resource>>;
+
+  public:
+    allocator() = default;
+
+    CUMEM_ANNOTATION
+    explicit allocator(int device)
+      : super_t{device}
+    {}
+
+    allocator(const allocator&) = default;
+
+    template<class U>
+    CUMEM_ANNOTATION
+    allocator(const allocator<U>& other)
+      : super_t(other)
+    {}
+};
 
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+CUMEM_NAMESPACE_CLOSE_BRACE
 
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 

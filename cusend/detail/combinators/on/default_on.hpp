@@ -87,7 +87,7 @@ class on_sender : public sender_base
         void start() &&
         {
           // create a function that will submit the sender to the receiver and then execute that function on our executor
-          CUSEND_NAMESPACE::execute(executor_, detail::bind(CUSEND_NAMESPACE::submit, std::move(sender_), std::move(receiver_)));
+          CUSEND_NAMESPACE::execution::execute(executor_, detail::bind(CUSEND_NAMESPACE::submit, std::move(sender_), std::move(receiver_)));
         }
 
       private:
@@ -106,7 +106,7 @@ class on_sender : public sender_base
     }
 
     template<class OtherExecutor,
-             CUSEND_REQUIRES(is_executor<OtherExecutor>::value)
+             CUSEND_REQUIRES(execution::is_executor<OtherExecutor>::value)
             >
     CUSEND_ANNOTATION
     on_sender<Sender, OtherExecutor> on(const OtherExecutor& executor) &&
@@ -115,7 +115,7 @@ class on_sender : public sender_base
     }
 
     template<class OtherExecutor,
-             CUSEND_REQUIRES(is_executor<OtherExecutor>::value),
+             CUSEND_REQUIRES(execution::is_executor<OtherExecutor>::value),
              CUSEND_REQUIRES(std::is_copy_constructible<Sender>::value)
             >
     CUSEND_ANNOTATION
@@ -132,7 +132,7 @@ class on_sender : public sender_base
 
 template<class Sender, class Executor,
          CUSEND_REQUIRES(is_sender<Sender>::value),
-         CUSEND_REQUIRES(is_executor<Executor>::value)
+         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
         >
 CUSEND_ANNOTATION
 on_sender<decay_t<Sender>, Executor> default_on(Sender&& s, const Executor& ex)

@@ -101,7 +101,7 @@ class invoke_sender : public sender_base
 
     
     template<class OtherExecutor,
-             CUSEND_REQUIRES(is_executor<OtherExecutor>::value)
+             CUSEND_REQUIRES(execution::is_executor<OtherExecutor>::value)
             >
     CUSEND_ANNOTATION
     invoke_sender<OtherExecutor, Invocable> on(const OtherExecutor& ex) &&
@@ -111,7 +111,7 @@ class invoke_sender : public sender_base
 
 
     template<class OtherExecutor,
-             CUSEND_REQUIRES(is_executor<OtherExecutor>::value),
+             CUSEND_REQUIRES(execution::is_executor<OtherExecutor>::value),
              CUSEND_REQUIRES(std::is_copy_constructible<Invocable>::value)
             >
     CUSEND_ANNOTATION
@@ -127,7 +127,7 @@ class invoke_sender : public sender_base
 
 
 template<class Executor, class Invocable,
-         CUSEND_REQUIRES(is_executor_of<Executor,Invocable>::value)
+         CUSEND_REQUIRES(execution::is_executor_of<Executor,Invocable>::value)
         >
 CUSEND_ANNOTATION
 invoke_sender<Executor, decay_t<Invocable>>
@@ -139,7 +139,7 @@ invoke_sender<Executor, decay_t<Invocable>>
 
 template<class Executor, class Invocable,
          class Arg1, class... Args,
-         CUSEND_REQUIRES(is_executor<Executor>::value),
+         CUSEND_REQUIRES(execution::is_executor<Executor>::value),
          CUSEND_REQUIRES(detail::is_invocable<Invocable,Arg1,Args...>::value)
         >
 CUSEND_ANNOTATION

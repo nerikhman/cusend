@@ -26,30 +26,54 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "prologue.hpp"
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
-
-
-CUSEND_NAMESPACE_OPEN_BRACE
+#include <cstdio>
+#include <exception>
+#include "terminate.hpp"
 
 
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
+CUMEM_NAMESPACE_OPEN_BRACE
+
+namespace CUMEM_DETAIL_NAMESPACE
 {
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
+namespace throw_on_error_detail
+{
+
+
+CUMEM_ANNOTATION
+inline void print_error_message(cudaError_t e, const char* message) noexcept
+{
+#if CUMEM_HAS_CUDART
+  printf("Error after %s: %s\n", message, cudaGetErrorString(e));
+#else
+  printf("Error: %s\n", message);
+#endif
 }
 
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+} // end throw_on_error_detail
 
 
-CUSEND_NAMESPACE_CLOSE_BRACE
+CUMEM_ANNOTATION
+inline void throw_on_error(cudaError_t e, const char* message)
+{
+  if(e)
+  {
+#ifndef __CUDA_ARCH__
+    std::string what = std::string(message) + std::string(": ") + cudaGetErrorString(e);
+    throw std::runtime_error(what);
+#else
+    CUMEM_DETAIL_NAMESPACE::throw_on_error_detail::print_error_message(e, message);
+    CUMEM_DETAIL_NAMESPACE::terminate();
+#endif
+  }
+}
 
 
-#include "detail/epilogue.hpp"
+} // end CUMEM_DETAIL_NAMESPACE
+
+CUMEM_NAMESPACE_CLOSE_BRACE
+
+#include "epilogue.hpp"
 

@@ -26,30 +26,38 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
+#include "../resource/heterogeneous_resource.hpp"
+#include "../resource/malloc_resource.hpp"
+#include "../resource/managed_resource.hpp"
+#include "allocator_adaptor.hpp"
+
+CUMEM_NAMESPACE_OPEN_BRACE
 
 
-CUSEND_NAMESPACE_OPEN_BRACE
-
-
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
+// heterogeneous_allocator uses a different primitive resource depending on whether
+// its operations are called from __host__ or __device__ code.
+template<class T, class HostResource = managed_resource, class DeviceResource = malloc_resource>
+class heterogeneous_allocator : public allocator_adaptor<T,heterogeneous_resource<HostResource,DeviceResource>>
 {
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
-}
+  private:
+    using super_t = allocator_adaptor<T,heterogeneous_resource<HostResource,DeviceResource>>;
+
+  public:
+    heterogeneous_allocator() = default;
+
+    heterogeneous_allocator(const heterogeneous_allocator&) = default;
+
+    template<class U>
+    CUMEM_ANNOTATION
+    heterogeneous_allocator(const heterogeneous_allocator<U,HostResource,DeviceResource>& other)
+      : super_t(other)
+    {}
+}; // end heterogeneous_allocator
 
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+CUMEM_NAMESPACE_CLOSE_BRACE
 
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 

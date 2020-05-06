@@ -28,82 +28,75 @@
 
 #include "../detail/prologue.hpp"
 
-#include "../detail/launch_kernel.hpp"
-#include "../detail/stream.hpp"
-#include "is_executor.hpp"
+#include <memory>
+#include <type_traits>
+#include "../detail/swap.hpp"
+#include "allocator_delete.hpp"
 
 
-CUDEX_NAMESPACE_OPEN_BRACE
+CUMEM_NAMESPACE_OPEN_BRACE
 
 
-class stream_executor
+// see https://wg21.link/P0211
+// allocation_deleter is a deleter which uses an Allocator to delete objects
+template<class Allocator>
+class allocation_deleter : private Allocator // use inheritance for empty base class optimization
 {
   public:
-    CUDEX_ANNOTATION
-    inline stream_executor(cudaStream_t stream, int device)
-      : stream_{device, stream}
+    using pointer = typename std::allocator_traits<Allocator>::pointer;
+
+    CUMEM_ANNOTATION
+    explicit allocation_deleter(const Allocator& alloc) noexcept
+      : Allocator(alloc)
     {}
 
-    CUDEX_ANNOTATION
-    inline explicit stream_executor(cudaStream_t stream)
-      : stream_executor(stream, 0)
-    {}
-
-    CUDEX_ANNOTATION
-    inline stream_executor()
-      : stream_executor(cudaStream_t{0})
-    {}
-
-    stream_executor(const stream_executor&) = default;
-
-    template<class Function,
-             CUDEX_REQUIRES(std::is_trivially_copyable<Function>::value)
+    template<class OtherAllocator,
+             CUMEM_REQUIRES(std::is_convertible<typename std::allocator_traits<OtherAllocator>::pointer, pointer>::value)
             >
-    CUDEX_ANNOTATION
-    void execute(Function f) const noexcept
+    CUMEM_ANNOTATION
+    allocation_deleter(const allocation_deleter<OtherAllocator>& other) noexcept
+      : Allocator(other.allocator())
+    {}
+
+    CUMEM_EXEC_CHECK_DISABLE
+    CUMEM_ANNOTATION
+    void operator()(pointer ptr)
     {
-      detail::launch_kernel(f, dim3(1), dim3(1), 0, stream_.native_handle(), stream_.device());
+      CUMEM_NAMESPACE::allocator_delete(as_allocator(), ptr);
     }
 
-    CUDEX_ANNOTATION
-    bool operator==(const stream_executor& other) const
+    CUMEM_ANNOTATION
+    Allocator& allocator()
     {
-      return stream_ == other.stream_;
+      return *this;
     }
 
-    CUDEX_ANNOTATION
-    bool operator!=(const stream_executor& other) const
+    CUMEM_ANNOTATION
+    const Allocator& allocator() const
     {
-      return !(*this == other);
+      return *this;
     }
 
-    CUDEX_ANNOTATION
-    cudaStream_t stream() const
+    CUMEM_ANNOTATION
+    void swap(allocation_deleter& other)
     {
-      return stream_.native_handle();
-    }
-
-    CUDEX_ANNOTATION
-    void stream_wait_for(cudaEvent_t e) const
-    {
-      stream_.wait_for(e);
-    }
-
-    CUDEX_ANNOTATION
-    int device() const
-    {
-      return stream_.device();
+      CUMEM_DETAIL_NAMESPACE::swap(as_allocator(), other.as_allocator());
     }
 
   private:
-    detail::stream_view stream_;
+    CUMEM_ANNOTATION
+    Allocator& as_allocator()
+    {
+      return const_cast<allocation_deleter&>(*this);
+    }
+
+    // allocation_deleter's copy constructor needs access to mutable allocation_deleter<OtherAllocator>::as_allocator
+    template<class OtherAllocator> friend class allocation_deleter;
 };
 
 
-static_assert(is_executor<stream_executor>::value, "Error.");
+CUMEM_NAMESPACE_CLOSE_BRACE
 
-
-CUDEX_NAMESPACE_CLOSE_BRACE
 
 #include "../detail/epilogue.hpp"
 

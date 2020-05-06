@@ -28,28 +28,19 @@
 
 #include "detail/prologue.hpp"
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
-
-
-CUSEND_NAMESPACE_OPEN_BRACE
-
-
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
-{
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
-}
-
-
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
-
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
+#include "allocator/allocate.hpp"
+#include "allocator/allocation_deleter.hpp"
+#include "allocator/allocator.hpp"
+#include "allocator/allocator_adaptor.hpp"
+#include "allocator/allocator_delete.hpp"
+#include "allocator/allocator_new.hpp"
+#include "allocator/construct.hpp"
+#include "allocator/construct_at.hpp"
+#include "allocator/deallocate.hpp"
+#include "allocator/destroy.hpp"
+#include "allocator/destroy_at.hpp"
+#include "allocator/heterogeneous_allocator.hpp"
+#include "allocator/managed_allocator.hpp"
 
 #include "detail/epilogue.hpp"
 

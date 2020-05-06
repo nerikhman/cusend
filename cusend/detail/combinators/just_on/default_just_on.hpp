@@ -63,7 +63,7 @@ return_value<decay_t<T>> make_return_value(T&& value)
 
 
 template<class Executor, class T,
-         CUSEND_REQUIRES(is_executor<Executor>::value)
+         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
         >
 CUSEND_ANNOTATION
 auto default_just_on(const Executor& ex, T&& value)

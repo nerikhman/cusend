@@ -26,30 +26,41 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "prologue.hpp"
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
+#include <cstdio>
+#include <exception>
+
+CUMEM_NAMESPACE_OPEN_BRACE
 
 
-CUSEND_NAMESPACE_OPEN_BRACE
-
-
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
+namespace CUMEM_DETAIL_NAMESPACE
 {
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
+
+
+CUMEM_ANNOTATION
+inline void terminate() noexcept
+{
+#ifdef __CUDA_ARCH__
+  asm("trap;");
+#else
+  std::terminate();
+#endif
 }
 
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+CUMEM_ANNOTATION
+inline void terminate_with_message(const char* message)
+{
+  printf("%s\n", message);
+
+  CUMEM_DETAIL_NAMESPACE::terminate();
+}
 
 
-CUSEND_NAMESPACE_CLOSE_BRACE
+} // end CUMEM_DETAIL_NAMESPACE
 
+CUMEM_NAMESPACE_CLOSE_BRACE
 
-#include "detail/epilogue.hpp"
+#include "epilogue.hpp"
 

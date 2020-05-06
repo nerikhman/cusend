@@ -26,30 +26,35 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "execution/executor/inline_executor.hpp"
-#include "just_on.hpp"
+#include <memory>
+#include "allocate.hpp"
+#include "construct.hpp"
+
+CUMEM_NAMESPACE_OPEN_BRACE
 
 
-CUSEND_NAMESPACE_OPEN_BRACE
+template<class T, class Alloc>
+using allocator_new_t = typename std::allocator_traits<Alloc>::template rebind_traits<T>::pointer;
 
 
-template<class T>
-CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
+CUMEM_EXEC_CHECK_DISABLE
+template<class T, class Alloc, class... Args>
+CUMEM_ANNOTATION
+allocator_new_t<T,Alloc> allocator_new(Alloc& alloc, Args&&... args)
 {
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
+  using allocator_type = typename std::allocator_traits<Alloc>::template rebind_alloc<T>;
+  allocator_type alloc_copy = alloc;
+
+  auto p = CUMEM_NAMESPACE::allocate(alloc_copy, 1);
+  CUMEM_NAMESPACE::construct(alloc_copy, p, std::forward<Args>(args)...);
+
+  return p;
 }
 
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+CUMEM_NAMESPACE_CLOSE_BRACE
 
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 
