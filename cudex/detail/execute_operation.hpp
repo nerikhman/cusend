@@ -29,7 +29,9 @@
 #include "prologue.hpp"
 
 #include <utility>
-#include "execution.hpp"
+#include "../executor/execute.hpp"
+#include "../executor/is_executor.hpp"
+#include "../executor/is_executor_of.hpp"
 
 
 CUDEX_NAMESPACE_OPEN_BRACE
@@ -58,25 +60,25 @@ class execute_operation
       : ex_(std::move(other.ex_)), f_(std::move(other.f_))
     {}
 
-    template<CUDEX_REQUIRES(execution::is_executor_of<Executor,Invocable&&>::value)>
+    template<CUDEX_REQUIRES(is_executor_of<Executor,Invocable&&>::value)>
     CUDEX_ANNOTATION
     void start() &&
     {
-      execution::execute(ex_, std::move(f_));
+      CUDEX_NAMESPACE::execute(ex_, std::move(f_));
     }
 
-    template<CUDEX_REQUIRES(execution::is_executor_of<Executor,const Invocable&>::value)>
+    template<CUDEX_REQUIRES(is_executor_of<Executor,const Invocable&>::value)>
     CUDEX_ANNOTATION
     void start() const &
     {
-      execution::execute(ex_, f_);
+      CUDEX_NAMESPACE::execute(ex_, f_);
     }
 
-    template<CUDEX_REQUIRES(execution::is_executor_of<Executor,Invocable&>::value)>
+    template<CUDEX_REQUIRES(is_executor_of<Executor,Invocable&>::value)>
     CUDEX_ANNOTATION
     void start() &
     {
-      execution::execute(ex_, f_);
+      CUDEX_NAMESPACE::execute(ex_, f_);
     }
 
   private:
@@ -86,7 +88,7 @@ class execute_operation
 
 
 template<class Executor, class Invocable,
-         CUDEX_REQUIRES(execution::is_executor<Executor>::value)
+         CUDEX_REQUIRES(is_executor<Executor>::value)
         >
 CUDEX_ANNOTATION
 execute_operation<Executor, typename std::decay<Invocable>::type> make_execute_operation(const Executor& ex, Invocable&& f)
