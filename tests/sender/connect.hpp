@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/sender/connect.hpp>
+#include <cusend/sender/connect.hpp>
 
 
 #ifndef __CUDACC__
@@ -54,7 +54,7 @@ void test()
   {
     // test sender with member function
     has_connect_member_function s;
-    auto operation = cudex::connect(s, my_receiver{});
+    auto operation = cusend::connect(s, my_receiver{});
 
     assert(operation.connected);
   }
@@ -62,7 +62,7 @@ void test()
   {
     // test sender with free function
     has_connect_free_function s;
-    auto operation = cudex::connect(s, my_receiver{});
+    auto operation = cusend::connect(s, my_receiver{});
 
     assert(operation.connected);
   }

@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/detail/functional/compose.hpp>
+#include <cusend/detail/functional/compose.hpp>
 #include <utility>
 
 #ifndef __CUDACC__
@@ -162,7 +162,7 @@ struct move_only_invocable2
 __host__ __device__
 void test()
 {
-  using namespace cudex::detail;
+  using namespace cusend::detail;
 
   {
     int expected = 13 + 7 + 42;

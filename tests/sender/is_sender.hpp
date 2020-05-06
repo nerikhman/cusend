@@ -1,8 +1,8 @@
 #include <cassert>
-#include <cudex/sender/is_sender.hpp>
+#include <cusend/sender/is_sender.hpp>
 
 
-struct derived_from_sender_base : cudex::sender_base {};
+struct derived_from_sender_base : cusend::sender_base {};
 
 
 struct has_sender_types
@@ -22,13 +22,13 @@ struct specializes_sender_traits
 };
 
 
-namespace cudex
+namespace cusend
 {
 
 
 template<> struct sender_traits<specializes_sender_traits> {};
 
-} // end cudex
+} // end cusend
 
 
 struct not_a_sender {};
@@ -36,7 +36,7 @@ struct not_a_sender {};
 
 void test_is_sender()
 {
-  using namespace cudex;
+  using namespace cusend;
 
   {
     // test derived_from_sender_base

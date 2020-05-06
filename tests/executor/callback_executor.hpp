@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/executor/callback_executor.hpp>
+#include <cusend/executor/callback_executor.hpp>
 
 
 int result;
@@ -7,7 +7,7 @@ int result;
 
 void test(cudaStream_t s)
 {
-  using namespace cudex;
+  using namespace cusend;
 
   callback_executor ex1{s};
 

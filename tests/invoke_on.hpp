@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstring>
-#include <cudex/executor/inline_executor.hpp>
-#include <cudex/invoke_on.hpp>
+#include <cusend/executor/inline_executor.hpp>
+#include <cusend/invoke_on.hpp>
 #include <exception>
 #include <utility>
 
@@ -49,7 +49,7 @@ template<class Executor>
 __host__ __device__
 void test_variadicity(Executor ex)
 {
-  using namespace cudex;
+  using namespace cusend;
 
   {
     // test with 0 args
@@ -102,7 +102,7 @@ template<class Executor>
 __host__ __device__
 void test_move_only_invocable(Executor ex)
 {
-  using namespace cudex;
+  using namespace cusend;
 
   // test with move-only invocable
 
@@ -118,27 +118,27 @@ void test_move_only_invocable(Executor ex)
 }
 
 
-struct my_executor_with_invoke_on_member_function : cudex::inline_executor
+struct my_executor_with_invoke_on_member_function : cusend::inline_executor
 {
   template<class Function>
   __host__ __device__
   auto invoke_on(Function f) const
-    -> decltype(cudex::invoke_on(cudex::inline_executor(), f))
+    -> decltype(cusend::invoke_on(cusend::inline_executor(), f))
   {
-    return cudex::invoke_on(cudex::inline_executor(), f);
+    return cusend::invoke_on(cusend::inline_executor(), f);
   }
 };
 
 
-struct my_executor_with_invoke_on_free_function : cudex::inline_executor {};
+struct my_executor_with_invoke_on_free_function : cusend::inline_executor {};
 
 
 template<class Function>
 __host__ __device__
 auto invoke_on(my_executor_with_invoke_on_free_function, Function f)
-  -> decltype(cudex::invoke_on(cudex::inline_executor{}, f))
+  -> decltype(cusend::invoke_on(cusend::inline_executor{}, f))
 {
-  return cudex::invoke_on(cudex::inline_executor{}, f);
+  return cusend::invoke_on(cusend::inline_executor{}, f);
 }
 
 
@@ -201,23 +201,23 @@ struct gpu_executor
 
 void test_invoke_on()
 {
-  test_variadicity(cudex::inline_executor{});
+  test_variadicity(cusend::inline_executor{});
   test_variadicity(my_executor_with_invoke_on_member_function{});
   test_variadicity(my_executor_with_invoke_on_free_function{});
 
-  test_move_only_invocable(cudex::inline_executor{});
+  test_move_only_invocable(cusend::inline_executor{});
 
 #ifdef __CUDACC__
   test_variadicity(gpu_executor{});
 
   device_invoke([] __device__ ()
   {
-    test_variadicity(cudex::inline_executor{});
+    test_variadicity(cusend::inline_executor{});
     test_variadicity(gpu_executor{});
     test_variadicity(my_executor_with_invoke_on_member_function{});
     test_variadicity(my_executor_with_invoke_on_free_function{});
 
-    test_move_only_invocable(cudex::inline_executor{});
+    test_move_only_invocable(cusend::inline_executor{});
   });
   assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif

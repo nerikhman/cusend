@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/sender/is_many_receiver_of.hpp>
+#include <cusend/sender/is_many_receiver_of.hpp>
 #include <exception>
 
 
@@ -49,7 +49,7 @@ struct not_a_many_receiver
 
 void test_is_many_receiver_of()
 {
-  using namespace cudex;
+  using namespace cusend;
 
   {
     // test not a many receiver

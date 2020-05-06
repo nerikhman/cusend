@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/executor/stream_executor.hpp>
+#include <cusend/executor/stream_executor.hpp>
 
 
 #ifndef __host__
@@ -25,7 +25,7 @@ __managed__ int result;
 __host__ __device__
 void test(cudaStream_t s, int d)
 {
-  using namespace cudex;
+  using namespace cusend;
 
   stream_executor ex1{s, d};
 

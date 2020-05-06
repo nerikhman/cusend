@@ -1,8 +1,8 @@
 #include <cassert>
 #include <cstring>
-#include <cudex/just.hpp>
-#include <cudex/on.hpp>
-#include <cudex/then.hpp>
+#include <cusend/just.hpp>
+#include <cusend/on.hpp>
+#include <cusend/then.hpp>
 
 #ifndef __CUDACC__
 #define __host__
@@ -145,7 +145,7 @@ void test(Executor ex)
   result = 0;
   Executor::initialize_num_calls_to_execute();
 
-  cudex::just(arg1)
+  cusend::just(arg1)
     .then([=] __host__ __device__ (int arg1)
      {
        return arg1 + arg2;

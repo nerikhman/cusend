@@ -1,4 +1,4 @@
-This directory contains unit tests exercising functionality defined beneath the `cudex` directory.
+This directory contains unit tests exercising functionality defined beneath the `cusend` directory.
 
 For example, To build and execute a single test program named `foo`:
 

@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstring>
-#include <cudex/executor/inline_executor.hpp>
-#include <cudex/just_on.hpp>
+#include <cusend/executor/inline_executor.hpp>
+#include <cusend/just_on.hpp>
 #include <exception>
 #include <utility>
 
@@ -49,7 +49,7 @@ template<class Executor>
 __host__ __device__
 void test_copyable(Executor ex)
 {
-  using namespace cudex;
+  using namespace cusend;
 
   result = 0;
   int expected = 13;
@@ -66,7 +66,7 @@ template<class Executor>
 __host__ __device__
 void test_move_only(Executor ex)
 {
-  using namespace cudex;
+  using namespace cusend;
 
   result = 0;
   int expected = 13;
@@ -79,27 +79,27 @@ void test_move_only(Executor ex)
 }
 
 
-struct my_executor_with_just_on_member_function : cudex::inline_executor
+struct my_executor_with_just_on_member_function : cusend::inline_executor
 {
   template<class T>
   __host__ __device__
   auto just_on(T&& value) const
-    -> decltype(cudex::just_on(cudex::inline_executor(), std::forward<T>(value)))
+    -> decltype(cusend::just_on(cusend::inline_executor(), std::forward<T>(value)))
   {
-    return cudex::invoke_on(cudex::inline_executor(), std::forward<T>(value));
+    return cusend::invoke_on(cusend::inline_executor(), std::forward<T>(value));
   }
 };
 
 
-struct my_executor_with_just_on_free_function : cudex::inline_executor {};
+struct my_executor_with_just_on_free_function : cusend::inline_executor {};
 
 
 template<class T>
 __host__ __device__
 auto just_on(my_executor_with_just_on_free_function, T&& value)
-  -> decltype(cudex::just_on(cudex::inline_executor{}, std::forward<T>(value)))
+  -> decltype(cusend::just_on(cusend::inline_executor{}, std::forward<T>(value)))
 {
-  return cudex::just_on(cudex::inline_executor{}, std::forward<T>(value));
+  return cusend::just_on(cusend::inline_executor{}, std::forward<T>(value));
 }
 
 
@@ -162,11 +162,11 @@ struct gpu_executor
 
 void test_just_on()
 {
-  test_copyable(cudex::inline_executor{});
+  test_copyable(cusend::inline_executor{});
   test_copyable(my_executor_with_just_on_member_function{});
   test_copyable(my_executor_with_just_on_free_function{});
 
-  test_move_only(cudex::inline_executor{});
+  test_move_only(cusend::inline_executor{});
   test_move_only(my_executor_with_just_on_member_function{});
   test_move_only(my_executor_with_just_on_free_function{});
 
@@ -175,11 +175,11 @@ void test_just_on()
 
   device_invoke([] __device__ ()
   {
-    test_copyable(cudex::inline_executor{});
+    test_copyable(cusend::inline_executor{});
     test_copyable(my_executor_with_just_on_member_function{});
     test_copyable(my_executor_with_just_on_free_function{});
 
-    test_move_only(cudex::inline_executor{});
+    test_move_only(cusend::inline_executor{});
     test_move_only(my_executor_with_just_on_member_function{});
     test_move_only(my_executor_with_just_on_free_function{});
 

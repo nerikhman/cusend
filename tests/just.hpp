@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstring>
-#include <cudex/executor/inline_executor.hpp>
-#include <cudex/just.hpp>
+#include <cusend/executor/inline_executor.hpp>
+#include <cusend/just.hpp>
 #include <exception>
 #include <utility>
 
@@ -48,7 +48,7 @@ struct my_receiver
 __host__ __device__
 void test()
 {
-  using namespace cudex;
+  using namespace cusend;
 
   {
     // test copyable type

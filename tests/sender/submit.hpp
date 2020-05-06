@@ -1,8 +1,8 @@
 #include <cassert>
-#include <cudex/sender/set_error.hpp>
-#include <cudex/sender/set_done.hpp>
-#include <cudex/sender/set_value.hpp>
-#include <cudex/sender/submit.hpp>
+#include <cusend/sender/set_error.hpp>
+#include <cusend/sender/set_done.hpp>
+#include <cusend/sender/set_value.hpp>
+#include <cusend/sender/submit.hpp>
 
 
 #ifndef __CUDACC__
@@ -30,19 +30,19 @@ struct has_submit_member_function
     {
       case send_to_channel::value:
       {
-        cudex::set_value(std::forward<R>(r));
+        cusend::set_value(std::forward<R>(r));
         break;
       }
 
       case send_to_channel::error:
       {
-        cudex::set_error(std::forward<R>(r), 13);
+        cusend::set_error(std::forward<R>(r), 13);
         break;
       }
 
       case send_to_channel::done:
       {
-        cudex::set_done(std::forward<R>(r));
+        cusend::set_done(std::forward<R>(r));
         break;
       }
     }
@@ -61,7 +61,7 @@ void submit(has_submit_free_function&& s, R&& r)
 {
   has_submit_member_function ss{s.channel};
 
-  cudex::submit(std::move(ss), std::forward<R>(r));
+  cusend::submit(std::move(ss), std::forward<R>(r));
 }
 
 
@@ -107,7 +107,7 @@ void test()
       bool set_done_invoked = false;
       my_receiver r{set_value_invoked, set_error_invoked, set_done_invoked};
 
-      cudex::submit(std::move(s), std::move(r));
+      cusend::submit(std::move(s), std::move(r));
       assert(set_value_invoked);
     }
 
@@ -120,7 +120,7 @@ void test()
       bool set_done_invoked = false;
       my_receiver r{set_value_invoked, set_error_invoked, set_done_invoked};
 
-      cudex::submit(std::move(s), std::move(r));
+      cusend::submit(std::move(s), std::move(r));
       assert(set_error_invoked);
     }
 
@@ -133,7 +133,7 @@ void test()
       bool set_done_invoked = false;
       my_receiver r{set_value_invoked, set_error_invoked, set_done_invoked};
 
-      cudex::submit(std::move(s), std::move(r));
+      cusend::submit(std::move(s), std::move(r));
       assert(set_done_invoked);
     }
   }
@@ -150,7 +150,7 @@ void test()
       bool set_done_invoked = false;
       my_receiver r{set_value_invoked, set_error_invoked, set_done_invoked};
 
-      cudex::submit(std::move(s), std::move(r));
+      cusend::submit(std::move(s), std::move(r));
       assert(set_value_invoked);
     }
 
@@ -163,7 +163,7 @@ void test()
       bool set_done_invoked = false;
       my_receiver r{set_value_invoked, set_error_invoked, set_done_invoked};
 
-      cudex::submit(std::move(s), std::move(r));
+      cusend::submit(std::move(s), std::move(r));
       assert(set_error_invoked);
     }
 
@@ -176,7 +176,7 @@ void test()
       bool set_done_invoked = false;
       my_receiver r{set_value_invoked, set_error_invoked, set_done_invoked};
 
-      cudex::submit(std::move(s), std::move(r));
+      cusend::submit(std::move(s), std::move(r));
       assert(set_done_invoked);
     }
   }

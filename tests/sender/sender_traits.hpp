@@ -1,6 +1,6 @@
 #include <cassert>
-#include <cudex/sender/sender_traits.hpp>
-#include <cudex/sender/set_value.hpp>
+#include <cusend/sender/sender_traits.hpp>
+#include <cusend/sender/set_value.hpp>
 
 
 struct my_sender
@@ -8,7 +8,7 @@ struct my_sender
   template<class R>
   void submit(R&& r) &&
   {
-    cudex::set_value(r);
+    cusend::set_value(r);
   }
 };
 
@@ -52,28 +52,28 @@ void test_sender_traits()
 {
   {
     // test a sender without any traits
-    using traits = cudex::sender_traits<my_sender>;
+    using traits = cusend::sender_traits<my_sender>;
 
-    static_assert(!cudex::detail::has_sender_types<traits>::value, "Expected sender not to have types.");
+    static_assert(!cusend::detail::has_sender_types<traits>::value, "Expected sender not to have types.");
   }
 
   {
     // test a sender with a single trait
-    using traits = cudex::sender_traits<my_sender_with_value_types>;
+    using traits = cusend::sender_traits<my_sender_with_value_types>;
 
-    static_assert(!cudex::detail::has_sender_types<traits>::value, "Expected sender not to have types.");
+    static_assert(!cusend::detail::has_sender_types<traits>::value, "Expected sender not to have types.");
   }
 
   {
     // test a sender with two traits
-    using traits = cudex::sender_traits<my_sender_with_value_types_and_error_types>;
+    using traits = cusend::sender_traits<my_sender_with_value_types_and_error_types>;
 
-    static_assert(!cudex::detail::has_sender_types<traits>::value, "Expected sender not to have types.");
+    static_assert(!cusend::detail::has_sender_types<traits>::value, "Expected sender not to have types.");
   }
 
   {
     // test a sender with all traits
-    using traits = cudex::sender_traits<my_sender_with_traits>;
+    using traits = cusend::sender_traits<my_sender_with_traits>;
 
     using value_types = traits::value_types<variadic,variadic>;
     using error_types = traits::error_types<variadic>;
@@ -85,7 +85,7 @@ void test_sender_traits()
 
   {
     // test a reference to a sender with all traits
-    using traits = cudex::sender_traits<my_sender_with_traits&>;
+    using traits = cusend::sender_traits<my_sender_with_traits&>;
 
     using value_types = traits::value_types<variadic,variadic>;
     using error_types = traits::error_types<variadic>;

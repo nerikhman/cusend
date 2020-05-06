@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/executor/inline_executor.hpp>
+#include <cusend/executor/inline_executor.hpp>
 
 #ifndef __CUDACC__
 #define __host__
@@ -9,7 +9,7 @@
 __host__ __device__
 void test()
 {
-  using namespace cudex;
+  using namespace cusend;
 
   inline_executor ex1;
 

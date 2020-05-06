@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstring>
-#include <cudex/executor/inline_executor.hpp>
-#include <cudex/get_executor.hpp>
+#include <cusend/executor/inline_executor.hpp>
+#include <cusend/get_executor.hpp>
 #include <exception>
 #include <utility>
 
@@ -16,7 +16,7 @@
 struct has_get_executor_member_function
 {
   __host__ __device__
-  cudex::inline_executor get_executor() const
+  cusend::inline_executor get_executor() const
   {
     return {};
   }
@@ -26,7 +26,7 @@ struct has_get_executor_member_function
 struct has_get_executor_free_function {};
 
 __host__ __device__
-cudex::inline_executor get_executor(has_get_executor_free_function)
+cusend::inline_executor get_executor(has_get_executor_free_function)
 {
   return {};
 }
@@ -76,7 +76,7 @@ template<class T>
 __host__ __device__
 void test(T&& arg)
 {
-  auto ex = cudex::get_executor(std::forward<T>(arg));
+  auto ex = cusend::get_executor(std::forward<T>(arg));
 
   // assert that the thing we got acts like an executor
   int expected = 13;

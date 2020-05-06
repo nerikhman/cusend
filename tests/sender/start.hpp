@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/sender/start.hpp>
+#include <cusend/sender/start.hpp>
 
 
 #ifndef __CUDACC__
@@ -38,7 +38,7 @@ void test()
   {
     // test start with member function
     has_start_member_function o;
-    cudex::start(o);
+    cusend::start(o);
 
     assert(o.started);
   }
@@ -46,7 +46,7 @@ void test()
   {
     // test sender with free function
     has_start_free_function o;
-    cudex::start(o);
+    cusend::start(o);
 
     assert(o.started);
   }

@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/sender/set_done.hpp>
+#include <cusend/sender/set_done.hpp>
 
 
 #ifndef __CUDACC__
@@ -33,13 +33,13 @@ void test()
   {
     has_set_done_member r;
 
-    assert(cudex::set_done(std::move(r)));
+    assert(cusend::set_done(std::move(r)));
   }
 
   {
     has_set_done_free_function r;
 
-    assert(cudex::set_done(std::move(r)));
+    assert(cusend::set_done(std::move(r)));
   }
 }
 

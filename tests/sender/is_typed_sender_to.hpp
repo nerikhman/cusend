@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/sender/is_typed_sender_to.hpp>
+#include <cusend/sender/is_typed_sender_to.hpp>
 #include <exception>
 
 
@@ -21,7 +21,7 @@ struct my_receiver
 
 struct not_a_sender {};
 
-struct untyped_sender_to_my_receiver : cudex::sender_base
+struct untyped_sender_to_my_receiver : cusend::sender_base
 {
   void connect(my_receiver&&);
 };
@@ -45,7 +45,7 @@ struct typed_sender_to_my_receiver : untyped_sender_to_my_receiver
 
 void test_is_typed_sender_to()
 {
-  using namespace cudex;
+  using namespace cusend;
 
   // not_a_sender, not_a_receiver
   static_assert(!is_typed_sender_to<not_a_sender, not_a_receiver>::value, "Expected false.");

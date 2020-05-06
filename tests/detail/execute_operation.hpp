@@ -1,6 +1,6 @@
 #include <cassert>
-#include <cudex/detail/execute_operation.hpp>
-#include <cudex/executor/inline_executor.hpp>
+#include <cusend/detail/execute_operation.hpp>
+#include <cusend/executor/inline_executor.hpp>
 
 #ifndef __CUDACC__
 #define __host__
@@ -88,8 +88,8 @@ struct move_only_invocable
 __host__ __device__
 void test()
 {
-  using namespace cudex;
-  using namespace cudex::detail;
+  using namespace cusend;
+  using namespace cusend::detail;
 
   inline_executor ex;
 

@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/detail/receiver_as_invocable.hpp>
+#include <cusend/detail/receiver_as_invocable.hpp>
 
 #ifndef __CUDACC__
 #define __host__
@@ -45,7 +45,7 @@ struct my_move_only_receiver
 __host__ __device__
 void test()
 {
-  using namespace cudex::detail;
+  using namespace cusend::detail;
 
   {
     // test move-only receiver

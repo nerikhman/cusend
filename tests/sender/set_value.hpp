@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/sender/set_value.hpp>
+#include <cusend/sender/set_value.hpp>
 
 
 #ifndef __CUDACC__
@@ -33,13 +33,13 @@ void test()
   {
     has_set_value_member r;
 
-    assert(cudex::set_value(std::move(r), 13));
+    assert(cusend::set_value(std::move(r), 13));
   }
 
   {
     has_set_value_free_function r;
 
-    assert(cudex::set_value(std::move(r), 13));
+    assert(cusend::set_value(std::move(r), 13));
   }
 }
 

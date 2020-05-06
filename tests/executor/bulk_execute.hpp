@@ -1,6 +1,6 @@
 #include <cassert>
 #include <iostream>
-#include <cudex/executor/bulk_execute.hpp>
+#include <cusend/executor/bulk_execute.hpp>
 
 #ifndef __CUDACC__
 #define __host__
@@ -65,9 +65,9 @@ struct has_execute_member_function_and_static_unsequenced_guarantee
   }
 
   __host__ __device__
-  constexpr static cudex::bulk_guarantee_t::unsequenced_t query(cudex::bulk_guarantee_t)
+  constexpr static cusend::bulk_guarantee_t::unsequenced_t query(cusend::bulk_guarantee_t)
   {
-    return cudex::bulk_guarantee.unsequenced;
+    return cusend::bulk_guarantee.unsequenced;
   }
 };
 
@@ -174,7 +174,7 @@ void test(const Executor& e)
   
   // test copyable invocable
   size_t result = 1;
-  cudex::bulk_execute(e, [&](size_t i)
+  cusend::bulk_execute(e, [&](size_t i)
   {
     result *= (i + 1);
   }, n);
@@ -183,7 +183,7 @@ void test(const Executor& e)
   
   // test non-copyable invocable
   result = 1;
-  cudex::bulk_execute(e, make_noncopyable([&](size_t i)
+  cusend::bulk_execute(e, make_noncopyable([&](size_t i)
   {
     result *= (i + 1);
   }), n);
@@ -192,7 +192,7 @@ void test(const Executor& e)
 
   // test non-movable invocable
   result = 1;
-  cudex::bulk_execute(e, make_nonmovable([&](size_t i)
+  cusend::bulk_execute(e, make_nonmovable([&](size_t i)
   {
     result *= (i + 1);
   }), n);

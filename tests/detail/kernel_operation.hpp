@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/detail/kernel_operation.hpp>
+#include <cusend/detail/kernel_operation.hpp>
 
 #ifdef __CUDACC__
 
@@ -17,7 +17,7 @@ void test()
     result = expected;
   };
 
-  auto op = cudex::detail::make_kernel_operation(f, dim3(1), dim3(1), 0, 0, 0);
+  auto op = cusend::detail::make_kernel_operation(f, dim3(1), dim3(1), 0, 0, 0);
 
   op.start();
 

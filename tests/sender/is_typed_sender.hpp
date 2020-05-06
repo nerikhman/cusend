@@ -1,6 +1,6 @@
 #include <cassert>
-#include <cudex/sender/is_typed_sender.hpp>
-#include <cudex/sender/set_value.hpp>
+#include <cusend/sender/is_typed_sender.hpp>
+#include <cusend/sender/set_value.hpp>
 
 
 struct not_a_sender {};
@@ -11,7 +11,7 @@ struct untyped_sender
   template<class R>
   void submit(R&& r) &&
   {
-    cudex::set_value(r);
+    cusend::set_value(r);
   }
 };
 
@@ -38,7 +38,7 @@ struct typed_sender : sender_with_value_types_and_error_types
 
 void test_is_typed_sender()
 {
-  using namespace cudex;
+  using namespace cusend;
 
   // test not a sender without any traits
   static_assert(!is_typed_sender<not_a_sender>::value, "Expected false.");

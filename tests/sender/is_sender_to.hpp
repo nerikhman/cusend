@@ -1,7 +1,7 @@
 #include <cassert>
 #include <exception>
-#include <cudex/sender/is_sender_to.hpp>
-#include <cudex/sender/sender_base.hpp>
+#include <cusend/sender/is_sender_to.hpp>
+#include <cusend/sender/sender_base.hpp>
 
 
 struct my_receiver
@@ -15,7 +15,7 @@ struct my_receiver
 struct not_a_receiver {};
 
 
-struct sender_to_my_receiver : cudex::sender_base
+struct sender_to_my_receiver : cusend::sender_base
 {
   void connect(my_receiver&&) &&;
 };
@@ -26,7 +26,7 @@ struct not_a_sender {};
 
 void test_is_sender_to()
 {
-  using namespace cudex;
+  using namespace cusend;
 
   // test not a sender
   static_assert(!is_sender_to<not_a_sender, my_receiver>::value, "Expected false.");

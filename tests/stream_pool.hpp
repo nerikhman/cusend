@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cudex/stream_pool.hpp>
+#include <cusend/stream_pool.hpp>
 
 
 #ifndef __host__
@@ -22,7 +22,7 @@
 __managed__ int result;
 
 
-void test_execute(cudex::static_stream_pool::executor_type ex, int expected)
+void test_execute(cusend::static_stream_pool::executor_type ex, int expected)
 {
   ex.execute([=] __device__
   {
@@ -33,7 +33,7 @@ void test_execute(cudex::static_stream_pool::executor_type ex, int expected)
 
 void test_stream_pool()
 {
-  using namespace cudex;
+  using namespace cusend;
 
 #ifdef __CUDACC__
   {

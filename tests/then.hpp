@@ -1,8 +1,8 @@
 #include <cassert>
 #include <cstring>
-#include <cudex/executor/inline_executor.hpp>
-#include <cudex/just.hpp>
-#include <cudex/then.hpp>
+#include <cusend/executor/inline_executor.hpp>
+#include <cusend/just.hpp>
+#include <cusend/then.hpp>
 
 #ifndef __CUDACC__
 #define __host__
@@ -65,7 +65,7 @@ struct my_receiver
 __host__ __device__
 void test_copyable_continuation()
 {
-  using namespace cudex;
+  using namespace cusend;
 
   result = 0;
   int arg1 = 13;
@@ -83,7 +83,7 @@ void test_copyable_continuation()
 __host__ __device__
 void test_move_only_continuation()
 {
-  using namespace cudex;
+  using namespace cusend;
 
   result = 0;
   int arg1 = 13;
@@ -107,9 +107,9 @@ struct my_sender_with_then_member_function
   template<class Function>
   __host__ __device__
   auto then(Function continuation) &&
-    -> decltype(cudex::just(arg).then(continuation))
+    -> decltype(cusend::just(arg).then(continuation))
   {
-    return cudex::just(arg).then(continuation);
+    return cusend::just(arg).then(continuation);
   }
 };
 
@@ -126,7 +126,7 @@ void test_sender_with_then_member_function()
 
   my_sender_with_then_member_function s{arg1};
 
-  cudex::then(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
+  cusend::then(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
 
   assert(expected == result);
 }
@@ -141,9 +141,9 @@ struct my_sender_with_then_free_function
 template<class Function>
 __host__ __device__
 auto then(my_sender_with_then_free_function&& s, Function continuation)
-  -> decltype(cudex::just(s.arg).then(continuation))
+  -> decltype(cusend::just(s.arg).then(continuation))
 {
-  return cudex::just(s.arg).then(continuation);
+  return cusend::just(s.arg).then(continuation);
 }
 
 
@@ -159,7 +159,7 @@ void test_sender_with_then_free_function()
 
   my_sender_with_then_member_function s{arg1};
 
-  cudex::then(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
+  cusend::then(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
 
   assert(expected == result);
 }
