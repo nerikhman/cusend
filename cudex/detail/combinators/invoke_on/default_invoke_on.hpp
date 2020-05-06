@@ -30,6 +30,8 @@
 
 #include <type_traits>
 #include <utility>
+#include "../../../executor/is_executor.hpp"
+#include "../../../executor/is_executor_of.hpp"
 #include "../../../sender/is_receiver_of.hpp"
 #include "../../../sender/sender_base.hpp"
 #include "../../execute_operation.hpp"
@@ -37,7 +39,6 @@
 #include "../../functional/compose.hpp"
 #include "../../receiver_as_invocable.hpp"
 #include "../../type_traits/is_invocable.hpp"
-#include "../../execution.hpp"
 
 
 CUDEX_NAMESPACE_OPEN_BRACE
@@ -100,7 +101,7 @@ class invoke_sender : public sender_base
 
     
     template<class OtherExecutor,
-             CUDEX_REQUIRES(execution::is_executor<OtherExecutor>::value)
+             CUDEX_REQUIRES(is_executor<OtherExecutor>::value)
             >
     CUDEX_ANNOTATION
     invoke_sender<OtherExecutor, Invocable> on(const OtherExecutor& ex) &&
@@ -110,7 +111,7 @@ class invoke_sender : public sender_base
 
 
     template<class OtherExecutor,
-             CUDEX_REQUIRES(execution::is_executor<OtherExecutor>::value),
+             CUDEX_REQUIRES(is_executor<OtherExecutor>::value),
              CUDEX_REQUIRES(std::is_copy_constructible<Invocable>::value)
             >
     CUDEX_ANNOTATION
@@ -126,7 +127,7 @@ class invoke_sender : public sender_base
 
 
 template<class Executor, class Invocable,
-         CUDEX_REQUIRES(detail::execution::is_executor_of<Executor,Invocable>::value)
+         CUDEX_REQUIRES(is_executor_of<Executor,Invocable>::value)
         >
 CUDEX_ANNOTATION
 invoke_sender<Executor, decay_t<Invocable>>
@@ -138,7 +139,7 @@ invoke_sender<Executor, decay_t<Invocable>>
 
 template<class Executor, class Invocable,
          class Arg1, class... Args,
-         CUDEX_REQUIRES(detail::execution::is_executor<Executor>::value),
+         CUDEX_REQUIRES(is_executor<Executor>::value),
          CUDEX_REQUIRES(detail::is_invocable<Invocable,Arg1,Args...>::value)
         >
 CUDEX_ANNOTATION

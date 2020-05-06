@@ -29,9 +29,9 @@
 #include "../../prologue.hpp"
 
 #include <utility>
+#include "../../../executor/is_executor.hpp"
 #include "../../../invoke_on.hpp"
 #include "../../type_traits/decay.hpp"
-#include "../../execution.hpp"
 
 
 CUDEX_NAMESPACE_OPEN_BRACE
@@ -63,7 +63,7 @@ return_value<decay_t<T>> make_return_value(T&& value)
 
 
 template<class Executor, class T,
-         CUDEX_REQUIRES(detail::execution::is_executor<Executor>::value)
+         CUDEX_REQUIRES(is_executor<Executor>::value)
         >
 CUDEX_ANNOTATION
 auto default_just_on(const Executor& ex, T&& value)

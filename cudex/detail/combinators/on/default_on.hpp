@@ -30,10 +30,12 @@
 
 #include <type_traits>
 #include <utility>
+#include "../../../executor/execute.hpp"
+#include "../../../executor/is_executor.hpp"
 #include "../../../sender/is_sender.hpp"
 #include "../../../sender/is_sender_to.hpp"
 #include "../../../sender/sender_base.hpp"
-#include "../../execution.hpp"
+#include "../../../sender/submit.hpp"
 #include "../../functional/closure.hpp"
 
 
@@ -85,7 +87,7 @@ class on_sender : public sender_base
         void start() &&
         {
           // create a function that will submit the sender to the receiver and then execute that function on our executor
-          execution::execute(executor_, detail::bind(execution::submit, std::move(sender_), std::move(receiver_)));
+          CUDEX_NAMESPACE::execute(executor_, detail::bind(CUDEX_NAMESPACE::submit, std::move(sender_), std::move(receiver_)));
         }
 
       private:
@@ -104,7 +106,7 @@ class on_sender : public sender_base
     }
 
     template<class OtherExecutor,
-             CUDEX_REQUIRES(execution::is_executor<OtherExecutor>::value)
+             CUDEX_REQUIRES(is_executor<OtherExecutor>::value)
             >
     CUDEX_ANNOTATION
     on_sender<Sender, OtherExecutor> on(const OtherExecutor& executor) &&
@@ -113,7 +115,7 @@ class on_sender : public sender_base
     }
 
     template<class OtherExecutor,
-             CUDEX_REQUIRES(execution::is_executor<OtherExecutor>::value),
+             CUDEX_REQUIRES(is_executor<OtherExecutor>::value),
              CUDEX_REQUIRES(std::is_copy_constructible<Sender>::value)
             >
     CUDEX_ANNOTATION
@@ -130,7 +132,7 @@ class on_sender : public sender_base
 
 template<class Sender, class Executor,
          CUDEX_REQUIRES(is_sender<Sender>::value),
-         CUDEX_REQUIRES(detail::execution::is_executor<Executor>::value)
+         CUDEX_REQUIRES(is_executor<Executor>::value)
         >
 CUDEX_ANNOTATION
 on_sender<decay_t<Sender>, Executor> default_on(Sender&& s, const Executor& ex)

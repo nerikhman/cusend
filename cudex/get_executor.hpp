@@ -30,8 +30,8 @@
 
 #include <utility>
 #include "detail/dispatch_get_executor.hpp"
-#include "detail/execution.hpp"
 #include "detail/static_const.hpp"
+#include "executor/is_executor.hpp"
 
 
 CUDEX_NAMESPACE_OPEN_BRACE
@@ -47,7 +47,7 @@ struct get_executor_customization_point
   CUDEX_EXEC_CHECK_DISABLE
   template<class T,
            CUDEX_REQUIRES(can_dispatch_get_executor<T&&>::value),
-           CUDEX_REQUIRES(execution::is_executor<dispatch_get_executor_t<T&&>>::value)
+           CUDEX_REQUIRES(is_executor<dispatch_get_executor_t<T&&>>::value)
           >
   CUDEX_ANNOTATION
   constexpr dispatch_get_executor_t<T&&> operator()(T&& arg) const
