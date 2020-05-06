@@ -79,27 +79,27 @@ void test_move_only(Executor ex)
 }
 
 
-struct my_executor_with_just_on_member_function : cusend::inline_executor
+struct my_executor_with_just_on_member_function : cusend::execution::inline_executor
 {
   template<class T>
   __host__ __device__
   auto just_on(T&& value) const
-    -> decltype(cusend::just_on(cusend::inline_executor(), std::forward<T>(value)))
+    -> decltype(cusend::just_on(cusend::execution::inline_executor(), std::forward<T>(value)))
   {
-    return cusend::invoke_on(cusend::inline_executor(), std::forward<T>(value));
+    return cusend::invoke_on(cusend::execution::inline_executor(), std::forward<T>(value));
   }
 };
 
 
-struct my_executor_with_just_on_free_function : cusend::inline_executor {};
+struct my_executor_with_just_on_free_function : cusend::execution::inline_executor {};
 
 
 template<class T>
 __host__ __device__
 auto just_on(my_executor_with_just_on_free_function, T&& value)
-  -> decltype(cusend::just_on(cusend::inline_executor{}, std::forward<T>(value)))
+  -> decltype(cusend::just_on(cusend::execution::inline_executor{}, std::forward<T>(value)))
 {
-  return cusend::just_on(cusend::inline_executor{}, std::forward<T>(value));
+  return cusend::just_on(cusend::execution::inline_executor{}, std::forward<T>(value));
 }
 
 
@@ -162,11 +162,11 @@ struct gpu_executor
 
 void test_just_on()
 {
-  test_copyable(cusend::inline_executor{});
+  test_copyable(cusend::execution::inline_executor{});
   test_copyable(my_executor_with_just_on_member_function{});
   test_copyable(my_executor_with_just_on_free_function{});
 
-  test_move_only(cusend::inline_executor{});
+  test_move_only(cusend::execution::inline_executor{});
   test_move_only(my_executor_with_just_on_member_function{});
   test_move_only(my_executor_with_just_on_free_function{});
 
@@ -175,11 +175,11 @@ void test_just_on()
 
   device_invoke([] __device__ ()
   {
-    test_copyable(cusend::inline_executor{});
+    test_copyable(cusend::execution::inline_executor{});
     test_copyable(my_executor_with_just_on_member_function{});
     test_copyable(my_executor_with_just_on_free_function{});
 
-    test_move_only(cusend::inline_executor{});
+    test_move_only(cusend::execution::inline_executor{});
     test_move_only(my_executor_with_just_on_member_function{});
     test_move_only(my_executor_with_just_on_free_function{});
 

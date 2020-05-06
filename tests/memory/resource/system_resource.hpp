@@ -4,12 +4,12 @@
 #include <limits>
 #include <utility>
 
+namespace ns = cusend::memory;
+
 
 void test_allocate()
 {
-  using namespace cusend;
-
-  using system_resource = system_resource<managed_resource>;
+  using system_resource = ns::system_resource<ns::managed_resource>;
 
   system_resource r{0};
 
@@ -33,9 +33,7 @@ void test_allocate()
 
 void test_comparison()
 {
-  using namespace cusend;
-
-  using system_resource = system_resource<managed_resource>;
+  using system_resource = ns::system_resource<ns::managed_resource>;
 
   system_resource r0{0};
   system_resource r1{1};
@@ -59,9 +57,7 @@ void test_comparison()
 
 void test_copy_construction()
 {
-  using namespace cusend;
-
-  using system_resource = system_resource<managed_resource>;
+  using system_resource = ns::system_resource<ns::managed_resource>;
 
   system_resource r0{0};
   system_resource copy = r0;
@@ -72,9 +68,7 @@ void test_copy_construction()
 
 void test_device()
 {
-  using namespace cusend;
-
-  using system_resource = system_resource<managed_resource>;
+  using system_resource = ns::system_resource<ns::managed_resource>;
 
   system_resource r;
   assert(r.device() == 0);
@@ -86,9 +80,7 @@ void test_device()
 
 void test_throw_on_failure()
 {
-  using namespace cusend;
-
-  using system_resource = system_resource<managed_resource>;
+  using system_resource = ns::system_resource<ns::managed_resource>;
 
   system_resource r;
 

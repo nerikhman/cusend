@@ -3,6 +3,8 @@
 #include <cusend/memory/allocator/allocator.hpp>
 #include <limits>
 
+namespace ns = cusend::memory;
+
 
 #ifndef __host__
 #define __host__
@@ -25,11 +27,9 @@ __global__ void device_invoke(F f)
 __host__ __device__
 void test()
 {
-  using namespace cusend;
+  ns::allocator<int> a;
 
-  allocator<int> a;
-
-  int* ptr = cusend::allocate(a, 1);
+  int* ptr = ns::allocate(a, 1);
 
   int expected = 13;
   *ptr = expected;

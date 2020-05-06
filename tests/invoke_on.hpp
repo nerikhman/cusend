@@ -118,27 +118,27 @@ void test_move_only_invocable(Executor ex)
 }
 
 
-struct my_executor_with_invoke_on_member_function : cusend::inline_executor
+struct my_executor_with_invoke_on_member_function : cusend::execution::inline_executor
 {
   template<class Function>
   __host__ __device__
   auto invoke_on(Function f) const
-    -> decltype(cusend::invoke_on(cusend::inline_executor(), f))
+    -> decltype(cusend::invoke_on(cusend::execution::inline_executor(), f))
   {
-    return cusend::invoke_on(cusend::inline_executor(), f);
+    return cusend::invoke_on(cusend::execution::inline_executor(), f);
   }
 };
 
 
-struct my_executor_with_invoke_on_free_function : cusend::inline_executor {};
+struct my_executor_with_invoke_on_free_function : cusend::execution::inline_executor {};
 
 
 template<class Function>
 __host__ __device__
 auto invoke_on(my_executor_with_invoke_on_free_function, Function f)
-  -> decltype(cusend::invoke_on(cusend::inline_executor{}, f))
+  -> decltype(cusend::invoke_on(cusend::execution::inline_executor{}, f))
 {
-  return cusend::invoke_on(cusend::inline_executor{}, f);
+  return cusend::invoke_on(cusend::execution::inline_executor{}, f);
 }
 
 
@@ -201,23 +201,23 @@ struct gpu_executor
 
 void test_invoke_on()
 {
-  test_variadicity(cusend::inline_executor{});
+  test_variadicity(cusend::execution::inline_executor{});
   test_variadicity(my_executor_with_invoke_on_member_function{});
   test_variadicity(my_executor_with_invoke_on_free_function{});
 
-  test_move_only_invocable(cusend::inline_executor{});
+  test_move_only_invocable(cusend::execution::inline_executor{});
 
 #ifdef __CUDACC__
   test_variadicity(gpu_executor{});
 
   device_invoke([] __device__ ()
   {
-    test_variadicity(cusend::inline_executor{});
+    test_variadicity(cusend::execution::inline_executor{});
     test_variadicity(gpu_executor{});
     test_variadicity(my_executor_with_invoke_on_member_function{});
     test_variadicity(my_executor_with_invoke_on_free_function{});
 
-    test_move_only_invocable(cusend::inline_executor{});
+    test_move_only_invocable(cusend::execution::inline_executor{});
   });
   assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif

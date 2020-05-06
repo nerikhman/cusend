@@ -88,7 +88,7 @@ struct move_only_invocable
 __host__ __device__
 void test()
 {
-  using namespace cusend;
+  using namespace cusend::execution;
   using namespace cusend::detail;
 
   inline_executor ex;

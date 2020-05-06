@@ -47,7 +47,7 @@ struct get_executor_customization_point
   CUSEND_EXEC_CHECK_DISABLE
   template<class T,
            CUSEND_REQUIRES(can_dispatch_get_executor<T&&>::value),
-           CUSEND_REQUIRES(is_executor<dispatch_get_executor_t<T&&>>::value)
+           CUSEND_REQUIRES(execution::is_executor<dispatch_get_executor_t<T&&>>::value)
           >
   CUSEND_ANNOTATION
   constexpr dispatch_get_executor_t<T&&> operator()(T&& arg) const

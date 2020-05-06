@@ -1,6 +1,8 @@
 #include <cassert>
 #include <cusend/execution/stream_pool.hpp>
 
+namespace ns = cusend::execution;
+
 
 #ifndef __host__
 #define __host__
@@ -22,7 +24,7 @@
 __managed__ int result;
 
 
-void test_execute(cusend::static_stream_pool::executor_type ex, int expected)
+void test_execute(ns::static_stream_pool::executor_type ex, int expected)
 {
   ex.execute([=] __device__
   {
@@ -33,15 +35,13 @@ void test_execute(cusend::static_stream_pool::executor_type ex, int expected)
 
 void test_stream_pool()
 {
-  using namespace cusend;
-
 #ifdef __CUDACC__
   {
     // static_stream_pool::executor_type::execute requires a CUDA C++ compiler
 
-    static_stream_pool pool(0, 4);
+    ns::static_stream_pool pool(0, 4);
 
-    static_stream_pool::executor_type ex = pool.executor();
+    ns::static_stream_pool::executor_type ex = pool.executor();
 
     result = 0;
     int expected = 13;
@@ -60,16 +60,16 @@ void test_stream_pool()
 
     int num_streams = 4;
 
-    static_stream_pool pool(0, num_streams);
+    ns::static_stream_pool pool(0, num_streams);
 
     // round-robin through executors
-    std::vector<static_stream_pool::executor_type> first_round;
+    std::vector<ns::static_stream_pool::executor_type> first_round;
     for(int i = 0; i < num_streams; ++i)
     {
       first_round.push_back(pool.executor());
     }
 
-    std::vector<static_stream_pool::executor_type> second_round;
+    std::vector<ns::static_stream_pool::executor_type> second_round;
     for(int i = 0; i < num_streams; ++i)
     {
       second_round.push_back(pool.executor());

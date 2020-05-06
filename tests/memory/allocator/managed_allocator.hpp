@@ -2,12 +2,12 @@
 #include <cusend/memory/allocator/managed_allocator.hpp>
 #include <limits>
 
+namespace ns = cusend::memory;
+
 
 void test_allocate()
 {
-  using namespace cusend;
-
-  managed_allocator<int> a;
+  ns::managed_allocator<int> a;
 
   int* ptr = a.allocate(1);
 
@@ -30,17 +30,15 @@ void test_allocate()
 
 void test_comparison()
 {
-  using namespace cusend;
-
-  managed_allocator<int> a0{0};
-  managed_allocator<int> a1{1};
+  ns::managed_allocator<int> a0{0};
+  ns::managed_allocator<int> a1{1};
 
   // same allocator compares same
   assert(a0 == a0);
   assert(!(a0 != a0));
 
   // allocators pointing to same device compare same
-  managed_allocator<int> other_a0{0};
+  ns::managed_allocator<int> other_a0{0};
   assert(a0 == other_a0);
   assert(!(a0 != other_a0));
 
@@ -52,10 +50,8 @@ void test_comparison()
 
 void test_copy_construction()
 {
-  using namespace cusend;
-
-  managed_allocator<int> a;
-  managed_allocator<int> copy = a;
+  ns::managed_allocator<int> a;
+  ns::managed_allocator<int> copy = a;
 
   assert(a == copy);
   assert(!(a != copy));
@@ -64,10 +60,8 @@ void test_copy_construction()
 
 void test_converting_copy_construction()
 {
-  using namespace cusend;
-
-  managed_allocator<int> a;
-  managed_allocator<float> copy = a;
+  ns::managed_allocator<int> a;
+  ns::managed_allocator<float> copy = a;
 
   // silence unused variable warnings
   (void)copy;
@@ -76,21 +70,17 @@ void test_converting_copy_construction()
 
 void test_device()
 {
-  using namespace cusend;
-
-  managed_allocator<int> a;
+  ns::managed_allocator<int> a;
   assert(a.device() == 0);
 
-  managed_allocator<int> a1{1};
+  ns::managed_allocator<int> a1{1};
   assert(a1.device() == 1);
 }
 
 
 void test_throw_on_failure()
 {
-  using namespace cusend;
-
-  managed_allocator<int> a;
+  ns::managed_allocator<int> a;
 
   try
   {

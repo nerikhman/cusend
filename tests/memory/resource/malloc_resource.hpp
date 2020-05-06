@@ -2,6 +2,8 @@
 #include <cusend/memory/resource/malloc_resource.hpp>
 #include <limits>
 
+namespace ns = cusend::memory;
+
 
 #ifndef __CUDACC__
 #define __host__
@@ -12,9 +14,7 @@
 __host__ __device__
 void test_allocate()
 {
-  using namespace cusend;
-
-  malloc_resource r;
+  ns::malloc_resource r;
 
   int* ptr = static_cast<int*>(r.allocate(sizeof(int)));
 
@@ -31,9 +31,7 @@ void test_allocate()
 __host__ __device__
 void test_comparison()
 {
-  using namespace cusend;
-
-  malloc_resource r0, r1;
+  ns::malloc_resource r0, r1;
 
   // all malloc_resources are the same
   assert(r0.is_equal(r1));
@@ -45,10 +43,8 @@ void test_comparison()
 __host__ __device__
 void test_copy_construction()
 {
-  using namespace cusend;
-
-  malloc_resource r;
-  malloc_resource copy = r;
+  ns::malloc_resource r;
+  ns::malloc_resource copy = r;
 
   assert(r == copy);
 }
@@ -56,9 +52,7 @@ void test_copy_construction()
 
 void test_throw_on_failure()
 {
-  using namespace cusend;
-
-  malloc_resource r;
+  ns::malloc_resource r;
 
   try
   {

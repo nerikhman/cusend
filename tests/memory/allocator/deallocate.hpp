@@ -3,6 +3,8 @@
 #include <cusend/memory/allocator/deallocate.hpp>
 #include <limits>
 
+namespace ns = cusend::memory;
+
 
 #ifndef __host__
 #define __host__
@@ -25,9 +27,7 @@ __global__ void device_invoke(F f)
 __host__ __device__
 void test()
 {
-  using namespace cusend;
-
-  allocator<int> a;
+  ns::allocator<int> a;
 
   int* ptr = a.allocate(1);
 
@@ -37,7 +37,7 @@ void test()
 
   assert(expected == result);
 
-  deallocate(a, ptr, 1);
+  ns::deallocate(a, ptr, 1);
 }
 
 

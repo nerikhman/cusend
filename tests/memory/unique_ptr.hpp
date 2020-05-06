@@ -3,6 +3,8 @@
 #include <cusend/memory/allocator/allocator_delete.hpp>
 #include <cusend/memory/allocator/allocator_new.hpp>
 
+namespace ns = cusend::memory;
+
 
 #ifndef __host__
 #define __host__
@@ -33,8 +35,8 @@ struct my_deleter
   __host__ __device__
   void operator()(T* ptr)
   {
-    cusend::allocator<T> alloc;
-    cusend::allocator_delete(alloc, ptr);
+    ns::allocator<T> alloc;
+    ns::allocator_delete(alloc, ptr);
     *deleted = true;
   }
 
@@ -53,54 +55,52 @@ struct my_deleter
 __host__ __device__
 void test_constructors()
 {
-  using namespace cusend;
-
   {
     // with default_delete
 
-    allocator<int> alloc;
+    ns::allocator<int> alloc;
     int expected = 13;
 
     // pointer ctor
-    unique_ptr<int> p0(allocator_new<int>(alloc, expected));
+    ns::unique_ptr<int> p0(ns::allocator_new<int>(alloc, expected));
     assert(expected == *p0);
 
     // null ctor
-    unique_ptr<int> p1;
+    ns::unique_ptr<int> p1;
     assert(!p1);
 
     // move ctor
-    unique_ptr<int> p2 = std::move(p0);
+    ns::unique_ptr<int> p2 = std::move(p0);
     assert(expected == *p2);
     assert(!p0);
 
     // converting ctor
-    unique_ptr<derived> pd;
-    unique_ptr<base> pb = std::move(pd);
+    ns::unique_ptr<derived> pd;
+    ns::unique_ptr<base> pb = std::move(pd);
   }
 
   {
     // with my_deleter
 
-    allocator<int> alloc;
+    ns::allocator<int> alloc;
     int expected = 13;
 
     deleted = false;
     {
       // pointer ctor
-      unique_ptr<int, my_deleter<int>> p0(allocator_new<int>(alloc, expected), my_deleter<int>{&deleted});
+      ns::unique_ptr<int, my_deleter<int>> p0(ns::allocator_new<int>(alloc, expected), my_deleter<int>{&deleted});
       assert(expected == *p0);
 
       // move ctor
-      unique_ptr<int, my_deleter<int>> p2 = std::move(p0);
+      ns::unique_ptr<int, my_deleter<int>> p2 = std::move(p0);
       assert(expected == *p2);
       assert(!p0);
     }
     assert(deleted);
 
     // converting ctor
-    unique_ptr<derived, my_deleter<derived>> pd(nullptr, my_deleter<derived>{&deleted});
-    unique_ptr<base, my_deleter<base>> pb = std::move(pd);
+    ns::unique_ptr<derived, my_deleter<derived>> pd(nullptr, my_deleter<derived>{&deleted});
+    ns::unique_ptr<base, my_deleter<base>> pb = std::move(pd);
   }
 }
 
@@ -123,15 +123,13 @@ struct set_on_delete
 __host__ __device__
 void test_destructor()
 {
-  using namespace cusend;
-
   {
     // with default_delete
     deleted = false;
-    allocator<set_on_delete> alloc;
+    ns::allocator<set_on_delete> alloc;
 
     {
-      unique_ptr<set_on_delete> p0(allocator_new<set_on_delete>(alloc, deleted));
+      ns::unique_ptr<set_on_delete> p0(ns::allocator_new<set_on_delete>(alloc, deleted));
     }
 
     assert(deleted);
@@ -142,12 +140,10 @@ void test_destructor()
 __host__ __device__
 void test_move_assignment()
 {
-  using namespace cusend;
-
   int expected = 13;
 
-  unique_ptr<int> p0 = make_unique<int>(expected);
-  unique_ptr<int> p1;
+  ns::unique_ptr<int> p0 = ns::make_unique<int>(expected);
+  ns::unique_ptr<int> p1;
   p1 = std::move(p0);
 
   assert(expected == *p1);
@@ -158,12 +154,10 @@ void test_move_assignment()
 __host__ __device__
 void test_get()
 {
-  using namespace cusend;
+  ns::allocator<int> alloc;
+  int* expected = ns::allocator_new<int>(alloc);
 
-  allocator<int> alloc;
-  int* expected = allocator_new<int>(alloc);
-
-  unique_ptr<int> p0{expected};
+  ns::unique_ptr<int> p0{expected};
   assert(expected == p0.get());
 }
 
@@ -171,32 +165,28 @@ void test_get()
 __host__ __device__
 void test_release()
 {
-  using namespace cusend;
+  ns::allocator<int> alloc;
+  int* expected = ns::allocator_new<int>(alloc);
 
-  allocator<int> alloc;
-  int* expected = allocator_new<int>(alloc);
-
-  unique_ptr<int> p0{expected};
+  ns::unique_ptr<int> p0{expected};
   int* result = p0.release();
   assert(expected == result);
   assert(!p0);
 
-  allocator_delete(alloc, expected);
+  ns::allocator_delete(alloc, expected);
 }
 
 
 __host__ __device__
 void test_reset()
 {
-  using namespace cusend;
-
-  allocator<int> alloc;
+  ns::allocator<int> alloc;
 
   {
     // reset null ptr
 
-    int* ptr = allocator_new<int>(alloc);
-    unique_ptr<int> p;
+    int* ptr = ns::allocator_new<int>(alloc);
+    ns::unique_ptr<int> p;
     p.reset(ptr);
 
     assert(ptr == p.get());
@@ -205,9 +195,9 @@ void test_reset()
   {
     // reset non-null ptr
 
-    unique_ptr<int> p{allocator_new<int>(alloc)};
+    ns::unique_ptr<int> p{ns::allocator_new<int>(alloc)};
 
-    int* expected = allocator_new<int>(alloc);
+    int* expected = ns::allocator_new<int>(alloc);
     p.reset(expected);
 
     assert(expected == p.get());
@@ -226,7 +216,7 @@ const T& cref(const T& ref)
 __host__ __device__
 void test_get_deleter()
 {
-  cusend::unique_ptr<int> p;
+  ns::unique_ptr<int> p;
 
   p.get_deleter();
   cref(p).get_deleter();
@@ -236,11 +226,9 @@ void test_get_deleter()
 __host__ __device__
 void test_operator_star()
 {
-  using namespace cusend;
-
   int expected = 13;
 
-  unique_ptr<int> p = make_unique<int>(13);
+  ns::unique_ptr<int> p = ns::make_unique<int>(13);
   assert(expected == *p);
   assert(expected == *cref(p));
 }
@@ -249,12 +237,10 @@ void test_operator_star()
 __host__ __device__
 void test_operator_bool()
 {
-  using namespace cusend;
-
-  unique_ptr<int> null;
+  ns::unique_ptr<int> null;
   assert(!null);
 
-  unique_ptr<int> p = make_unique<int>(13);
+  ns::unique_ptr<int> p = ns::make_unique<int>(13);
   assert(bool(p));
 }
 
@@ -262,13 +248,11 @@ void test_operator_bool()
 __host__ __device__
 void test_swap()
 {
-  using namespace cusend;
-
   int expected1 = 13;
   int expected2 = 7;
 
-  unique_ptr<int> p1 = make_unique<int>(expected1);
-  unique_ptr<int> p2 = make_unique<int>(expected2);
+  ns::unique_ptr<int> p1 = ns::make_unique<int>(expected1);
+  ns::unique_ptr<int> p2 = ns::make_unique<int>(expected2);
 
   p1.swap(p2);
 

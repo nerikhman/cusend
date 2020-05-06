@@ -1,6 +1,8 @@
 #include <cassert>
 #include <cusend/execution/executor/inline_executor.hpp>
 
+namespace ns = cusend::execution;
+
 #ifndef __CUDACC__
 #define __host__
 #define __device__
@@ -9,9 +11,7 @@
 __host__ __device__
 void test()
 {
-  using namespace cusend;
-
-  inline_executor ex1;
+  ns::inline_executor ex1;
 
   int result = 0;
   int expected = 13;
@@ -23,7 +23,7 @@ void test()
 
   assert(expected == result);
 
-  inline_executor ex2;
+  ns::inline_executor ex2;
 
   assert(ex1 == ex2);
   assert(!(ex1 != ex2));

@@ -2,12 +2,12 @@
 #include <cusend/memory/resource/managed_resource.hpp>
 #include <limits>
 
+namespace ns = cusend::memory;
+
 
 void test_allocate()
 {
-  using namespace cusend;
-
-  managed_resource r;
+  ns::managed_resource r;
 
   int* ptr = static_cast<int*>(r.allocate(sizeof(int)));
 
@@ -30,10 +30,8 @@ void test_allocate()
 
 void test_comparison()
 {
-  using namespace cusend;
-
-  managed_resource r0{0};
-  managed_resource r1{1};
+  ns::managed_resource r0{0};
+  ns::managed_resource r1{1};
 
   // same resource compares same
   assert(r0.is_equal(r0));
@@ -41,7 +39,7 @@ void test_comparison()
   assert(!(r0 != r0));
 
   // resources pointing to same device compare same
-  managed_resource other_r0{0};
+  ns::managed_resource other_r0{0};
   assert(r0.is_equal(other_r0));
   assert(r0 == other_r0);
   assert(!(r0 != other_r0));
@@ -54,10 +52,8 @@ void test_comparison()
 
 void test_copy_construction()
 {
-  using namespace cusend;
-
-  managed_resource r0{0};
-  managed_resource copy = r0;
+  ns::managed_resource r0{0};
+  ns::managed_resource copy = r0;
 
   assert(r0 == copy);
 }
@@ -65,21 +61,17 @@ void test_copy_construction()
 
 void test_device()
 {
-  using namespace cusend;
-
-  managed_resource r;
+  ns::managed_resource r;
   assert(r.device() == 0);
 
-  managed_resource r1{1};
+  ns::managed_resource r1{1};
   assert(r1.device() == 1);
 }
 
 
 void test_throw_on_failure()
 {
-  using namespace cusend;
-
-  managed_resource r;
+  ns::managed_resource r;
 
   try
   {

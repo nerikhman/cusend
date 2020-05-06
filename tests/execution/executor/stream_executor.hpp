@@ -1,6 +1,8 @@
 #include <cassert>
 #include <cusend/execution/executor/stream_executor.hpp>
 
+namespace ns = cusend::execution;
+
 
 #ifndef __host__
 #define __host__
@@ -25,9 +27,7 @@ __managed__ int result;
 __host__ __device__
 void test(cudaStream_t s, int d)
 {
-  using namespace cusend;
-
-  stream_executor ex1{s, d};
+  ns::stream_executor ex1{s, d};
 
   assert(ex1.stream() == s);
   assert(ex1.device() == d);
@@ -48,7 +48,7 @@ void test(cudaStream_t s, int d)
 
   assert(expected == result);
 
-  stream_executor ex2{s};
+  ns::stream_executor ex2{s};
 
   assert(ex1 == ex2);
   assert(!(ex1 != ex2));

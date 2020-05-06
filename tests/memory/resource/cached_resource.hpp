@@ -4,12 +4,12 @@
 #include <limits>
 #include <utility>
 
+namespace ns = cusend::memory;
+
 
 void test_allocate()
 {
-  using namespace cusend;
-
-  using cached_resource = cached_resource<managed_resource>;
+  using cached_resource = ns::cached_resource<ns::managed_resource>;
 
   cached_resource r{0};
 
@@ -34,9 +34,7 @@ void test_allocate()
 
 void test_comparison()
 {
-  using namespace cusend;
-
-  using cached_resource = cached_resource<managed_resource>;
+  using cached_resource = ns::cached_resource<ns::managed_resource>;
 
   cached_resource r0{0};
   cached_resource r1{1};
@@ -60,9 +58,7 @@ void test_comparison()
 
 void test_throw_on_failure()
 {
-  using namespace cusend;
-
-  using cached_resource = cached_resource<managed_resource>;
+  using cached_resource = ns::cached_resource<ns::managed_resource>;
 
   cached_resource r;
 

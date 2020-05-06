@@ -16,7 +16,7 @@
 struct has_get_executor_member_function
 {
   __host__ __device__
-  cusend::inline_executor get_executor() const
+  cusend::execution::inline_executor get_executor() const
   {
     return {};
   }
@@ -26,7 +26,7 @@ struct has_get_executor_member_function
 struct has_get_executor_free_function {};
 
 __host__ __device__
-cusend::inline_executor get_executor(has_get_executor_free_function)
+cusend::execution::inline_executor get_executor(has_get_executor_free_function)
 {
   return {};
 }

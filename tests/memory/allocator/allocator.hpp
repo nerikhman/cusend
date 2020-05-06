@@ -2,6 +2,8 @@
 #include <cusend/memory/allocator/allocator.hpp>
 #include <limits>
 
+namespace ns = cusend::memory;
+
 
 #ifndef __host__
 #define __host__
@@ -15,9 +17,7 @@
 __host__ __device__
 void test_allocate()
 {
-  using namespace cusend;
-
-  allocator<int> a;
+  ns::allocator<int> a;
 
   int* ptr = a.allocate(1);
 
@@ -34,9 +34,7 @@ void test_allocate()
 __host__ __device__
 void test_comparison()
 {
-  using namespace cusend;
-
-  allocator<int> a0, a1;
+  ns::allocator<int> a0, a1;
 
   // all malloc_resources are the same
   assert(a0 == a1);
@@ -47,10 +45,8 @@ void test_comparison()
 __host__ __device__
 void test_copy_construction()
 {
-  using namespace cusend;
-
-  allocator<int> a;
-  allocator<int> copy = a;
+  ns::allocator<int> a;
+  ns::allocator<int> copy = a;
 
   assert(a == copy);
 }
@@ -59,10 +55,8 @@ void test_copy_construction()
 __host__ __device__
 void test_converting_copy_construction()
 {
-  using namespace cusend;
-
-  allocator<int> a;
-  allocator<float> copy = a;
+  ns::allocator<int> a;
+  ns::allocator<float> copy = a;
 
   // silence unused variable warnings
   (void)copy;
@@ -71,9 +65,7 @@ void test_converting_copy_construction()
 
 void test_throw_on_failure()
 {
-  using namespace cusend;
-
-  allocator<int> a;
+  ns::allocator<int> a;
 
   try
   {

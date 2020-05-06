@@ -3,6 +3,8 @@
 #include <cusend/memory/allocator/allocator.hpp>
 #include <limits>
 
+namespace ns = cusend::memory;
+
 
 #ifndef __host__
 #define __host__
@@ -20,17 +22,15 @@
 __host__ __device__
 void test_constructors()
 {
-  using namespace cusend;
+  ns::allocator<int> expected;
 
-  allocator<int> expected;
-
-  allocation_deleter<allocator<int>> allocator_constructed{expected};
+  ns::allocation_deleter<ns::allocator<int>> allocator_constructed{expected};
   assert(expected == allocator_constructed.allocator());
 
-  allocation_deleter<allocator<int>>  copy_constructed{allocator_constructed};
+  ns::allocation_deleter<ns::allocator<int>>  copy_constructed{allocator_constructed};
   assert(expected == copy_constructed.allocator());
 
-  allocation_deleter<allocator<void>> converting_copy_constructed{allocator_constructed};
+  ns::allocation_deleter<ns::allocator<void>> converting_copy_constructed{allocator_constructed};
   assert(expected == converting_copy_constructed.allocator());
 }
 
@@ -54,10 +54,8 @@ __managed__ bool deleted;
 __host__ __device__
 void test_call_operator()
 {
-  using namespace cusend;
-
-  allocator<set_on_delete> alloc;
-  allocation_deleter<allocator<set_on_delete>> deleter{alloc};
+  ns::allocator<set_on_delete> alloc;
+  ns::allocation_deleter<ns::allocator<set_on_delete>> deleter{alloc};
 
   set_on_delete* ptr = alloc.allocate(1);
 
@@ -71,7 +69,7 @@ void test_call_operator()
 
 
 template<class T>
-class stateful_allocator : public cusend::allocator<T>
+class stateful_allocator : public ns::allocator<T>
 {
   public:
     stateful_allocator(const stateful_allocator&) = default;
@@ -93,12 +91,10 @@ class stateful_allocator : public cusend::allocator<T>
 __host__ __device__
 void test_swap()
 {
-  using namespace cusend;
-
   stateful_allocator<set_on_delete> alloc0{0}, alloc1{1};
 
-  allocation_deleter<stateful_allocator<set_on_delete>> deleter_a(alloc0);
-  allocation_deleter<stateful_allocator<set_on_delete>> deleter_b(alloc1);
+  ns::allocation_deleter<stateful_allocator<set_on_delete>> deleter_a(alloc0);
+  ns::allocation_deleter<stateful_allocator<set_on_delete>> deleter_b(alloc1);
 
   deleter_a.swap(deleter_b);
 
@@ -132,5 +128,4 @@ void test_allocation_deleter()
   assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif
 }
-
 

@@ -1,6 +1,8 @@
 #include <cassert>
 #include <cusend/execution/executor/execute.hpp>
 
+namespace ns = cusend::execution;
+
 #ifndef __CUDACC__
 #define __host__
 #define __device__
@@ -46,7 +48,7 @@ void test()
     has_execute_member e;
 
     bool invoked = false;
-    cusend::execute(e, [&]{ invoked = true; });
+    ns::execute(e, [&]{ invoked = true; });
     assert(invoked);
   }
 
@@ -54,7 +56,7 @@ void test()
     has_execute_free_function e;
 
     bool invoked = false;
-    cusend::execute(e, [&]{ invoked = true; });
+    ns::execute(e, [&]{ invoked = true; });
     assert(invoked);
   }
 }
