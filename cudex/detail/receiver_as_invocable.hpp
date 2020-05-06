@@ -32,7 +32,9 @@
 #include <utility>
 #include "../sender/is_receiver.hpp"
 #include "../sender/is_receiver_of.hpp"
-#include "execution.hpp"
+#include "../sender/set_done.hpp"
+#include "../sender/set_error.hpp"
+#include "../sender/set_value.hpp"
 #include "type_traits.hpp"
 #include "utility/move_if_noexcept.hpp"
 
@@ -66,7 +68,7 @@ class receiver_as_invocable
       try : r_(detail::move_if_noexcept(r)), valid_(true) {}
       catch(...)
       {
-        execution::set_error(detail::move_if_noexcept(r), std::current_exception());
+        CUDEX_NAMESPACE::set_error(detail::move_if_noexcept(r), std::current_exception());
       }
 #else
       : r_(detail::move_if_noexcept(r)), valid_(true) {}
@@ -80,7 +82,7 @@ class receiver_as_invocable
       try : r_(r), valid_(true) {}
       catch(...)
       {
-        execution::set_error(r, std::current_exception());
+        CUDEX_NAMESPACE::set_error(r, std::current_exception());
       }
 #else
       : r_(r), valid_(true) {}
@@ -97,7 +99,7 @@ class receiver_as_invocable
       }
       catch(...)
       {
-        execution::set_error(detail::move_if_noexcept(other.r_), std::current_exception());
+        CUDEX_NAMESPACE::set_error(detail::move_if_noexcept(other.r_), std::current_exception());
         other.valid_ = false;
       }
 #else
@@ -124,7 +126,7 @@ class receiver_as_invocable
     {
       if(valid_)
       {
-        execution::set_done(std::move(r_));
+        CUDEX_NAMESPACE::set_done(std::move(r_));
       }
     }
 
@@ -138,11 +140,11 @@ class receiver_as_invocable
     {
       try
       {
-        execution::set_value(std::move(r_), std::forward<Args>(args)...);
+        CUDEX_NAMESPACE::set_value(std::move(r_), std::forward<Args>(args)...);
       }
       catch(...)
       {
-        execution::set_error(std::move(r_), std::current_exception());
+        CUDEX_NAMESPACE::set_error(std::move(r_), std::current_exception());
       }
 
       valid_ = false;
@@ -154,7 +156,7 @@ class receiver_as_invocable
     CUDEX_ANNOTATION
     void operator()(Args&&... args)
     {
-      execution::set_value(std::move(r_), std::forward<Args>(args)...);
+      CUDEX_NAMESPACE::set_value(std::move(r_), std::forward<Args>(args)...);
       valid_ = false;
     }
 #endif
