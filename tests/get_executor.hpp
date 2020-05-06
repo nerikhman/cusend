@@ -1,6 +1,6 @@
 #include <cassert>
 #include <cstring>
-#include <cusend/executor/inline_executor.hpp>
+#include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/get_executor.hpp>
 #include <exception>
 #include <utility>

@@ -1,6 +1,6 @@
 #include <cassert>
 #include <cusend/detail/execute_operation.hpp>
-#include <cusend/executor/inline_executor.hpp>
+#include <cusend/execution/executor/inline_executor.hpp>
 
 #ifndef __CUDACC__
 #define __host__

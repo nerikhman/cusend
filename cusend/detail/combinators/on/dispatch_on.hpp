@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../prologue.hpp"
 
 #include <utility>
 #include "../../type_traits/is_detected.hpp"
@@ -107,5 +107,5 @@ using can_dispatch_on = is_detected<dispatch_on_t, S, E>;
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../../detail/epilogue.hpp"
+#include "../../epilogue.hpp"
 

@@ -29,9 +29,9 @@
 #include "prologue.hpp"
 
 #include <utility>
-#include "../executor/execute.hpp"
-#include "../executor/is_executor.hpp"
-#include "../executor/is_executor_of.hpp"
+#include "../execution/executor/execute.hpp"
+#include "../execution/executor/is_executor.hpp"
+#include "../execution/executor/is_executor_of.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

@@ -31,7 +31,7 @@
 #include <utility>
 #include "detail/dispatch_get_executor.hpp"
 #include "detail/static_const.hpp"
-#include "executor/is_executor.hpp"
+#include "execution/executor/is_executor.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

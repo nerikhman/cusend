@@ -36,6 +36,8 @@ CUSEND_NAMESPACE_OPEN_BRACE
 
 namespace detail
 {
+namespace is_detected_detail
+{
 
 
 template<class...> 
@@ -65,16 +67,19 @@ struct detector<Default, void_t<Op<Args...>>, Op, Args...>
   using value_t = std::true_type; 
   using type = Op<Args...>; 
 }; 
+
+
+} // end is_detected_detail
  
  
 template<template<class...> class Op, class... Args> 
-using is_detected = typename detector<nonesuch, void, Op, Args...>::value_t; 
+using is_detected = typename is_detected_detail::detector<is_detected_detail::nonesuch, void, Op, Args...>::value_t; 
  
 template<template<class...> class Op, class... Args> 
-using detected_t = typename detector<nonesuch, void, Op, Args...>::type; 
+using detected_t = typename is_detected_detail::detector<is_detected_detail::nonesuch, void, Op, Args...>::type; 
  
 template<class Default, template<class...> class Op, class... Args> 
-using detected_or = detector<Default, void, Op, Args...>; 
+using detected_or = is_detected_detail::detector<Default, void, Op, Args...>; 
  
 template<class Default, template<class...> class Op, class... Args> 
 using detected_or_t = typename detected_or<Default,Op,Args...>::type; 

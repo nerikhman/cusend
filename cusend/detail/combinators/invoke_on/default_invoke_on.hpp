@@ -30,8 +30,8 @@
 
 #include <type_traits>
 #include <utility>
-#include "../../../executor/is_executor.hpp"
-#include "../../../executor/is_executor_of.hpp"
+#include "../../../execution/executor/is_executor.hpp"
+#include "../../../execution/executor/is_executor_of.hpp"
 #include "../../../sender/is_receiver_of.hpp"
 #include "../../../sender/sender_base.hpp"
 #include "../../execute_operation.hpp"
