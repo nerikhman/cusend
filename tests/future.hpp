@@ -245,6 +245,59 @@ void test_then_int_to_float()
 }
 
 
+__managed__ int result;
+
+
+struct receive_at
+{
+  int* address;
+
+  __host__ __device__
+  void set_value(int value) && noexcept
+  {
+    *address = value;
+  }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
+};
+
+
+void test_then_receiver()
+{
+  auto f1 = ns::make_ready_future(7);
+
+  try
+  {
+    result = -1;
+    auto f2 = std::move(f1).then(receive_at{&result});
+
+#if !defined(__CUDACC__)
+    assert(false);
+#endif
+
+    assert(!f1.valid());
+    assert(f2.valid());
+    f2.wait();
+
+    assert(f2.is_ready());
+
+    assert(result == 13);
+    assert(!f2.valid());
+  }
+  catch(std::runtime_error)
+  {
+#if defined(__CUDACC__)
+    assert(false);
+#endif
+  }
+}
+
+
 #ifdef __CUDACC__
 template<class F>
 __global__ void device_invoke(F f)

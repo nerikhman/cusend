@@ -37,6 +37,9 @@
 #include "detail/type_traits/remove_cvref.hpp"
 #include "execution/executor/stream_executor.hpp"
 #include "memory/unique_ptr.hpp"
+#include "sender/set_value.hpp"
+#include "sender/is_receiver.hpp"
+#include "sender/is_receiver_of.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -250,6 +253,31 @@ CUSEND_ANNOTATION
 future<T> make_unready_future(const execution::stream_executor& ex, event&& e, memory::unique_ptr<T>&& value);
 
 
+template<class Receiver>
+struct call_set_value
+{
+  Receiver r;
+
+  template<class... Args>
+  CUSEND_ANNOTATION
+  void operator()(Args&&... args)
+  {
+    CUSEND_NAMESPACE::set_value(std::move(r), std::forward<Args>(args)...);
+  }
+};
+
+
+template<class Receiver,
+         CUSEND_REQUIRES(is_receiver<Receiver>::value),
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value)
+        >
+CUSEND_ANNOTATION
+call_set_value<remove_cvref_t<Receiver>> make_call_set_value(Receiver r)
+{
+  return {r};
+}
+
+
 } // end detail
 
 
@@ -392,6 +420,17 @@ class future : private detail::future_base<Executor>
     }
 
 
+    template<class Receiver,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
+             CUSEND_REQUIRES(is_receiver_of<Receiver,T&&>::value)
+            >
+    CUSEND_ANNOTATION
+    future<void,Executor> then(Receiver r) &&
+    {
+      return std::move(*this).then(detail::make_call_set_value(r));
+    }
+
+
   private:
     // give this friend access to private contructors
     template<class U>
@@ -494,6 +533,17 @@ class future<void,Executor> : private detail::future_base<Executor>
 
       // return a future corresponding to the result of f
       return detail::make_unready_future(executor(), detail::event{executor().stream()}, std::move(result));
+    }
+
+
+    template<class Receiver,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
+             CUSEND_REQUIRES(is_receiver_of<Receiver>::value)
+            >
+    CUSEND_ANNOTATION
+    future<void> then(Receiver r) &&
+    {
+      return std::move(*this).then(detail::make_call_set_value(r));
     }
 
 
