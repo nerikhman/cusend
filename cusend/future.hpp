@@ -232,7 +232,28 @@ class future_base
 } // end detail
 
 
+// declare future for make_unready_future below
 template<class T, class Executor = execution::stream_executor>
+class future;
+
+
+namespace detail
+{
+
+
+CUSEND_ANNOTATION
+inline future<void> make_unready_future(const execution::stream_executor& ex, event&& e);
+
+
+template<class T>
+CUSEND_ANNOTATION
+future<T> make_unready_future(const execution::stream_executor& ex, event&& e, memory::unique_ptr<T>&& value);
+
+
+} // end detail
+
+
+template<class T, class Executor>
 class future : private detail::future_base<Executor>
 {
   private:
@@ -306,7 +327,7 @@ class future : private detail::future_base<Executor>
       super_t::invalidate();
 
       // return a future corresponding to the completion of the closure
-      return {executor(), true, detail::event{executor().stream()}};
+      return detail::make_unready_future(executor(), detail::event{executor().stream()});
     }
 
 
@@ -367,13 +388,14 @@ class future : private detail::future_base<Executor>
       super_t::invalidate();
 
       // return a future corresponding to the completion of the closure
-      return {executor(), true, detail::event{executor().stream()}, std::move(result)};
+      return detail::make_unready_future(executor(), detail::event{executor().stream()}, std::move(result));
     }
 
 
   private:
-    // give these friends access to private contructors
-    template<class U, class E> friend class future;
+    // give this friend access to private contructors
+    template<class U>
+    friend future<U> detail::make_unready_future(const execution::stream_executor& ex, detail::event&& event, memory::unique_ptr<U>&& value);
 
     CUSEND_ANNOTATION
     future(const Executor& executor, bool valid, detail::event&& event, cusend::memory::unique_ptr<T>&& value)
@@ -471,7 +493,7 @@ class future<void,Executor> : private detail::future_base<Executor>
       super_t::invalidate();
 
       // return a future corresponding to the result of f
-      return {executor(), true, detail::event{executor().stream()}, std::move(result)};
+      return detail::make_unready_future(executor(), detail::event{executor().stream()}, std::move(result));
     }
 
 
@@ -479,7 +501,7 @@ class future<void,Executor> : private detail::future_base<Executor>
     // give these friends access to private contructors
     friend future<void> make_ready_future();
 
-    template<class T, class E> friend class future;
+    friend future<void> detail::make_unready_future(const execution::stream_executor& ex, detail::event&& event);
 
     CUSEND_ANNOTATION
     future(const Executor& executor, bool valid, detail::event&& event)
@@ -498,6 +520,28 @@ inline future<void> make_ready_future()
 {
   return future<void>{execution::stream_executor{}, true};
 }
+
+
+namespace detail
+{
+
+
+CUSEND_ANNOTATION
+inline future<void> make_unready_future(const execution::stream_executor& ex, event&& e)
+{
+  return {ex, true, std::move(e)};
+}
+
+
+template<class T>
+CUSEND_ANNOTATION
+future<T> make_unready_future(const execution::stream_executor& ex, event&& e, memory::unique_ptr<T>&& value)
+{
+  return {ex, true, std::move(e), std::move(value)};
+}
+
+
+} // end detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
