@@ -195,7 +195,7 @@ class then_sender : public sender_base
     auto connect(Receiver&& r) const &
       -> decltype(CUSEND_NAMESPACE::connect(predecessor_, detail::make_then_receiver(std::move(r), continuation_)))
     {
-      return CUSEND_NAMESPACE::connect(std::move(predecessor_), detail::make_then_receiver(std::move(r), continuation_));
+      return CUSEND_NAMESPACE::connect(predecessor_, detail::make_then_receiver(std::move(r), continuation_));
     }
 };
 
