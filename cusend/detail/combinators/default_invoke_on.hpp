@@ -26,19 +26,19 @@
 
 #pragma once
 
-#include "../../prologue.hpp"
+#include "../prologue.hpp"
 
 #include <type_traits>
 #include <utility>
-#include "../../../execution/executor/is_executor.hpp"
-#include "../../../execution/executor/is_executor_of.hpp"
-#include "../../../sender/is_receiver_of.hpp"
-#include "../../../sender/sender_base.hpp"
-#include "../../execute_operation.hpp"
-#include "../../functional/closure.hpp"
-#include "../../functional/compose.hpp"
-#include "../../receiver_as_invocable.hpp"
-#include "../../type_traits/is_invocable.hpp"
+#include "../../execution/executor/is_executor.hpp"
+#include "../../execution/executor/is_executor_of.hpp"
+#include "../../sender/is_receiver_of.hpp"
+#include "../../sender/sender_base.hpp"
+#include "../execute_operation.hpp"
+#include "../functional/closure.hpp"
+#include "../functional/compose.hpp"
+#include "../receiver_as_invocable.hpp"
+#include "../type_traits/is_invocable.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -150,11 +150,15 @@ invoke_sender<Executor, closure<decay_t<Invocable>, decay_t<Arg1>, decay_t<Args>
 }
 
 
+template<class Executor, class Invocable, class... Args>
+using default_invoke_on_t = decltype(detail::default_invoke_on(std::declval<Executor>(), std::declval<Invocable>(), std::declval<Args>()...));
+
+
 } // end namespace detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../epilogue.hpp"
+#include "../epilogue.hpp"
 
