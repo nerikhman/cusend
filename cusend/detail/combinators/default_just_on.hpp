@@ -31,6 +31,8 @@
 #include <utility>
 #include "../../execution/executor/is_executor.hpp"
 #include "../../invoke_on.hpp"
+#include "../../unpack.hpp"
+#include "../tuple.hpp"
 #include "../type_traits/decay.hpp"
 
 
@@ -39,6 +41,25 @@ CUSEND_NAMESPACE_OPEN_BRACE
 
 namespace detail
 {
+
+
+struct no_op
+{
+  CUSEND_ANNOTATION
+  inline void operator()() const {}
+};
+
+
+template<class Executor,
+         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
+        >
+CUSEND_ANNOTATION
+auto default_just_on(const Executor& ex)
+  -> decltype(CUSEND_NAMESPACE::invoke_on(ex, detail::no_op{}))
+{
+  return CUSEND_NAMESPACE::invoke_on(ex, detail::no_op{});
+}
+
 
 
 template<class T>
@@ -73,8 +94,20 @@ auto default_just_on(const Executor& ex, T&& value)
 }
 
 
-template<class Executor, class T>
-using default_just_on_t = decltype(detail::default_just_on(std::declval<Executor>(), std::declval<T>()));
+template<class Executor, class T, class... Types,
+         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
+        >
+CUSEND_ANNOTATION
+auto default_just_on(const Executor& ex, T&& value, Types&&... values)
+  -> decltype(CUSEND_NAMESPACE::unpack(CUSEND_NAMESPACE::invoke_on(ex, detail::make_return_value(detail::make_tuple(std::forward<T>(value), std::forward<Types>(values)...)))))
+{
+  // tuple up the values, and then unpack() the tuple
+  return CUSEND_NAMESPACE::unpack(CUSEND_NAMESPACE::invoke_on(ex, detail::make_return_value(detail::make_tuple(std::forward<T>(value), std::forward<Types>(values)...))));
+}
+
+
+template<class Executor, class... Types>
+using default_just_on_t = decltype(detail::default_just_on(std::declval<Executor>(), std::declval<Types>()...));
 
 
 } // end namespace detail

@@ -13,7 +13,9 @@
 #endif
 
 
-__managed__ int result;
+__managed__ int result1;
+__managed__ int result2;
+__managed__ int result3;
 
 
 struct move_only
@@ -27,15 +29,36 @@ struct move_only
 struct my_receiver
 {
   __host__ __device__
+  void set_value()
+  {
+    result1 = true;
+  }
+
+  __host__ __device__
   void set_value(int value)
   {
-    result = value;
+    result1 = value;
+  }
+
+  __host__ __device__
+  void set_value(int value1, int value2)
+  {
+    result1 = value1;
+    result2 = value2;
+  }
+
+  __host__ __device__
+  void set_value(int value1, int value2, int value3)
+  {
+    result1 = value1;
+    result2 = value2;
+    result3 = value3;
   }
 
   __host__ __device__
   void set_value(move_only&& value)
   {
-    result = value.value;
+    result1 = value.value;
   }
 
   void set_error(std::exception_ptr) {}
@@ -49,16 +72,14 @@ template<class Executor>
 __host__ __device__
 void test_copyable(Executor ex)
 {
-  using namespace cusend;
-
-  result = 0;
+  result1 = 0;
   int expected = 13;
 
   my_receiver r;
 
-  just_on(ex, expected).connect(std::move(r)).start();
+  cusend::just_on(ex, expected).connect(std::move(r)).start();
 
-  assert(expected == result);
+  assert(expected == result1);
 }
 
 
@@ -66,27 +87,81 @@ template<class Executor>
 __host__ __device__
 void test_move_only(Executor ex)
 {
-  using namespace cusend;
-
-  result = 0;
+  result1 = 0;
   int expected = 13;
 
   my_receiver r;
 
-  just_on(ex, move_only{expected}).connect(std::move(r)).start();
+  cusend::just_on(ex, move_only{expected}).connect(std::move(r)).start();
 
-  assert(expected == result);
+  assert(expected == result1);
+}
+
+
+template<class Executor>
+__host__ __device__
+void test_variadic(Executor ex)
+{
+  int expected1 = 13;
+  int expected2 = 7;
+  int expected3 = 42;
+
+  {
+    result1 = 0;
+
+    my_receiver r;
+
+    cusend::just_on(ex).connect(std::move(r)).start();
+
+    assert(true == result1);
+  }
+
+  {
+    result1 = 0;
+
+    my_receiver r;
+
+    cusend::just_on(ex, expected1).connect(std::move(r)).start();
+
+    assert(expected1 == result1);
+  }
+
+  {
+    result1 = 0;
+    result2 = 0;
+
+    my_receiver r;
+
+    cusend::just_on(ex, expected1, expected2).connect(std::move(r)).start();
+
+    assert(expected1 == result1);
+    assert(expected2 == result2);
+  }
+
+  {
+    result1 = 0;
+    result2 = 0;
+    result3 = 0;
+
+    my_receiver r;
+
+    cusend::just_on(ex, expected1, expected2, expected3).connect(std::move(r)).start();
+
+    assert(expected1 == result1);
+    assert(expected2 == result2);
+    assert(expected3 == result3);
+  }
 }
 
 
 struct my_executor_with_just_on_member_function : cusend::execution::inline_executor
 {
-  template<class T>
+  template<class... Types>
   __host__ __device__
-  auto just_on(T&& value) const
-    -> decltype(cusend::just_on(cusend::execution::inline_executor(), std::forward<T>(value)))
+  auto just_on(Types&&... values) const
+    -> decltype(cusend::just_on(cusend::execution::inline_executor(), std::forward<Types>(values)...))
   {
-    return cusend::just_on(cusend::execution::inline_executor(), std::forward<T>(value));
+    return cusend::just_on(cusend::execution::inline_executor(), std::forward<Types>(values)...);
   }
 };
 
@@ -94,12 +169,12 @@ struct my_executor_with_just_on_member_function : cusend::execution::inline_exec
 struct my_executor_with_just_on_free_function : cusend::execution::inline_executor {};
 
 
-template<class T>
+template<class... Types>
 __host__ __device__
-auto just_on(my_executor_with_just_on_free_function, T&& value)
-  -> decltype(cusend::just_on(cusend::execution::inline_executor{}, std::forward<T>(value)))
+auto just_on(my_executor_with_just_on_free_function, Types&&... values)
+  -> decltype(cusend::just_on(cusend::execution::inline_executor{}, std::forward<Types>(values)...))
 {
-  return cusend::just_on(cusend::execution::inline_executor{}, std::forward<T>(value));
+  return cusend::just_on(cusend::execution::inline_executor{}, std::forward<Types>(values)...);
 }
 
 
@@ -170,8 +245,13 @@ void test_just_on()
   test_move_only(my_executor_with_just_on_member_function{});
   test_move_only(my_executor_with_just_on_free_function{});
 
+  test_variadic(cusend::execution::inline_executor{});
+  test_variadic(my_executor_with_just_on_member_function{});
+  test_variadic(my_executor_with_just_on_free_function{});
+
 #ifdef __CUDACC__
   test_copyable(gpu_executor{});
+  test_variadic(gpu_executor{});
 
   device_invoke([] __device__ ()
   {
@@ -183,7 +263,12 @@ void test_just_on()
     test_move_only(my_executor_with_just_on_member_function{});
     test_move_only(my_executor_with_just_on_free_function{});
 
+    test_variadic(cusend::execution::inline_executor{});
+    test_variadic(my_executor_with_just_on_member_function{});
+    test_variadic(my_executor_with_just_on_free_function{});
+
     test_copyable(gpu_executor{});
+    test_variadic(gpu_executor{});
   });
   assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif
