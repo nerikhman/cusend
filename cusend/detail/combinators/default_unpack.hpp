@@ -97,18 +97,18 @@ class unpack_receiver
 
   public:
     CUSEND_EXEC_CHECK_DISABLE
+    unpack_receiver(const unpack_receiver&) = default;
+
+    CUSEND_EXEC_CHECK_DISABLE
+    unpack_receiver(unpack_receiver&&) = default;
+
+    CUSEND_EXEC_CHECK_DISABLE
     template<class R,
              CUSEND_REQUIRES(std::is_constructible<Receiver,R&&>::value)
             >
     CUSEND_ANNOTATION
     unpack_receiver(R&& receiver)
       : receiver_(std::forward<R>(receiver))
-    {}
-
-    CUSEND_EXEC_CHECK_DISABLE
-    CUSEND_ANNOTATION
-    unpack_receiver(unpack_receiver&& other) noexcept
-      : receiver_{std::move(other.receiver_)}
     {}
 
     CUSEND_EXEC_CHECK_DISABLE
