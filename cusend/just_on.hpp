@@ -30,8 +30,9 @@
 
 #include <utility>
 #include "chaining_sender.hpp"
-#include "detail/combinators/just_on/dispatch_just_on.hpp"
+#include "detail/combinators/default_just_on.hpp"
 #include "detail/static_const.hpp"
+#include "detail/type_traits/is_detected.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -41,18 +42,57 @@ namespace detail
 {
 
 
-// this is the type of just_on
-struct just_on_customization_point
+template<class E, class T>
+using just_on_member_function_t = decltype(std::declval<E>().just_on(std::declval<T>()));
+
+template<class E, class T>
+using has_just_on_member_function = is_detected<just_on_member_function_t, E, T>;
+
+
+template<class E, class T>
+using just_on_free_function_t = decltype(just_on(std::declval<E>(), std::declval<T>()));
+
+template<class E, class T>
+using has_just_on_free_function = is_detected<just_on_free_function_t, E, T>;
+
+
+// this is the type of the just_on CPO
+struct dispatch_just_on
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class E, class T,
-           CUSEND_REQUIRES(can_dispatch_just_on<const E&,T&&>::value)
+           CUSEND_REQUIRES(has_just_on_member_function<E&&,T&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<dispatch_just_on_t<const E&,T&&>>
-    operator()(const E& ex, T&& value) const
+  constexpr ensure_chaining_sender_t<just_on_member_function_t<E&&,T&&>>
+    operator()(E&& ex, T&& value) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::dispatch_just_on(ex, std::forward<T>(value)));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(std::forward<E>(ex).just_on(std::forward<T>(value)));
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class E, class T,
+           CUSEND_REQUIRES(!has_just_on_member_function<E&&,T&&>::value),
+           CUSEND_REQUIRES(has_just_on_free_function<E&&,T&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr ensure_chaining_sender_t<just_on_free_function_t<E&&,T&&>>
+    operator()(E&& ex, T&& value) const
+  {
+    return CUSEND_NAMESPACE::ensure_chaining_sender(just_on(std::forward<E>(ex), std::forward<T>(value)));
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class E, class T,
+           CUSEND_REQUIRES(!has_just_on_member_function<E&&,T&&>::value),
+           CUSEND_REQUIRES(!has_just_on_free_function<E&&,T&&>::value),
+           CUSEND_REQUIRES(is_detected<default_just_on_t,E&&,T&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr ensure_chaining_sender_t<default_just_on_t<E&&,T&&>>
+    operator()(E&& ex, T&& value) const
+  {
+    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::default_just_on(std::forward<E>(ex), std::forward<T>(value)));
   }
 };
 
@@ -66,9 +106,9 @@ namespace
 
 // define the just_on customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& just_on = detail::static_const<detail::just_on_customization_point>::value;
+constexpr auto const& just_on = detail::static_const<detail::dispatch_just_on>::value;
 #else
-const __device__ detail::just_on_customization_point just_on;
+const __device__ detail::dispatch_just_on just_on;
 #endif
 
 

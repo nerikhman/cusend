@@ -86,7 +86,7 @@ struct my_executor_with_just_on_member_function : cusend::execution::inline_exec
   auto just_on(T&& value) const
     -> decltype(cusend::just_on(cusend::execution::inline_executor(), std::forward<T>(value)))
   {
-    return cusend::invoke_on(cusend::execution::inline_executor(), std::forward<T>(value));
+    return cusend::just_on(cusend::execution::inline_executor(), std::forward<T>(value));
   }
 };
 

@@ -26,12 +26,12 @@
 
 #pragma once
 
-#include "../../prologue.hpp"
+#include "../prologue.hpp"
 
 #include <utility>
-#include "../../../execution/executor/is_executor.hpp"
-#include "../../../invoke_on.hpp"
-#include "../../type_traits/decay.hpp"
+#include "../../execution/executor/is_executor.hpp"
+#include "../../invoke_on.hpp"
+#include "../type_traits/decay.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -73,11 +73,15 @@ auto default_just_on(const Executor& ex, T&& value)
 }
 
 
+template<class Executor, class T>
+using default_just_on_t = decltype(detail::default_just_on(std::declval<Executor>(), std::declval<T>()));
+
+
 } // end namespace detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../epilogue.hpp"
+#include "../epilogue.hpp"
 
