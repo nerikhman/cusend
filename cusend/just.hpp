@@ -35,17 +35,17 @@
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-template<class T>
+template<class... Types>
 CUSEND_ANNOTATION
-auto just(T&& value)
-  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value)))
+auto just(Types&&... values)
+  -> decltype(CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<Types>(values)...))
 {
-  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<T>(value));
+  return CUSEND_NAMESPACE::just_on(execution::inline_executor{}, std::forward<Types>(values)...);
 }
 
 
-template<class T>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<T>()));
+template<class... Types>
+using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<Types>()...));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

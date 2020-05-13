@@ -1,6 +1,5 @@
 #include <cassert>
 #include <cstring>
-#include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/just.hpp>
 #include <exception>
 #include <utility>
@@ -13,7 +12,9 @@
 #endif
 
 
-__managed__ int result;
+__managed__ int result1;
+__managed__ int result2;
+__managed__ int result3;
 
 
 struct move_only
@@ -27,15 +28,36 @@ struct move_only
 struct my_receiver
 {
   __host__ __device__
+  void set_value()
+  {
+    result1 = true;
+  }
+
+  __host__ __device__
   void set_value(int value)
   {
-    result = value;
+    result1 = value;
+  }
+
+  __host__ __device__
+  void set_value(int value1, int value2)
+  {
+    result1 = value1;
+    result2 = value2;
+  }
+
+  __host__ __device__
+  void set_value(int value1, int value2, int value3)
+  {
+    result1 = value1;
+    result2 = value2;
+    result3 = value3;
   }
 
   __host__ __device__
   void set_value(move_only&& value)
   {
-    result = value.value;
+    result1 = value.value;
   }
 
   void set_error(std::exception_ptr) {}
@@ -46,34 +68,84 @@ struct my_receiver
 
 
 __host__ __device__
-void test()
+void test_copyable()
 {
-  using namespace cusend;
+  result1 = 0;
+  int expected = 13;
+
+  my_receiver r;
+
+  cusend::just(expected).connect(std::move(r)).start();
+
+  assert(expected == result1);
+}
+
+
+__host__ __device__
+void test_move_only()
+{
+  result1 = 0;
+  int expected = 13;
+
+  my_receiver r;
+
+  cusend::just(move_only{expected}).connect(std::move(r)).start();
+
+  assert(expected == result1);
+}
+
+
+__host__ __device__
+void test_variadic()
+{
+  int expected1 = 13;
+  int expected2 = 7;
+  int expected3 = 42;
 
   {
-    // test copyable type
-    
-    result = 0;
-    int expected = 13;
+    result1 = 0;
 
     my_receiver r;
 
-    just(expected).connect(std::move(r)).start();
+    cusend::just().connect(std::move(r)).start();
 
-    assert(expected == result);
+    assert(true == result1);
   }
 
   {
-    // test move-only type
-
-    result = 0;
-    int expected = 13;
+    result1 = 0;
 
     my_receiver r;
 
-    just(move_only{expected}).connect(std::move(r)).start();
+    cusend::just(expected1).connect(std::move(r)).start();
 
-    assert(expected == result);
+    assert(expected1 == result1);
+  }
+
+  {
+    result1 = 0;
+    result2 = 0;
+
+    my_receiver r;
+
+    cusend::just(expected1, expected2).connect(std::move(r)).start();
+
+    assert(expected1 == result1);
+    assert(expected2 == result2);
+  }
+
+  {
+    result1 = 0;
+    result2 = 0;
+    result3 = 0;
+
+    my_receiver r;
+
+    cusend::just(expected1, expected2, expected3).connect(std::move(r)).start();
+
+    assert(expected1 == result1);
+    assert(expected2 == result2);
+    assert(expected3 == result3);
   }
 }
 
@@ -86,10 +158,30 @@ __global__ void device_invoke_kernel(F f)
 
 
 template<class F>
+__host__ __device__
 void device_invoke(F f)
 {
 #if defined(__CUDACC__)
+
+#if !defined(__CUDA_ARCH__)
+  // __host__ path
+
   device_invoke_kernel<<<1,1>>>(f);
+
+#else
+  // __device__ path
+
+  // workaround restriction on parameters with copy ctors passed to triple chevrons
+  void* ptr_to_arg = cudaGetParameterBuffer(std::alignment_of<F>::value, sizeof(F));
+  std::memcpy(ptr_to_arg, &f, sizeof(F));
+
+  // launch the kernel
+  if(cudaLaunchDevice(&device_invoke_kernel<F>, ptr_to_arg, dim3(1), dim3(1), 0, 0) != cudaSuccess)
+  {
+    assert(0);
+  }
+#endif
+
   assert(cudaDeviceSynchronize() == cudaSuccess);
 #else
   // device invocations are not supported
@@ -100,12 +192,16 @@ void device_invoke(F f)
 
 void test_just()
 {
-  test();
+  test_copyable();
+  test_move_only();
+  test_variadic();
 
 #ifdef __CUDACC__
   device_invoke([] __device__ ()
   {
-    test();
+    test_copyable();
+    test_move_only();
+    test_variadic();
   });
   assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif
