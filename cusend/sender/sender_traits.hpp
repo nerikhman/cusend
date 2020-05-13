@@ -29,8 +29,10 @@
 #include "../detail/prologue.hpp"
 
 #include <type_traits>
+#include "../detail/receiver_as_invocable.hpp"
 #include "../detail/type_traits/conjunction.hpp"
 #include "../detail/type_traits/remove_cvref.hpp"
+#include "../execution/executor/is_executor_of.hpp"
 #include "sender_base.hpp"
 
 
@@ -144,8 +146,33 @@ struct sender_traits_base<
 };
 
 
-// XXX Otherwise, if executor-of-impl<S,as-invocable<void-receiver, S>> is true, then sender-traits-base is equivalent to
-// XXX TODO
+// Otherwise, if executor-of-impl<S,as-invocable<void-receiver, S>> is true, then sender-traits-base is equivalent to...
+
+struct void_receiver
+{
+  void set_value() noexcept;
+  void set_error(std::exception_ptr) noexcept;
+  void set_done() noexcept;
+};
+
+
+template<class S>
+struct sender_traits_base<
+  S,
+  typename std::enable_if<
+    !has_sender_types<S>::value and
+    execution::is_executor_of<S, receiver_as_invocable<void_receiver>>::value
+  >::type
+>
+{
+  template<template<class...> class Tuple, template<class...> class Variant>
+  using value_types = Variant<Tuple<>>;
+
+  template<template<class...> class Variant>
+  using error_types = Variant<std::exception_ptr>;
+
+  static constexpr bool sends_done = true;
+};
 
 
 // Otherwise, if S does not have sender types, and S is derived from sender_base
@@ -161,6 +188,7 @@ struct sender_traits_base<
   S,
   typename std::enable_if<
     !has_sender_types<S>::value and
+    !execution::is_executor_of<S, receiver_as_invocable<void_receiver>>::value and
     is_derived_from<S, sender_base>::value
   >::type
 >
