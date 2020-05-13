@@ -28,6 +28,7 @@
 
 #include "../prologue.hpp"
 
+#include <exception>
 #include <type_traits>
 #include <utility>
 #include "../../execution/executor/is_executor.hpp"
@@ -50,9 +51,17 @@ namespace detail
 
 // this is a sender that invokes a function on an executor and sends the result to a receiver
 template<class Executor, class Invocable>
-class invoke_sender : public sender_base
+class invoke_sender
 {
   public:
+    template<template<class...> class Variant, template<class...> class Tuple>
+    using value_types = Variant<Tuple<invoke_result_t<Invocable>>>;
+
+    template<template<class...> class Variant>
+    using error_types = Variant<std::exception_ptr>;
+
+    constexpr static bool sends_done = true;
+
     template<class OtherInvocable,
              CUSEND_REQUIRES(std::is_constructible<Invocable,OtherInvocable&&>::value)
             >
