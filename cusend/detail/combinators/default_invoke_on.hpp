@@ -49,13 +49,24 @@ namespace detail
 {
 
 
+template<template<class...> class Tuple, class Invocable, class... Args>
+using tuple_of_invoke_result_or_empty_tuple_t = typename std::conditional<
+  // check for a void result
+  std::is_void<invoke_result_t<Invocable,Args...>>::value,
+  // avoid instantiating Tuple with a void parameter
+  Tuple<>,
+  // instantiate Tuple as normal
+  Tuple<invoke_result_t<Invocable,Args...>>
+>::type;
+
+
 // this is a sender that invokes a function on an executor and sends the result to a receiver
 template<class Executor, class Invocable>
 class invoke_sender
 {
   public:
     template<template<class...> class Variant, template<class...> class Tuple>
-    using value_types = Variant<Tuple<invoke_result_t<Invocable>>>;
+    using value_types = Variant<tuple_of_invoke_result_or_empty_tuple_t<Tuple, Invocable>>;
 
     template<template<class...> class Variant>
     using error_types = Variant<std::exception_ptr>;
