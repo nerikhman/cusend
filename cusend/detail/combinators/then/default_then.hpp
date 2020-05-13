@@ -29,6 +29,7 @@
 #include "../../prologue.hpp"
 
 #include <utility>
+#include "../../../discard_receiver.hpp"
 #include "../../../sender/connect.hpp"
 #include "../../../sender/is_receiver.hpp"
 #include "../../../sender/is_receiver_of.hpp"
@@ -49,21 +50,6 @@ CUSEND_NAMESPACE_OPEN_BRACE
 
 namespace detail
 {
-
-
-struct discard_receiver
-{
-  template<class... Args>
-  CUSEND_ANNOTATION
-  void set_value(Args&&...) && noexcept {}
-
-  template<class E>
-  CUSEND_ANNOTATION
-  void set_error(E&&) && noexcept {}
-
-  CUSEND_ANNOTATION
-  void set_done() && noexcept {}
-};
 
 
 template<class Receiver, class Function>
