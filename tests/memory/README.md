@@ -1,12 +1,20 @@
-This directory contains unit tests exercising functionality defined beneath the `cusend/memory` directory.
+This directory contains unit tests exercising functionality defined by this repository.
 
 For example, To build and execute a single test program named `foo`:
 
     $ make test.foo
 
-To build and execute all test programs:
+To build and execute all test programs in the current directory:
 
     $ make test
+
+To build and execute all test programs in a subdirectory named `subdirectory/` (note the trailing slash):
+
+    $ make subdirectory/
+
+To build and execute all test programs in all subdirectories rooted in the current directory:
+
+    $ make all
 
 # Details
 
