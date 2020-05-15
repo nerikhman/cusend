@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/invoke_on.hpp>
+#include <cusend/sender/is_typed_sender.hpp>
 #include <exception>
 #include <utility>
 
@@ -43,6 +44,34 @@ struct move_only_invocable
     return result;
   }
 };
+
+
+template<class Executor>
+__host__ __device__
+void test_is_typed_sender(Executor ex)
+{
+  using namespace cusend;
+
+  {
+    // test with 0 args
+    auto result = invoke_on(ex, [] __host__ __device__ { return ;});
+    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    // test with 1 arg
+    auto identity = [] __host__ __device__ (int x){ return x; };
+    auto result = invoke_on(ex, identity, 13);
+    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    // test with 2 args
+    auto plus = [] __host__ __device__ (int x, int y){ return x + y; };
+    auto result = invoke_on(ex, plus, 13, 7);
+    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+  }
+}
 
 
 template<class Executor>
@@ -201,6 +230,10 @@ struct gpu_executor
 
 void test_invoke_on()
 {
+  test_is_typed_sender(cusend::execution::inline_executor{});
+  test_is_typed_sender(my_executor_with_invoke_on_member_function{});
+  test_is_typed_sender(my_executor_with_invoke_on_free_function{});
+
   test_variadicity(cusend::execution::inline_executor{});
   test_variadicity(my_executor_with_invoke_on_member_function{});
   test_variadicity(my_executor_with_invoke_on_free_function{});
@@ -208,10 +241,16 @@ void test_invoke_on()
   test_move_only_invocable(cusend::execution::inline_executor{});
 
 #ifdef __CUDACC__
+  test_is_typed_sender(gpu_executor{});
   test_variadicity(gpu_executor{});
 
   device_invoke([] __device__ ()
   {
+    test_is_typed_sender(cusend::execution::inline_executor{});
+    test_is_typed_sender(gpu_executor{});
+    test_is_typed_sender(my_executor_with_invoke_on_member_function{});
+    test_is_typed_sender(my_executor_with_invoke_on_free_function{});
+
     test_variadicity(cusend::execution::inline_executor{});
     test_variadicity(gpu_executor{});
     test_variadicity(my_executor_with_invoke_on_member_function{});
