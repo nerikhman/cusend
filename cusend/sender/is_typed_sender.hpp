@@ -31,15 +31,25 @@
 #include <type_traits>
 #include "is_sender.hpp"
 #include "sender_traits.hpp"
-#include "../detail/type_traits/conjunction.hpp"
 #include "../detail/type_traits/remove_cvref.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
+// XXX WAR nvbug 2980877
+//template<class T>
+//using is_typed_sender = detail::conjunction<
+//  is_sender<T>,
+//  detail::has_sender_types<sender_traits<detail::remove_cvref_t<T>>>::value
+//>;
+
 template<class T>
-using is_typed_sender = detail::conjunction<is_sender<T>, detail::has_sender_types<detail::remove_cvref_t<T>>>;
+using is_typed_sender = std::integral_constant<
+  bool,
+  is_sender<T>::value and
+  detail::has_sender_types<sender_traits<detail::remove_cvref_t<T>>>::value
+>;
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
