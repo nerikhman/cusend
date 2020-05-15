@@ -30,10 +30,21 @@ struct sender_with_value_types_and_error_types : sender_with_value_types
 };
 
 
-struct typed_sender : sender_with_value_types_and_error_types
+struct sender_with_all_types : sender_with_value_types_and_error_types
 {
   constexpr static bool sends_done = false;
 };
+
+
+struct sender_that_specializes_sender_traits : untyped_sender {};
+
+namespace cusend
+{
+
+template<>
+struct sender_traits<::sender_that_specializes_sender_traits> : public sender_traits<sender_with_all_types> {};
+
+}
 
 
 void test_is_typed_sender()
@@ -52,10 +63,16 @@ void test_is_typed_sender()
   // test a sender with two traits
   static_assert(!is_typed_sender<sender_with_value_types_and_error_types>::value, "Expected false.");
 
-  // test a typed sender
-  static_assert(is_typed_sender<typed_sender>::value, "Expected true.");
+  // test a sender with all traits
+  static_assert(is_typed_sender<sender_with_all_types>::value, "Expected true.");
 
-  // test a reference to a typed sender
-  static_assert(is_typed_sender<typed_sender&>::value, "Expected true.");
+  // test a reference to a sender with all traits
+  static_assert(is_typed_sender<sender_with_all_types&>::value, "Expected true.");
+
+  // test a sender that specializes sender_traits
+  static_assert(is_typed_sender<sender_that_specializes_sender_traits>::value, "Expected true.");
+
+  // test a reference to a sender that specializes sender_traits
+  static_assert(is_typed_sender<sender_that_specializes_sender_traits&>::value, "Expected true.");
 }
 
