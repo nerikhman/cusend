@@ -34,6 +34,7 @@
 #include "../../../sender/is_receiver.hpp"
 #include "../../../sender/is_receiver_of.hpp"
 #include "../../../sender/is_sender_to.hpp"
+#include "../../../sender/is_typed_sender.hpp"
 #include "../../../sender/sender_base.hpp"
 #include "../../../sender/set_done.hpp"
 #include "../../../sender/set_error.hpp"
@@ -43,6 +44,7 @@
 #include "../../type_traits/invoke_result.hpp"
 #include "../../type_traits/is_nothrow_invocable.hpp"
 #include "../../type_traits/is_nothrow_receiver_of.hpp"
+#include "../detail/type_list.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -132,8 +134,109 @@ then_receiver<decay_t<Receiver>, decay_t<Function>> make_then_receiver(Receiver&
 }
 
 
+namespace then_sender_detail
+{
+
+// then_sender has a lot of details because we need to ensure
+// it is a "typed sender" when possible.
+// That requires a lot of C++ metaprogramming, below.
+
+
+// the purpose of this metafunction is to unpack a type list,
+// interpret the types as a list of arguments,
+// and evaluate invoke_result<F,Args...>
+template<class F, class ArgList>
+struct invoke_result_of_arg_list;
+
+template<class F, class... Args>
+struct invoke_result_of_arg_list<F, type_list<Args...>>
+{
+  using type = invoke_result_t<F,Args...>;
+};
+
+template<class F, class ArgList>
+using invoke_result_of_arg_list_t = typename invoke_result_of_arg_list<F,ArgList>::type;
+
+
+// the purpose of this meta function is to take a function type, and a list of argument lists,
+// where each "inner" type list is interpreted as a list of arguments for F
+//
+// it returns
+//
+//   type_list<invoke_result_t<F,Args0...>, invoke_result_t<F,Args1...>...>
+//
+// for each argument list in ListOfArgLists
+template<class F, class ListOfArgLists>
+struct invoke_result_of_each_arg_list;
+
+template<class F, class... ArgLists>
+struct invoke_result_of_each_arg_list<F, type_list<ArgLists...>>
+{
+  using type = type_list<invoke_result_of_arg_list_t<F,ArgLists>...>;
+};
+
+
+// this metafunction takes a list of types and "wraps" each of them into a single-element Tuple
+// the entire list of tuples is collected into a Variant
+template<class TypeList, template<class...> class Variant, template<class...> class Tuple>
+struct type_list_as_single_element_tuples;
+
+template<class... Types, template<class...> class Variant, template<class...> class Tuple>
+struct type_list_as_single_element_tuples<type_list<Types...>, Variant, Tuple>
+{
+  using type = Variant<Tuple<Types>...>;
+};
+
+template<class TypeList, template<class...> class Variant, template<class...> class Tuple>
+using type_list_as_single_element_tuples_t = typename type_list_as_single_element_tuples<TypeList, Variant, Tuple>::type;
+
+
+// the purpose of then_sender_base is to inject sender traits
+// into then_sender when it is possible to do (i.e., Sender is typed)
+template<class Sender, class Function, class Enable = void>
+struct then_sender_base : public sender_base {};
+
+// If Sender is typed, define nested traits
 template<class Sender, class Function>
-class then_sender : public sender_base
+struct then_sender_base<Sender,Function, typename std::enable_if<is_typed_sender<Sender>::value>::type>
+{
+  private:
+    using adaptee_traits = sender_traits<Sender>;
+
+    // collect value types from the adaptee into type_lists
+    using list_of_arg_lists = typename sender_traits<Sender>::template value_types<type_list,type_list>;
+
+    // now, list_of_arg_lists should look like this:
+    // list_of_arg_lists = type_list<type_list<A,B,C,...>, type_list<X,Y,Z,...>, ...>
+
+    // apply invoke_result to each inner arg list
+    using list_of_results = invoke_result_of_each_arg_list<Function, list_of_arg_lists>;
+
+    // now, list_of_results should look like this:
+    // list_of_results = type_list<R0, R1, R2...>
+
+    // value_types needs to return
+    // Variant<Tuple<R0>, Tuple<R1>, Tuple<R2>...>
+    //
+    // so, value_types needs to wrap each element of list_of_results with value_types' Tuple template parameter
+    // and collect that list into value_types' Variant template parmeter
+
+  public:
+    template<template<class...> class Tuple, template<class...> class Variant>
+    using value_types = type_list_as_single_element_tuples<list_of_results, Variant, Tuple>;
+
+    template<template<class...> class Variant>
+    using error_types = typename sender_traits<Sender>::template error_types<Variant>;
+
+    constexpr static bool sends_done = sender_traits<Sender>::sends_done;
+};
+
+
+} // end then_sender_detail
+
+
+template<class Sender, class Function>
+class then_sender : public then_sender_detail::then_sender_base<Sender,Function>
 {
   private:
     Sender predecessor_;

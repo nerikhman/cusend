@@ -63,6 +63,33 @@ struct my_receiver
 
 
 __host__ __device__
+void test_is_typed_sender()
+{
+  using namespace cusend;
+
+  {
+    auto result = then(just(), [] { return; });
+    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+//  {
+//    auto result = then(just(), [] { return 13; });
+//    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+//  }
+//
+//  {
+//    auto result = then(just(13), [](int arg) { return arg; });
+//    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+//  }
+//
+//  {
+//    auto result = then(just(13,7), [](int arg1, int arg2) { return arg1 + arg2; });
+//    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+//  }
+}
+
+
+__host__ __device__
 void test_copyable_continuation()
 {
   using namespace cusend;
@@ -207,6 +234,7 @@ void device_invoke(F f)
 
 void test_then()
 {
+  test_is_typed_sender();
   test_copyable_continuation();
   test_move_only_continuation();
   test_sender_with_then_member_function();
@@ -215,6 +243,7 @@ void test_then()
 #ifdef __CUDACC__
   device_invoke([] __device__ ()
   {
+//    test_is_typed_sender();
     test_copyable_continuation();
     test_move_only_continuation();
     test_sender_with_then_member_function();
