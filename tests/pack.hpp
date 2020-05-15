@@ -69,6 +69,31 @@ struct my_tuple_receiver
 
 
 __host__ __device__
+void test_is_typed_sender()
+{
+  {
+    auto result = cusend::pack(cusend::just());
+    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    auto result = cusend::pack(cusend::just(1));
+    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    auto result = cusend::pack(cusend::just(1,2));
+    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    auto result = cusend::pack(cusend::just(1,2,3));
+    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+  }
+}
+
+
+__host__ __device__
 void test_move_only()
 {
   result1 = 0;
@@ -179,12 +204,14 @@ void device_invoke(F f)
 
 void test_pack()
 {
+  test_is_typed_sender();
   test_move_only();
   test_variadic();
 
 #ifdef __CUDACC__
   device_invoke([] __device__ ()
   {
+    test_is_typed_sender();
     test_move_only();
     test_variadic();
   });
