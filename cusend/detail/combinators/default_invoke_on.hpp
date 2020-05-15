@@ -65,7 +65,7 @@ template<class Executor, class Invocable>
 class invoke_sender
 {
   public:
-    template<template<class...> class Variant, template<class...> class Tuple>
+    template<template<class...> class Tuple, template<class...> class Variant>
     using value_types = Variant<tuple_of_invoke_result_or_empty_tuple_t<Tuple, Invocable>>;
 
     template<template<class...> class Variant>
