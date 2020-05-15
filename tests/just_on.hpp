@@ -70,6 +70,32 @@ struct my_receiver
 
 template<class Executor>
 __host__ __device__
+void test_is_typed_sender(Executor ex)
+{
+  {
+    auto result = cusend::just_on(ex);
+    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    auto result = cusend::just_on(ex,1);
+    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    auto result = cusend::just_on(ex,1,2);
+    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    auto result = cusend::just_on(ex,1,2,3);
+    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+  }
+}
+
+
+template<class Executor>
+__host__ __device__
 void test_copyable(Executor ex)
 {
   result1 = 0;
@@ -237,6 +263,10 @@ struct gpu_executor
 
 void test_just_on()
 {
+  test_is_typed_sender(cusend::execution::inline_executor{});
+  test_is_typed_sender(my_executor_with_just_on_member_function{});
+  test_is_typed_sender(my_executor_with_just_on_free_function{});
+
   test_copyable(cusend::execution::inline_executor{});
   test_copyable(my_executor_with_just_on_member_function{});
   test_copyable(my_executor_with_just_on_free_function{});
@@ -250,11 +280,17 @@ void test_just_on()
   test_variadic(my_executor_with_just_on_free_function{});
 
 #ifdef __CUDACC__
+  test_is_typed_sender(gpu_executor{});
   test_copyable(gpu_executor{});
   test_variadic(gpu_executor{});
 
   device_invoke([] __device__ ()
   {
+    test_is_typed_sender(cusend::execution::inline_executor{});
+    test_is_typed_sender(my_executor_with_just_on_member_function{});
+    test_is_typed_sender(my_executor_with_just_on_free_function{});
+    test_is_typed_sender(gpu_executor{});
+
     test_copyable(cusend::execution::inline_executor{});
     test_copyable(my_executor_with_just_on_member_function{});
     test_copyable(my_executor_with_just_on_free_function{});
