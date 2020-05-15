@@ -76,7 +76,11 @@ void test(S tuple_sender, Tuple expected)
 {
   Tuple result;
 
-  cusend::unpack(std::move(tuple_sender)).connect(tuple_receiver<Tuple>{result}).start();
+  auto sender = cusend::unpack(std::move(tuple_sender));
+
+  static_assert(cusend::is_typed_sender<decltype(sender)>::value, "Error.");
+
+  std::move(sender).connect(tuple_receiver<Tuple>{result}).start();
 
   assert(expected == result);
 }
