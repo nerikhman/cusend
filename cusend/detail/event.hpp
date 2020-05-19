@@ -106,7 +106,7 @@ class event
     {
       bool result = false;
 
-#if (__CUDA_ARCH__ == 0) or CUSEND_HAS_CUDART
+#if (__CUDA_ARCH__ == 0)
       cudaError_t status = cudaEventQuery(native_handle());
 
       if(status != cudaErrorNotReady and status != cudaSuccess)
