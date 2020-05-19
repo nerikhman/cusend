@@ -33,6 +33,7 @@
 #include "../../discard_receiver.hpp"
 #include "../../sender/connect.hpp"
 #include "../../sender/is_receiver_of.hpp"
+#include "../../sender/is_sender_to.hpp"
 #include "../../sender/is_typed_sender.hpp"
 #include "../../sender/sender_base.hpp"
 #include "../tuple.hpp"
