@@ -2,7 +2,7 @@ This directory contains functionality related to futures, which are objects that
 
 Promises are objects that represents an intention or *promise* to execute a computation.
 
-There are two class templtates:
+There are two class templates:
 
   1. `future<T>`
   2. `host_promise<T>`
