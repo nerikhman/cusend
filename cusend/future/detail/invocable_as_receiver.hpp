@@ -26,10 +26,68 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include "future/future.hpp"
-#include "future/host_promise.hpp"
+#include <exception>
+#include <utility>
+#include "../../detail/functional/invoke.hpp"
+#include "../../detail/type_traits/invoke_result.hpp"
+#include "../../detail/type_traits/is_invocable.hpp"
 
-#include "detail/epilogue.hpp"
+
+CUSEND_NAMESPACE_OPEN_BRACE
+
+
+namespace detail
+{
+
+
+template<class Invocable>
+class invocable_as_receiver
+{
+  public:
+    template<class OtherInvocable,
+             CUSEND_REQUIRES(std::is_constructible<Invocable,OtherInvocable&&>::value)
+            >
+    invocable_as_receiver(OtherInvocable&& invocable)
+      : invocable_{std::forward<OtherInvocable>(invocable)}
+    {}
+
+    invocable_as_receiver(invocable_as_receiver&&) = default;
+
+    template<class... Args,
+             CUSEND_REQUIRES(is_invocable<Invocable&&,Args&&...>::value),
+             class Result = invoke_result_t<Invocable&&,Args&&...>
+            >
+    Result set_value(Args&&... args) &&
+    {
+      return detail::invoke(std::move(invocable_), std::forward<Args>(args)...);
+    }
+
+    template<class E>
+    void set_error(E&&) && noexcept
+    {
+      std::terminate();
+    }
+  
+    void set_done() && noexcept {}
+
+  private:
+    Invocable invocable_;
+};
+
+
+template<class Invocable>
+invocable_as_receiver<typename std::decay<Invocable>::type> as_receiver(Invocable&& f)
+{
+  return {std::forward<Invocable>(f)};
+}
+
+
+} // end detail
+
+
+CUSEND_NAMESPACE_CLOSE_BRACE
+
+#include "../../detail/epilogue.hpp"
 
