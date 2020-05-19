@@ -1,4 +1,4 @@
-This directory contains functionality related to futures, which are objects that represent the eventual completion of a computation at some point in the *future*.
+This directory collects functionality related to futures, which are objects that represent the eventual completion of a computation at some point in the *future*.
 
 Promises are objects that represents an intention or *promise* to execute a computation.
 
