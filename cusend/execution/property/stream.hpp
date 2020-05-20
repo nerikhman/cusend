@@ -26,12 +26,72 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "property/allocator.hpp"
-#include "property/bulk_guarantee.hpp"
-#include "property/context.hpp"
-#include "property/stream.hpp"
+#include <type_traits>
+#include "../detail/type_traits/is_detected.hpp" 
+#include "../executor/is_executor.hpp" 
+#include "detail/basic_executor_property.hpp"
 
-#include "detail/epilogue.hpp"
+
+CUDEX_NAMESPACE_OPEN_BRACE
+
+
+namespace detail
+{
+
+
+template<class T>
+using stream_member_function_t = decltype(std::declval<T>().stream());
+
+
+} // end detail
+
+
+class stream_property : 
+  detail::basic_executor_property<
+    stream_property,
+    true,  // requireable
+    false, // not preferable
+    cudaStream_t
+  >
+{
+  public:
+    CUDEX_ANNOTATION
+    constexpr explicit stream_property(cudaStream_t value) : value_(value) {}
+
+    CUDEX_ANNOTATION
+    constexpr stream_property operator()(cudaStream_t value) const
+    {
+      return stream_property{value};
+    }
+
+    CUDEX_ANNOTATION
+    constexpr cudaStream_t value() const
+    {
+      return value_;
+    }
+
+  private:
+    CUDEX_EXEC_CHECK_DISABLE
+    template<class Executor,
+             CUDEX_REQUIRES(is_executor<Executor>::value),
+             CUDEX_REQUIRES(detail::is_detected_exact<cudaStream_t, detail::stream_member_function_t, Executor>::value)
+            >
+    CUDEX_ANNOTATION
+    friend cudaStream_t query(const Executor& ex, const stream_property&)
+    {
+      return ex.stream();
+    }
+
+    cudaStream_t value_;
+};
+
+
+static constexpr stream_property stream{0};
+
+
+CUDEX_NAMESPACE_CLOSE_BRACE
+
+#include "../detail/epilogue.hpp"
 

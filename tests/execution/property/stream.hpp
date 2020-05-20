@@ -1,0 +1,44 @@
+#include <cassert>
+#include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/execution/property/stream.hpp>
+
+
+namespace ns = cusend::execution;
+
+
+struct my_executor_with_stream_member
+{
+  cudaStream_t stream_;
+
+  cudaStream_t stream() const
+  {
+    return stream_;
+  }
+
+  template<class F>
+  void execute(F&&) const noexcept;
+
+  bool operator==(const my_executor_with_stream_member&) const;
+  bool operator!=(const my_executor_with_stream_member&) const;
+};
+
+
+template<class Executor>
+void test()
+{
+  cudaStream_t expected{};
+  assert(cudaSuccess == cudaStreamCreate(&expected));
+
+  Executor ex{expected};
+  assert(expected == query(ex, ns::stream));
+
+  assert(cudaSuccess == cudaStreamDestroy(expected));
+}
+
+
+void test_stream()
+{
+  test<ns::stream_executor>();
+  test<my_executor_with_stream_member>();
+}
+
