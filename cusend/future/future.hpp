@@ -32,15 +32,18 @@
 #include <type_traits>
 #include <utility>
 #include "../detail/event.hpp"
-#include "../detail/functional/invoke.hpp"
+#include "../detail/type_traits/invoke_result.hpp"
 #include "../detail/type_traits/is_invocable.hpp"
 #include "../detail/type_traits/remove_cvref.hpp"
 #include "../execution/executor/stream_executor.hpp"
+#include "../execution/property/stream.hpp"
 #include "../memory/unique_ptr.hpp"
 #include "../sender/set_value.hpp"
 #include "../sender/is_receiver.hpp"
 #include "../sender/is_receiver_of.hpp"
 #include "detail/invocable_as_receiver.hpp"
+#include "detail/is_stream_executor.hpp"
+#include "detail/stream_wait_for.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -125,30 +128,6 @@ indirect_set_value_and_construct_at<Receiver,ValuePointer,ResultPointer> make_in
 }
 
 
-template<class Function, class ArgPointer>
-struct indirect_invoke
-{
-  Function f;
-  ArgPointer arg_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-    detail::invoke(f, std::move(*arg_ptr));
-  }
-};
-
-template<class Function, class ArgPointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ArgPointer>::value)
-        >
-CUSEND_ANNOTATION
-indirect_invoke<Function,ArgPointer> make_indirect_invoke(Function f, ArgPointer arg_ptr)
-{
-  return {f, arg_ptr};
-}
-
-
 template<class Receiver, class ResultPointer>
 struct set_value_and_construct_at
 {
@@ -170,57 +149,6 @@ CUSEND_ANNOTATION
 set_value_and_construct_at<Receiver,ResultPointer> make_set_value_and_construct_at(Receiver r, ResultPointer result_ptr)
 {
   return {r, result_ptr};
-}
-
-
-template<class Function, class ArgPointer>
-struct inplace_indirect_invoke
-{
-  Function f;
-  ArgPointer arg_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-    *arg_ptr = detail::invoke(f, std::move(*arg_ptr));
-  }
-};
-
-template<class Function, class ArgPointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ArgPointer>::value)
-        >
-CUSEND_ANNOTATION
-inplace_indirect_invoke<Function,ArgPointer> make_inplace_indirect_invoke(Function f, ArgPointer arg_ptr)
-{
-  return {f, arg_ptr};
-}
-
-
-template<class Function, class ArgPointer, class ResultPointer>
-struct indirect_invoke_and_construct_at
-{
-  Function f;
-  ArgPointer arg_ptr;
-  ResultPointer result_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-    new(result_ptr) typename std::pointer_traits<ResultPointer>::element_type{detail::invoke(f, std::move(*arg_ptr))};
-  }
-};
-
-
-template<class Function, class ArgPointer, class ResultPointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ArgPointer>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ResultPointer>::value)
-        >
-CUSEND_ANNOTATION
-indirect_invoke_and_construct_at<Function,ArgPointer,ResultPointer> make_indirect_invoke_and_construct_at(Function f, ArgPointer arg_ptr, ResultPointer result_ptr)
-{
-  return {f, arg_ptr, result_ptr};
 }
 
 
@@ -406,36 +334,43 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class R,
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
              class Result = set_value_t<R,T&&>,
              CUSEND_REQUIRES(std::is_void<Result>::value)
             >
     CUSEND_ANNOTATION
-    CUSEND_NAMESPACE::future<void,Executor> then(R receiver) &&
+    CUSEND_NAMESPACE::future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // make the executor's stream wait for our event
-      executor().stream_wait_for(super_t::event().native_handle());
+      // get the executor's stream
+      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
+
+      // make the stream wait for our event
+      detail::stream_wait_for(stream, super_t::event().native_handle());
 
       // close over receiver and our state
       auto closure = detail::make_indirect_set_value(receiver, value_.get());
 
-      // execute closure on our executor
-      executor().execute(closure);
+      // execute closure on the executor
+      execution::execute(ex, closure);
 
-      // record our event on the executor's stream
-      super_t::event().record_on(executor().stream());
+      // record our event on the stream
+      super_t::event().record_on(stream);
 
       // invalidate ourself
       super_t::invalidate();
 
       // return a future corresponding to the completion of the closure
-      return detail::make_unready_future(executor(), detail::event{executor().stream()});
+      return detail::make_unready_future(ex, detail::event{stream});
     }
 
 
-    template<class R,
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
              class Result = set_value_t<R,T&&>,
@@ -443,26 +378,34 @@ class future : private detail::future_base<Executor>
              CUSEND_REQUIRES(std::is_same<Result,T>::value)
             >
     CUSEND_ANNOTATION
-    future<Result,Executor> then(R receiver) &&
+    future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // make the executor's stream wait for our event
-      executor().stream_wait_for(super_t::event().native_handle());
+      // get the executor's stream
+      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
+
+      // make the stream wait for our event
+      detail::stream_wait_for(stream, super_t::event().native_handle());
 
       // close over receiver and our state
       auto closure = detail::make_inplace_indirect_set_value(receiver, value_.get());
 
       // execute closure on our executor
-      executor().execute(closure);
+      execution::execute(ex, closure);
 
-      // record our event on the executor's stream
-      super_t::event().record_on(executor().stream());
+      // record our event on the stream
+      super_t::event().record_on(stream);
+
+      // invalidate ourself
+      super_t::invalidate();
 
       // return a future corresponding to the completion of the closure
-      return std::move(*this);
+      return detail::make_unready_future(ex, std::move(super_t::event()), std::move(value_));
     }
 
 
-    template<class R,
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
              class Result = set_value_t<R,T&&>,
@@ -470,10 +413,13 @@ class future : private detail::future_base<Executor>
              CUSEND_REQUIRES(!std::is_same<Result,T>::value)
             >
     CUSEND_ANNOTATION
-    future<Result,Executor> then(R receiver) &&
+    future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
+      // get the executor's stream
+      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
+
       // make the executor's stream wait for our event
-      executor().stream_wait_for(super_t::event().native_handle());
+      detail::stream_wait_for(stream, super_t::event().native_handle());
 
       // create storage for the result of the receiver
       // XXX needs to be allocated
@@ -483,16 +429,42 @@ class future : private detail::future_base<Executor>
       auto closure = detail::make_indirect_set_value_and_construct_at(receiver, value_.get(), result.get());
 
       // execute closure on our executor
-      executor().execute(closure);
+      execution::execute(ex, closure);
 
-      // record our event on the executor's stream
-      super_t::event().record_on(executor().stream());
+      // record our event on the stream
+      super_t::event().record_on(stream);
 
       // invalidate ourself
       super_t::invalidate();
 
       // return a future corresponding to the completion of the closure
-      return detail::make_unready_future(executor(), detail::event{executor().stream()}, std::move(result));
+      return detail::make_unready_future(ex, detail::event{executor().stream()}, std::move(result));
+    }
+
+
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
+             class Result = set_value_t<R,T&&>
+            >
+    CUSEND_ANNOTATION
+    future<Result,Executor> then(R receiver) &&
+    {
+      return std::move(*this).then(executor(), receiver);
+    }
+
+
+    template<class StreamExecutor,
+             class Function,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
+             CUSEND_REQUIRES(detail::is_invocable<Function,T&&>::value),
+             class Result = detail::invoke_result_t<Function,T&&>
+            >
+    CUSEND_ANNOTATION
+    future<Result,StreamExecutor> then(const StreamExecutor& ex, Function f) &&
+    {
+      return std::move(*this).then(ex, detail::as_receiver(std::forward<Function>(f)));
     }
 
 
@@ -504,7 +476,7 @@ class future : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<Result,Executor> then(Function f) &&
     {
-      return std::move(*this).then(detail::as_receiver(std::forward<Function>(f)));
+      return std::move(*this).then(executor(), f);
     }
 
 
@@ -559,38 +531,52 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class R,
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,void>::value),
              CUSEND_REQUIRES(std::is_same<void, set_value_t<R>>::value)
             >
     CUSEND_ANNOTATION
-    future<void,Executor> then(R receiver) &&
+    future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // make the executor's stream wait for our event
-      executor().stream_wait_for(super_t::event().native_handle());
+      // get the executor's stream
+      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
 
-      // call set_value on our executor
-      executor().execute(detail::make_call_set_value(receiver));
+      // make the stream wait for our event
+      detail::stream_wait_for(stream, super_t::event().native_handle());
 
-      // record our event on the executor's stream
-      super_t::event().record_on(executor().stream());
+      // call set_value on the executor
+      execution::execute(ex, detail::make_call_set_value(receiver));
 
-      return std::move(*this);
+      // record our event on the stream
+      super_t::event().record_on(stream);
+
+      // invalidate ourself
+      super_t::invalidate();
+
+      // return a future corresponding to the completion of the receiver
+      return detail::make_unready_future(ex, std::move(super_t::event()));
     }
 
 
-    template<class R,
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,void>::value),
              CUSEND_REQUIRES(!std::is_same<void, set_value_t<R>>::value),
              class Result = set_value_t<R> 
             >
     CUSEND_ANNOTATION
-    future<Result,Executor> then(R receiver) &&
+    future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // make the executor's stream wait for our event
-      executor().stream_wait_for(super_t::event().native_handle());
+      // get the executor's stream
+      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
+
+      // make the stream wait for our event
+      detail::stream_wait_for(stream, super_t::event().native_handle());
 
       // create storage for the result of set_value
       // XXX needs to be allocated
@@ -599,17 +585,43 @@ class future<void,Executor> : private detail::future_base<Executor>
       // close over receiver and the result
       auto closure = detail::make_set_value_and_construct_at(receiver, result.get());
 
-      // execute the closure on our executor
-      executor().execute(closure);
+      // execute the closure on the executor
+      execution::execute(ex, closure);
 
-      // record our event on the executor's stream
-      super_t::event().record_on(executor().stream());
+      // record our event on the stream
+      super_t::event().record_on(stream);
 
       // invalidate ourself
       super_t::invalidate();
 
       // return a future corresponding to the result of f
-      return detail::make_unready_future(executor(), detail::event{executor().stream()}, std::move(result));
+      return detail::make_unready_future(ex, detail::event{stream}, std::move(result));
+    }
+
+
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value),
+             class Result = set_value_t<R,void>
+            >
+    CUSEND_ANNOTATION
+    future<Result,Executor> then(R receiver) &&
+    {
+      return std::move(*this).then(executor(), receiver);
+    }
+
+
+    template<class StreamExecutor,
+             class Function,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
+             CUSEND_REQUIRES(detail::is_invocable<Function>::value),
+             class Result = detail::invoke_result_t<Function>
+            >
+    CUSEND_ANNOTATION
+    future<Result,StreamExecutor> then(const StreamExecutor& ex, Function f) &&
+    {
+      return std::move(*this).then(ex, detail::as_receiver(std::forward<Function>(f)));
     }
 
 
@@ -621,7 +633,7 @@ class future<void,Executor> : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<Result,Executor> then(Function f) &&
     {
-      return std::move(*this).then(detail::as_receiver(std::forward<Function>(f)));
+      return std::move(*this).then(executor(), f);
     }
 
 
