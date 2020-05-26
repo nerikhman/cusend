@@ -28,9 +28,8 @@
 
 #include "detail/prologue.hpp"
 
-#include "property/allocator.hpp"
-#include "property/bulk_guarantee.hpp"
-#include "property/context.hpp"
+#include "property/is_applicable_property.hpp"
+#include "property/query.hpp"
 
 #include "detail/epilogue.hpp"
 

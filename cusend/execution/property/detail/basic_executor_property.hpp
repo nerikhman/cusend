@@ -45,10 +45,16 @@ struct basic_executor_property
 
 #if __cplusplus >= 201402L
   template<class T>
-  static constexpr bool is_applicable_property_v = is_applicable_property<T>();
+  static constexpr bool is_applicable_property_v = basic_executor_property::template is_applicable_property<T>();
 
-  template<class Executor>
-  static constexpr decltype(auto) static_query_v = static_query<Executor>();
+// XXX workaround nvbug 2988190
+#if !defined(__CUDACC__)
+  template<class Executor,
+           CUDEX_REQUIRES(has_static_query_member_function<Executor,Derived>::value)
+          >
+  static constexpr decltype(auto) static_query_v = basic_executor_property::template static_query<Executor>();
+#endif // workaround
+
 #endif
 };
 
