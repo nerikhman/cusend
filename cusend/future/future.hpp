@@ -40,6 +40,7 @@
 #include "../sender/set_value.hpp"
 #include "../sender/is_receiver.hpp"
 #include "../sender/is_receiver_of.hpp"
+#include "detail/invocable_as_receiver.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -47,6 +48,81 @@ CUSEND_NAMESPACE_OPEN_BRACE
 
 namespace detail
 {
+
+
+template<class Receiver, class ValuePointer>
+struct indirect_set_value
+{
+  Receiver r;
+  ValuePointer value_ptr;
+
+  CUSEND_ANNOTATION
+  void operator()()
+  {
+    CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
+  }
+};
+
+template<class Receiver, class ValuePointer,
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
+        >
+CUSEND_ANNOTATION
+indirect_set_value<Receiver,ValuePointer> make_indirect_set_value(Receiver r, ValuePointer value_ptr)
+{
+  return {r, value_ptr};
+}
+
+
+template<class Receiver, class ValuePointer>
+struct inplace_indirect_set_value
+{
+  Receiver r;
+  ValuePointer value_ptr;
+
+  CUSEND_ANNOTATION
+  void operator()()
+  {
+    *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
+  }
+};
+
+template<class Receiver, class ValuePointer,
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
+        >
+CUSEND_ANNOTATION
+inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_value(Receiver r, ValuePointer value_ptr)
+{
+  return {r, value_ptr};
+}
+
+
+template<class Receiver, class ValuePointer, class ResultPointer>
+struct indirect_set_value_and_construct_at
+{
+  Receiver r;
+  ValuePointer value_ptr;
+  ResultPointer result_ptr;
+
+  CUSEND_ANNOTATION
+  void operator()()
+  {
+    new(result_ptr) typename std::pointer_traits<ResultPointer>::element_type{CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr))};
+  }
+};
+
+
+template<class Receiver, class ValuePointer, class ResultPointer,
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value),
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ResultPointer>::value)
+        >
+CUSEND_ANNOTATION
+indirect_set_value_and_construct_at<Receiver,ValuePointer,ResultPointer> make_indirect_set_value_and_construct_at(Receiver r, ValuePointer value_ptr, ResultPointer result_ptr)
+{
+  return {r, value_ptr, result_ptr};
+}
 
 
 template<class Function, class ArgPointer>
@@ -73,27 +149,27 @@ indirect_invoke<Function,ArgPointer> make_indirect_invoke(Function f, ArgPointer
 }
 
 
-template<class Function, class ResultPointer>
-struct invoke_and_construct_at
+template<class Receiver, class ResultPointer>
+struct set_value_and_construct_at
 {
-  Function f;
+  Receiver r;
   ResultPointer result_ptr;
 
   CUSEND_ANNOTATION
   void operator()()
   {
-    new(result_ptr) typename std::pointer_traits<ResultPointer>::element_type{detail::invoke(f)};
+    new(result_ptr) typename std::pointer_traits<ResultPointer>::element_type{CUSEND_NAMESPACE::set_value(std::move(r))};
   }
 };
 
-template<class Function, class ResultPointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
+template<class Receiver, class ResultPointer,
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
          CUSEND_REQUIRES(std::is_trivially_copy_constructible<ResultPointer>::value)
         >
 CUSEND_ANNOTATION
-invoke_and_construct_at<Function,ResultPointer> make_invoke_and_construct_at(Function f, ResultPointer result_ptr)
+set_value_and_construct_at<Receiver,ResultPointer> make_set_value_and_construct_at(Receiver r, ResultPointer result_ptr)
 {
-  return {f, result_ptr};
+  return {r, result_ptr};
 }
 
 
@@ -330,20 +406,20 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class Function,
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
-             CUSEND_REQUIRES(detail::is_invocable<Function,T&&>::value),
-             class Result = detail::invoke_result_t<Function,T&&>,
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
+             class Result = set_value_t<R,T&&>,
              CUSEND_REQUIRES(std::is_void<Result>::value)
             >
     CUSEND_ANNOTATION
-    future<void,Executor> then(Function f) &&
+    CUSEND_NAMESPACE::future<void,Executor> then(R receiver) &&
     {
       // make the executor's stream wait for our event
       executor().stream_wait_for(super_t::event().native_handle());
 
-      // close over f and our state
-      auto closure = detail::make_indirect_invoke(f, value_.get());
+      // close over receiver and our state
+      auto closure = detail::make_indirect_set_value(receiver, value_.get());
 
       // execute closure on our executor
       executor().execute(closure);
@@ -359,21 +435,21 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class Function,
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
-             CUSEND_REQUIRES(detail::is_invocable<Function,T&&>::value),
-             class Result = detail::invoke_result_t<Function,T&&>,
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
+             class Result = set_value_t<R,T&&>,
              CUSEND_REQUIRES(!std::is_void<Result>::value),
              CUSEND_REQUIRES(std::is_same<Result,T>::value)
             >
     CUSEND_ANNOTATION
-    future<Result,Executor> then(Function f) &&
+    future<Result,Executor> then(R receiver) &&
     {
       // make the executor's stream wait for our event
       executor().stream_wait_for(super_t::event().native_handle());
 
-      // close over f and our state
-      auto closure = detail::make_inplace_indirect_invoke(f, value_.get());
+      // close over receiver and our state
+      auto closure = detail::make_inplace_indirect_set_value(receiver, value_.get());
 
       // execute closure on our executor
       executor().execute(closure);
@@ -386,25 +462,25 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class Function,
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
-             CUSEND_REQUIRES(detail::is_invocable<Function,T&&>::value),
-             class Result = detail::invoke_result_t<Function,T&&>,
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
+             class Result = set_value_t<R,T&&>,
              CUSEND_REQUIRES(!std::is_void<Result>::value),
              CUSEND_REQUIRES(!std::is_same<Result,T>::value)
             >
     CUSEND_ANNOTATION
-    future<Result,Executor> then(Function f) &&
+    future<Result,Executor> then(R receiver) &&
     {
       // make the executor's stream wait for our event
       executor().stream_wait_for(super_t::event().native_handle());
 
-      // create storage for the result of f
+      // create storage for the result of the receiver
       // XXX needs to be allocated
       cusend::memory::unique_ptr<Result> result = cusend::memory::make_unique<Result>(cusend::memory::uninitialized);
 
-      // close over f and state
-      auto closure = detail::make_indirect_invoke_and_construct_at(f, value_.get(), result.get());
+      // close over receiver and state
+      auto closure = detail::make_indirect_set_value_and_construct_at(receiver, value_.get(), result.get());
 
       // execute closure on our executor
       executor().execute(closure);
@@ -420,14 +496,15 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class Receiver,
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-             CUSEND_REQUIRES(is_receiver_of<Receiver,T&&>::value)
+    template<class Function,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
+             CUSEND_REQUIRES(detail::is_invocable<Function,T&&>::value),
+             class Result = detail::invoke_result_t<Function,T&&>
             >
     CUSEND_ANNOTATION
-    future<void,Executor> then(Receiver r) &&
+    future<Result,Executor> then(Function f) &&
     {
-      return std::move(*this).then(detail::make_call_set_value(r));
+      return std::move(*this).then(detail::as_receiver(std::forward<Function>(f)));
     }
 
 
@@ -482,19 +559,19 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class Function,
-             CUSEND_REQUIRES(detail::is_invocable<Function>::value),
-             CUSEND_REQUIRES(std::is_same<void, detail::invoke_result_t<Function>>::value),
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value)
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value),
+             CUSEND_REQUIRES(std::is_same<void, set_value_t<R>>::value)
             >
     CUSEND_ANNOTATION
-    future<void,Executor> then(Function f) &&
+    future<void,Executor> then(R receiver) &&
     {
       // make the executor's stream wait for our event
       executor().stream_wait_for(super_t::event().native_handle());
 
-      // execute f on our executor
-      executor().execute(f);
+      // call set_value on our executor
+      executor().execute(detail::make_call_set_value(receiver));
 
       // record our event on the executor's stream
       super_t::event().record_on(executor().stream());
@@ -503,24 +580,24 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class Function,
-             CUSEND_REQUIRES(detail::is_invocable<Function>::value),
-             CUSEND_REQUIRES(!std::is_same<void, detail::invoke_result_t<Function>>::value),
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
-             class Result = detail::invoke_result_t<Function> 
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value),
+             CUSEND_REQUIRES(!std::is_same<void, set_value_t<R>>::value),
+             class Result = set_value_t<R> 
             >
     CUSEND_ANNOTATION
-    future<Result,Executor> then(Function f) &&
+    future<Result,Executor> then(R receiver) &&
     {
       // make the executor's stream wait for our event
       executor().stream_wait_for(super_t::event().native_handle());
 
-      // create storage for the result of f
+      // create storage for the result of set_value
       // XXX needs to be allocated
       cusend::memory::unique_ptr<Result> result = cusend::memory::make_unique<Result>(cusend::memory::uninitialized);
 
-      // close over f and the result
-      auto closure = detail::make_invoke_and_construct_at(f, result.get());
+      // close over receiver and the result
+      auto closure = detail::make_set_value_and_construct_at(receiver, result.get());
 
       // execute the closure on our executor
       executor().execute(closure);
@@ -536,14 +613,15 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class Receiver,
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-             CUSEND_REQUIRES(is_receiver_of<Receiver>::value)
+    template<class Function,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
+             CUSEND_REQUIRES(detail::is_invocable<Function>::value),
+             class Result = detail::invoke_result_t<Function>
             >
     CUSEND_ANNOTATION
-    future<void> then(Receiver r) &&
+    future<Result,Executor> then(Function f) &&
     {
-      return std::move(*this).then(detail::make_call_set_value(r));
+      return std::move(*this).then(detail::as_receiver(std::forward<Function>(f)));
     }
 
 

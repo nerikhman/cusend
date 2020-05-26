@@ -33,6 +33,7 @@
 #include "../../detail/functional/invoke.hpp"
 #include "../../detail/type_traits/invoke_result.hpp"
 #include "../../detail/type_traits/is_invocable.hpp"
+#include "../../detail/terminate.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -46,30 +47,39 @@ template<class Invocable>
 class invocable_as_receiver
 {
   public:
+    CUSEND_EXEC_CHECK_DISABLE
     template<class OtherInvocable,
              CUSEND_REQUIRES(std::is_constructible<Invocable,OtherInvocable&&>::value)
             >
+    CUSEND_ANNOTATION
     invocable_as_receiver(OtherInvocable&& invocable)
       : invocable_{std::forward<OtherInvocable>(invocable)}
     {}
 
+    CUSEND_EXEC_CHECK_DISABLE
+    invocable_as_receiver(const invocable_as_receiver&) = default;
+
+    CUSEND_EXEC_CHECK_DISABLE
     invocable_as_receiver(invocable_as_receiver&&) = default;
 
     template<class... Args,
              CUSEND_REQUIRES(is_invocable<Invocable&&,Args&&...>::value),
              class Result = invoke_result_t<Invocable&&,Args&&...>
             >
+    CUSEND_ANNOTATION
     Result set_value(Args&&... args) &&
     {
       return detail::invoke(std::move(invocable_), std::forward<Args>(args)...);
     }
 
     template<class E>
+    CUSEND_ANNOTATION
     void set_error(E&&) && noexcept
     {
-      std::terminate();
+      detail::terminate();
     }
   
+    CUSEND_ANNOTATION
     void set_done() && noexcept {}
 
   private:
