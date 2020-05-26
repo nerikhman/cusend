@@ -49,7 +49,7 @@ using stream_member_function_t = decltype(std::declval<T>().stream());
 
 
 class stream_property : 
-  public detail::basic_executor_property<
+  detail::basic_executor_property<
     stream_property,
     true,  // requireable
     false, // not preferable
@@ -88,7 +88,12 @@ class stream_property :
 };
 
 
+// XXX something more like "associated_stream" might be better than reserving the name "stream"
+#ifndef __CUDA_ARCH__
 static constexpr stream_property stream{0};
+#else
+const __device__ stream_property stream{0};
+#endif
 
 
 CUDEX_NAMESPACE_CLOSE_BRACE
