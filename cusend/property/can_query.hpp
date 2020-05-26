@@ -26,11 +26,27 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "property/can_query.hpp"
-#include "property/is_applicable_property.hpp"
-#include "property/query.hpp"
+#include "../detail/type_traits/is_detected.hpp"
+#include "query.hpp"
 
-#include "detail/epilogue.hpp"
+
+CUSEND_NAMESPACE_OPEN_BRACE
+
+
+template<class T, class P>
+using can_query = detail::is_detected<query_t, T, P>;
+
+
+#if __cpp_variable_templates
+template<class T, class P>
+constexpr bool can_query_v = can_query<T,P>::value;
+#endif
+
+
+CUSEND_NAMESPACE_CLOSE_BRACE
+
+
+#include "../detail/epilogue.hpp"
 
