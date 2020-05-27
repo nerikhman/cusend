@@ -56,6 +56,14 @@
 #error CUSEND_REQUIRES_IMPL defined in client code.
 #endif
 
+#ifdef CUSEND_REQUIRES_DEF
+#error CUSEND_REQUIRES_DEF defined in client code.
+#endif
+
+#ifdef CUSEND_REQUIRES_DEF_IMPL
+#error CUSEND_REQUIRES_DEF_IMPL defined in client code.
+#endif
+
 
 void test_preprocessor() {}
 

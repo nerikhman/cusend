@@ -27,6 +27,12 @@
 
 #  define CUSEND_REQUIRES(...) CUSEND_REQUIRES_IMPL(CUSEND_MAKE_UNIQUE(__deduced_true), __VA_ARGS__)
 
+
+#  define CUSEND_REQUIRES_DEF_IMPL(unique_name, ...) bool unique_name, typename std::enable_if<(unique_name and __VA_ARGS__)>::type*
+
+#  define CUSEND_REQUIRES_DEF(...) CUSEND_REQUIRES_DEF_IMPL(CUSEND_MAKE_UNIQUE(__deduced_true), __VA_ARGS__)
+
+
 #elif defined(CUSEND_REQUIRES)
 
 #  ifdef CUSEND_CONCATENATE_IMPL
@@ -47,6 +53,14 @@
 
 #  ifdef CUSEND_REQUIRES
 #    undef CUSEND_REQUIRES
+#  endif
+
+#  ifdef CUSEND_REQUIRES_DEF_IMPL
+#    undef CUSEND_REQUIRES_DEF_IMPL
+#  endif
+
+#  ifdef CUSEND_REQUIRES_DEF
+#    undef CUSEND_REQUIRES_DEF
 #  endif
 
 #endif
