@@ -30,13 +30,17 @@
 
 #include <exception>
 #include <future>
+#include <type_traits>
 #include <utility>
 #include "../../discard_receiver.hpp"
 #include "../../execution/executor/callback_executor.hpp"
 #include "../../just.hpp"
 #include "../../memory/unique_ptr.hpp"
 #include "../future.hpp"
+#include "invocable.hpp"
 #include "invocable_as_receiver.hpp"
+#include "is_stream_executor.hpp"
+#include "then_execute.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -46,18 +50,19 @@ namespace detail
 {
 
 
-template<class T>
+template<class T, class Executor = execution::stream_executor>
 class host_future;
 
 
-template<class T>
-host_future<T> make_unready_host_future(const execution::callback_executor& ex, std::future<T>&& future);
+template<class T, class StreamExecutor>
+host_future<T,StreamExecutor> make_unready_host_future(const StreamExecutor& ex, const execution::callback_executor& waiting_executor, std::future<T>&& future);
 
 
-host_future<void> make_unready_host_future(const execution::callback_executor& ex, std::future<void>&& future);
+template<class StreamExecutor>
+host_future<void,StreamExecutor> make_unready_host_future(const StreamExecutor& ex, const execution::callback_executor& waiting_executor, std::future<void>&& future);
 
 
-template<class T>
+template<class T, class Executor>
 class host_future_base
 {
   public:
@@ -72,6 +77,7 @@ class host_future_base
     // explicitly define this ctor to avoid viral __host__ __device__ infection of defaulted functions
     host_future_base(host_future_base&& other)
       : executor_{std::move(other.executor_)},
+        waiting_executor_{std::move(other.waiting_executor_)},
         future_{std::move(other.future_)}
     {}
 
@@ -89,39 +95,47 @@ class host_future_base
     }
 
   protected:
-    host_future_base(const execution::callback_executor& executor, std::future<T>&& future)
-      : executor_{executor},
+    host_future_base(const Executor& ex, const execution::callback_executor& waiting_executor, std::future<T>&& future)
+      : executor_{ex},
+        waiting_executor_{waiting_executor},
         future_(std::move(future))
     {}
 
-    std::future<T>& get_future()
+    std::future<T> get_future()
     {
-      return future_;
+      return std::move(future_);
     }
 
-    const std::future<T>& get_future() const
+    bool valid() const
     {
-      return future_;
+      return future_.valid();
     }
 
-    const execution::callback_executor& executor() const
+    const Executor& executor() const
     {
       return executor_;
     }
 
+    const execution::callback_executor& waiting_executor() const
+    {
+      return waiting_executor_;
+    }
+
   private:
-    execution::callback_executor executor_;
+    Executor executor_;
+    execution::callback_executor waiting_executor_;
     std::future<T> future_;
 };
 
 
-template<class T>
-class host_future : public host_future_base<T>
+template<class T, class Executor>
+class host_future : public host_future_base<T,Executor>
 {
   private:
-    using super_t = host_future_base<T>;
+    using super_t = host_future_base<T,Executor>;
     using super_t::executor;
     using super_t::get_future;
+    using super_t::waiting_executor;
 
   public:
     CUSEND_EXEC_CHECK_DISABLE
@@ -135,83 +149,81 @@ class host_future : public host_future_base<T>
 
     bool valid() const
     {
-      return get_future().valid() and device_state_;
+      return super_t::valid() and device_state_;
     }
 
-    // this is the void-returning case of then(receiver)
-    // XXX take an executor on which to call the receiver
-    template<class R,
+    // this is the void-returning case of then(ex, receiver)
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(is_receiver_of<R&&,T&&>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
              class Result = set_value_t<R&&,T&&>,
              CUSEND_REQUIRES(std::is_void<Result>::value)
             >
-    CUSEND_NAMESPACE::future<void> then(R&& receiver) &&
+    CUSEND_NAMESPACE::future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
         throw std::future_error(std::future_errc::no_state);
       }
 
-      // XXX need to split the fut.get() from the receiver
-
-      // wait and call the receiver on a stream callback
-      executor().execute([fut = std::move(get_future()), receiver = std::move(receiver)] () mutable
+      // 1. on waiting_executor(), wait on the future and move the result into device memory
+      detail::event event = detail::then_execute(waiting_executor(), get_future(), [ptr = device_state_.get()](T&& value)
       {
-        try
-        {
-          CUSEND_NAMESPACE::set_value(std::move(receiver), fut.get());
-        }
-        catch(...)
-        {
-          CUSEND_NAMESPACE::set_error(std::move(receiver), std::current_exception());
-        }
+        memory::construct_at(ptr, std::move(value));
       });
 
-      return detail::make_unready_future(execution::stream_executor{executor().stream()}, event{executor().stream()});
+      // 2. then on ex, execute indirect_set_value
+      event = detail::then_execute(ex, std::move(event), detail::make_indirect_set_value(receiver, device_state_.get()));
+
+      // return a future corresponding to the event
+      return detail::make_unready_future(ex, std::move(event));
     }
 
 
-    // this is the T-returning case of then(receiver)
-    template<class R,
+    // this is the T-returning case of then(ex, receiver)
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(is_receiver_of<R&&,T&&>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
              class Result = set_value_t<R&&,T&&>,
              CUSEND_REQUIRES(!std::is_void<Result>::value),
              CUSEND_REQUIRES(std::is_same<Result,T>::value)
             >
-    CUSEND_NAMESPACE::future<T> then(R&& receiver) &&
+    CUSEND_NAMESPACE::future<T,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
         throw std::future_error(std::future_errc::no_state);
       }
 
-      // XXX need to split the fut.get() from the receiver
-
-      // wait and call the receiver on a stream callback
-      executor().execute([fut = std::move(get_future()), receiver = std::move(receiver), d_ptr = device_state_.get()] () mutable
+      // 1. on waiting_executor(), wait on the future and move the result into device memory
+      detail::event event = detail::then_execute(waiting_executor(), get_future(), [ptr = device_state_.get()](T&& value)
       {
-        try
-        {
-          memory::construct_at(d_ptr, CUSEND_NAMESPACE::set_value(std::move(receiver), fut.get()));
-        }
-        catch(...)
-        {
-          CUSEND_NAMESPACE::set_error(std::move(receiver), std::current_exception());
-        }
+        memory::construct_at(ptr, std::move(value));
       });
 
-      return detail::make_unready_future(execution::stream_executor{executor().stream()}, event{executor().stream()}, std::move(device_state_));
+      // 2. then on ex, call inplace_indirect_set_value
+      event = detail::then_execute(ex, std::move(event), detail::make_inplace_indirect_set_value(receiver, device_state_.get()));
+
+      // return a future corresponding to the event
+      return detail::make_unready_future(ex, std::move(event), std::move(device_state_));
     }
 
 
-    // this is the non-void-, non-T-returning case of then(receiver)
-    template<class R,
+    // this is the non-void-, non-T-returning case of then(ex, receiver)
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(is_receiver_of<R&&,T&&>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
              class Result = set_value_t<R&&,T&&>,
              CUSEND_REQUIRES(!std::is_void<Result>::value),
              CUSEND_REQUIRES(!std::is_same<Result,T>::value)
             >
-    CUSEND_NAMESPACE::future<Result> then(R&& receiver) &&
+    CUSEND_NAMESPACE::future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
@@ -219,44 +231,64 @@ class host_future : public host_future_base<T>
       }
 
       // create storage for result
-      memory::unique_ptr<Result> device_state = memory::make_unique<Result>(memory::uninitialized);
+      memory::unique_ptr<Result> result_state = memory::make_unique<Result>(memory::uninitialized);
 
-      // wait and call the receiver on a stream callback
-      executor().execute([fut = std::move(get_future()), receiver = std::move(receiver), d_ptr = device_state.get()] () mutable
+      // 1. on waiting_executor(), wait on the future and move the result into device memory
+      detail::event event = detail::then_execute(waiting_executor(), get_future(), [ptr = device_state_.get()](T&& value)
       {
-        try
-        {
-          memory::construct_at(d_ptr, CUSEND_NAMESPACE::set_value(std::move(receiver), fut.get()));
-        }
-        catch(...)
-        {
-          CUSEND_NAMESPACE::set_error(std::move(receiver), std::current_exception());
-        }
+        memory::construct_at(ptr, std::move(value));
       });
 
-      return detail::make_unready_future(execution::stream_executor{executor().stream()}, event{executor().stream()}, std::move(device_state));
-    }
+      // 2. then on ex, execute indirect_set_value_and_construct_at
+      event = detail::then_execute(ex, std::move(event), detail::make_indirect_set_value_and_construct_at(receiver, device_state_.get(), result_state.get()));
 
-
-    // this is the invocable case of then()
-    template<class F,
-             CUSEND_REQUIRES(is_invocable<F,T&&>::value),
-             class Result = invoke_result_t<F,T&&>
-            >
-    CUSEND_NAMESPACE::future<Result> then(F&& f) &&
-    {
-      return std::move(*this).then(detail::as_receiver(std::forward<F>(f)));
+      return detail::make_unready_future(ex, std::move(event), std::move(result_state));
     }
 
 
     template<class R,
-             CUSEND_REQUIRES(is_receiver_of<R&&,T&&>::value)
+             CUSEND_REQUIRES(is_receiver_of<R&&,T&&>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
+             class Result = set_value_t<R&&,T&&>
             >
-    auto connect(R&& r) &&
+    CUSEND_NAMESPACE::future<Result,Executor> then(R receiver) &&
     {
-      auto sender = CUSEND_NAMESPACE::just(std::move(*this)).then([r = std::move(r)](host_future&& self) mutable
+      return std::move(*this).then(executor(), receiver);
+    }
+
+
+    // this is the invocable case of then()
+    template<class StreamExecutor,
+             class F,
+             CUSEND_REQUIRES(is_invocable<F,T&&>::value),
+             class Result = invoke_result_t<F,T&&>
+            >
+    CUSEND_NAMESPACE::future<Result,StreamExecutor> then(const StreamExecutor& ex, F&& f) &&
+    {
+      return std::move(*this).then(ex, detail::as_receiver(std::forward<F>(f)));
+    }
+
+    template<class F,
+             CUSEND_REQUIRES(is_invocable<F,T&&>::value),
+             class Result = invoke_result_t<F,T&&>
+            >
+    CUSEND_NAMESPACE::future<Result,Executor> then(F&& f) &&
+    {
+      return std::move(*this).then(executor(), std::forward<F>(f));
+    }
+
+
+    template<class R,
+             CUSEND_REQUIRES(is_receiver_of<R&&,T&&>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value)
+            >
+    auto connect(R receiver) &&
+    {
+      static_assert(std::is_trivially_copyable<R>::value, "Error.");
+
+      auto sender = CUSEND_NAMESPACE::just(std::move(*this)).then([receiver = std::move(receiver)](host_future&& self) mutable
       {
-        std::move(self).then(std::move(r));
+        std::move(self).then(std::move(receiver));
       });
 
       return CUSEND_NAMESPACE::connect(std::move(sender), discard_receiver{});
@@ -264,11 +296,11 @@ class host_future : public host_future_base<T>
 
   private:
     // give friends access to private constructor
-    template<class U>
-    friend host_future<U> make_unready_host_future(const execution::callback_executor& ex, std::future<U>&& future);
+    template<class U, class E>
+    friend host_future<U,E> make_unready_host_future(const E& ex, const execution::callback_executor& waiting_executor, std::future<U>&& future);
 
-    host_future(execution::callback_executor executor, std::future<T>&& future)
-      : super_t{executor, std::move(future)},
+    host_future(const Executor& ex, execution::callback_executor waiting_executor, std::future<T>&& future)
+      : super_t{ex, waiting_executor, std::move(future)},
         // XXX need to pass an allocator here
         device_state_{memory::make_unique<T>(memory::uninitialized)}
     {}
@@ -277,70 +309,69 @@ class host_future : public host_future_base<T>
 };
 
 
-template<class T>
-host_future<T> make_unready_host_future(const execution::callback_executor& ex, std::future<T>&& future)
+template<class T, class StreamExecutor>
+host_future<T,StreamExecutor> make_unready_host_future(const StreamExecutor& ex, const execution::callback_executor& waiting_executor, std::future<T>&& future)
 {
-  return {ex, std::move(future)};
+  static_assert(is_stream_executor<StreamExecutor>::value, "make_unready_host_future: ex must be a stream executor.");
+  return {ex, waiting_executor, std::move(future)};
 }
 
 
-template<>
-class host_future<void> : public host_future_base<void>
+template<class Executor>
+class host_future<void,Executor> : public host_future_base<void,Executor>
 {
   private:
-    using super_t = host_future_base<void>;
+    using super_t = host_future_base<void,Executor>;
     using super_t::executor;
     using super_t::get_future;
+    using super_t::waiting_executor;
 
   public:
     host_future(host_future&&) = default;
 
     using super_t::wait;
     using super_t::get;
-
-    bool valid() const
-    {
-      return get_future().valid();
-    }
+    using super_t::valid;
 
     // this is the void-returning case of then(receiver)
-    template<class R,
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(is_receiver_of<R&&,void>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
              class Result = set_value_t<R&&>,
              CUSEND_REQUIRES(std::is_void<Result>::value)
             >
-    CUSEND_NAMESPACE::future<void> then(R&& receiver) &&
+    CUSEND_NAMESPACE::future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
         throw std::future_error(std::future_errc::no_state);
       }
 
-      // wait and call the function on a stream callback
-      executor().execute([fut = std::move(get_future()), receiver = std::move(receiver)] () mutable
+      // 1. on waiting_executor(), wait on the future
+      detail::event event = detail::then_execute(waiting_executor(), get_future(), []()
       {
-        try
-        {
-          fut.get();
-          CUSEND_NAMESPACE::set_value(std::move(receiver));
-        }
-        catch(...)
-        {
-          CUSEND_NAMESPACE::set_error(std::move(receiver), std::current_exception());
-        }
+        // no-op
       });
 
-      return detail::make_unready_future(execution::stream_executor{executor().stream()}, event{executor().stream()});
+      // 2. then on ex, execute call_set_value
+      event = detail::then_execute(ex, std::move(event), detail::make_call_set_value(receiver));
+
+      return detail::make_unready_future(ex, std::move(event));
     }
 
 
     // this is the non-void-returning case of then(receiver)
-    template<class R,
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(is_receiver_of<R&&,void>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
              class Result = set_value_t<R&&>,
              CUSEND_REQUIRES(!std::is_void<Result>::value)
             >
-    CUSEND_NAMESPACE::future<Result> then(R&& receiver) &&
+    CUSEND_NAMESPACE::future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
@@ -350,32 +381,48 @@ class host_future<void> : public host_future_base<void>
       // create storage for result
       memory::unique_ptr<Result> device_state = memory::make_unique<Result>(memory::uninitialized);
 
-      // wait and call the function on a stream callback
-      executor().execute([fut = std::move(get_future()), receiver = std::move(receiver), d_ptr = device_state.get()] () mutable
+      // 1. on waiting_executor(), wait on the future
+      detail::event event = detail::then_execute(waiting_executor(), get_future(), []()
       {
-        try
-        {
-          fut.get();
-          memory::construct_at(d_ptr, CUSEND_NAMESPACE::set_value(std::move(receiver)));
-        }
-        catch(...)
-        {
-          CUSEND_NAMESPACE::set_error(std::move(receiver), std::current_exception());
-        }
+        // no-op
       });
 
-      return detail::make_unready_future(execution::stream_executor{executor().stream()}, event{executor().stream()}, std::move(device_state));
+      // 2. then on ex, execute set_value_and_construct_at
+      event = detail::then_execute(ex, std::move(event), detail::make_set_value_and_construct_at(receiver, device_state.get()));
+
+      return detail::make_unready_future(ex, std::move(event), std::move(device_state));
+    }
+
+
+    template<class R,
+             CUSEND_REQUIRES(is_receiver_of<R&&,void>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
+             class Result = set_value_t<R&&>
+            >
+    CUSEND_NAMESPACE::future<Result,Executor> then(R receiver) &&
+    {
+      return std::move(*this).then(executor(), receiver);
     }
 
 
     // this is the invocable case of then()
+    template<class StreamExecutor,
+             class F,
+             CUSEND_REQUIRES(is_invocable<F>::value),
+             class Result = invoke_result_t<F>
+            >
+    CUSEND_NAMESPACE::future<Result,StreamExecutor> then(const StreamExecutor& ex, F&& f) &&
+    {
+      return std::move(*this).then(ex, detail::as_receiver(std::forward<F>(f)));
+    }
+
     template<class F,
              CUSEND_REQUIRES(is_invocable<F>::value),
              class Result = invoke_result_t<F>
             >
-    CUSEND_NAMESPACE::future<Result> then(F&& f) &&
+    CUSEND_NAMESPACE::future<Result,Executor> then(F&& f) &&
     {
-      return std::move(*this).then(detail::as_receiver(std::forward<F>(f)));
+      return std::move(*this).then(executor(), std::forward<F>(f));
     }
 
 
@@ -394,17 +441,20 @@ class host_future<void> : public host_future_base<void>
 
   private:
     // give friends access to private constructor
-    friend host_future<void> make_unready_host_future(const execution::callback_executor& ex, std::future<void>&& future);
+    template<class E>
+    friend host_future<void,E> make_unready_host_future(const E& ex, const execution::callback_executor& waiting_executor, std::future<void>&& future);
 
-    host_future(execution::callback_executor executor, std::future<void>&& future)
-      : super_t{executor, std::move(future)}
+    host_future(const Executor& ex, execution::callback_executor waiting_executor, std::future<void>&& future)
+      : super_t{ex, waiting_executor, std::move(future)}
     {}
 };
 
 
-inline host_future<void> make_unready_host_future(const execution::callback_executor& ex, std::future<void>&& future)
+template<class StreamExecutor>
+inline host_future<void,StreamExecutor> make_unready_host_future(const StreamExecutor& ex, const execution::callback_executor& waiting_executor, std::future<void>&& future)
 {
-  return {ex, std::move(future)};
+  static_assert(is_stream_executor<StreamExecutor>::value, "make_unready_host_future: ex must be a stream executor.");
+  return {ex, waiting_executor, std::move(future)};
 }
 
 

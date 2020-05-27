@@ -36,13 +36,14 @@
 #include "../detail/type_traits/is_invocable.hpp"
 #include "../detail/type_traits/remove_cvref.hpp"
 #include "../execution/executor/stream_executor.hpp"
-#include "../execution/property/stream.hpp"
 #include "../memory/unique_ptr.hpp"
 #include "../sender/set_value.hpp"
 #include "../sender/is_receiver.hpp"
 #include "../sender/is_receiver_of.hpp"
+#include "detail/invocable.hpp"
 #include "detail/invocable_as_receiver.hpp"
 #include "detail/is_stream_executor.hpp"
+#include "detail/stream_of.hpp"
 #include "detail/stream_wait_for.hpp"
 
 
@@ -51,105 +52,6 @@ CUSEND_NAMESPACE_OPEN_BRACE
 
 namespace detail
 {
-
-
-template<class Receiver, class ValuePointer>
-struct indirect_set_value
-{
-  Receiver r;
-  ValuePointer value_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-    CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-  }
-};
-
-template<class Receiver, class ValuePointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
-        >
-CUSEND_ANNOTATION
-indirect_set_value<Receiver,ValuePointer> make_indirect_set_value(Receiver r, ValuePointer value_ptr)
-{
-  return {r, value_ptr};
-}
-
-
-template<class Receiver, class ValuePointer>
-struct inplace_indirect_set_value
-{
-  Receiver r;
-  ValuePointer value_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-    *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-  }
-};
-
-template<class Receiver, class ValuePointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
-        >
-CUSEND_ANNOTATION
-inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_value(Receiver r, ValuePointer value_ptr)
-{
-  return {r, value_ptr};
-}
-
-
-template<class Receiver, class ValuePointer, class ResultPointer>
-struct indirect_set_value_and_construct_at
-{
-  Receiver r;
-  ValuePointer value_ptr;
-  ResultPointer result_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-    new(result_ptr) typename std::pointer_traits<ResultPointer>::element_type{CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr))};
-  }
-};
-
-
-template<class Receiver, class ValuePointer, class ResultPointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ResultPointer>::value)
-        >
-CUSEND_ANNOTATION
-indirect_set_value_and_construct_at<Receiver,ValuePointer,ResultPointer> make_indirect_set_value_and_construct_at(Receiver r, ValuePointer value_ptr, ResultPointer result_ptr)
-{
-  return {r, value_ptr, result_ptr};
-}
-
-
-template<class Receiver, class ResultPointer>
-struct set_value_and_construct_at
-{
-  Receiver r;
-  ResultPointer result_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-    new(result_ptr) typename std::pointer_traits<ResultPointer>::element_type{CUSEND_NAMESPACE::set_value(std::move(r))};
-  }
-};
-
-template<class Receiver, class ResultPointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ResultPointer>::value)
-        >
-CUSEND_ANNOTATION
-set_value_and_construct_at<Receiver,ResultPointer> make_set_value_and_construct_at(Receiver r, ResultPointer result_ptr)
-{
-  return {r, result_ptr};
-}
 
 
 template<class Executor>
@@ -248,38 +150,14 @@ namespace detail
 {
 
 
+template<class StreamExecutor>
 CUSEND_ANNOTATION
-inline future<void> make_unready_future(const execution::stream_executor& ex, event&& e);
+future<void, StreamExecutor> make_unready_future(const StreamExecutor& ex, event&& e);
 
 
-template<class T>
+template<class T, class StreamExecutor>
 CUSEND_ANNOTATION
-future<T> make_unready_future(const execution::stream_executor& ex, event&& e, memory::unique_ptr<T>&& value);
-
-
-template<class Receiver>
-struct call_set_value
-{
-  Receiver r;
-
-  template<class... Args>
-  CUSEND_ANNOTATION
-  void operator()(Args&&... args)
-  {
-    CUSEND_NAMESPACE::set_value(std::move(r), std::forward<Args>(args)...);
-  }
-};
-
-
-template<class Receiver,
-         CUSEND_REQUIRES(is_receiver<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value)
-        >
-CUSEND_ANNOTATION
-call_set_value<remove_cvref_t<Receiver>> make_call_set_value(Receiver r)
-{
-  return {r};
-}
+future<T,StreamExecutor> make_unready_future(const StreamExecutor& ex, event&& e, memory::unique_ptr<T>&& value);
 
 
 } // end detail
@@ -346,7 +224,7 @@ class future : private detail::future_base<Executor>
     CUSEND_NAMESPACE::future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       // get the executor's stream
-      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
+      cudaStream_t stream = detail::stream_of(ex);
 
       // make the stream wait for our event
       detail::stream_wait_for(stream, super_t::event().native_handle());
@@ -381,7 +259,7 @@ class future : private detail::future_base<Executor>
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       // get the executor's stream
-      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
+      cudaStream_t stream = detail::stream_of(ex);
 
       // make the stream wait for our event
       detail::stream_wait_for(stream, super_t::event().native_handle());
@@ -416,7 +294,7 @@ class future : private detail::future_base<Executor>
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       // get the executor's stream
-      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
+      cudaStream_t stream = detail::stream_of(ex);
 
       // make the executor's stream wait for our event
       detail::stream_wait_for(stream, super_t::event().native_handle());
@@ -482,8 +360,8 @@ class future : private detail::future_base<Executor>
 
   private:
     // give this friend access to private contructors
-    template<class U>
-    friend future<U> detail::make_unready_future(const execution::stream_executor& ex, detail::event&& event, memory::unique_ptr<U>&& value);
+    template<class U, class E>
+    friend future<U,E> detail::make_unready_future(const E& ex, detail::event&& event, memory::unique_ptr<U>&& value);
 
     CUSEND_ANNOTATION
     future(const Executor& executor, bool valid, detail::event&& event, cusend::memory::unique_ptr<T>&& value)
@@ -542,7 +420,7 @@ class future<void,Executor> : private detail::future_base<Executor>
     future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       // get the executor's stream
-      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
+      cudaStream_t stream = detail::stream_of(ex);
 
       // make the stream wait for our event
       detail::stream_wait_for(stream, super_t::event().native_handle());
@@ -573,7 +451,7 @@ class future<void,Executor> : private detail::future_base<Executor>
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       // get the executor's stream
-      cudaStream_t stream = CUSEND_NAMESPACE::query(ex, CUSEND_NAMESPACE::execution::stream);
+      cudaStream_t stream = detail::stream_of(ex);
 
       // make the stream wait for our event
       detail::stream_wait_for(stream, super_t::event().native_handle());
@@ -641,7 +519,8 @@ class future<void,Executor> : private detail::future_base<Executor>
     // give these friends access to private contructors
     friend future<void> make_ready_future();
 
-    friend future<void> detail::make_unready_future(const execution::stream_executor& ex, detail::event&& event);
+    template<class E>
+    friend future<void,E> detail::make_unready_future(const E& ex, detail::event&& event);
 
     CUSEND_ANNOTATION
     future(const Executor& executor, bool valid, detail::event&& event)
@@ -666,16 +545,18 @@ namespace detail
 {
 
 
+
+template<class StreamExecutor>
 CUSEND_ANNOTATION
-inline future<void> make_unready_future(const execution::stream_executor& ex, event&& e)
+future<void,StreamExecutor> make_unready_future(const StreamExecutor& ex, event&& e)
 {
   return {ex, true, std::move(e)};
 }
 
 
-template<class T>
+template<class T, class StreamExecutor>
 CUSEND_ANNOTATION
-future<T> make_unready_future(const execution::stream_executor& ex, event&& e, memory::unique_ptr<T>&& value)
+future<T,StreamExecutor> make_unready_future(const StreamExecutor& ex, event&& e, memory::unique_ptr<T>&& value)
 {
   return {ex, true, std::move(e), std::move(value)};
 }

@@ -31,6 +31,8 @@
 #include <utility>
 #include "../execution/executor/callback_executor.hpp"
 #include "detail/host_future.hpp"
+#include "detail/is_stream_executor.hpp"
+#include "detail/stream_of.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -40,15 +42,8 @@ template<class T>
 class host_promise
 {
   public:
-    // XXX receive an allocator
-    explicit host_promise(execution::callback_executor callback_ex)
-      : callback_ex_{callback_ex},
-        promise_{}
-    {}
-
-    host_promise()
-      : host_promise{execution::callback_executor{}}
-    {}
+    CUSEND_EXEC_CHECK_DISABLE
+    host_promise() = default;
 
     CUSEND_EXEC_CHECK_DISABLE
     host_promise(host_promise&&) = default;
@@ -94,16 +89,28 @@ class host_promise
       std::move(*this).set_error(std::make_exception_ptr(error));
     }
 
-    // XXX this should take two executors
-    // 1. a callback_executor for waiting and
-    // 2. a stream_executor for executing the next thing
-    detail::host_future<T> get_future()
+    template<class StreamExecutor,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+            >
+    detail::host_future<T,StreamExecutor> get_future(const StreamExecutor& executor, const execution::callback_executor& waiting_executor)
     {
-      return detail::make_unready_host_future(callback_ex_, promise_.get_future());
+      return detail::make_unready_host_future(executor, waiting_executor, promise_.get_future());
+    }
+
+    template<class StreamExecutor,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+            >
+    detail::host_future<T,StreamExecutor> get_future(const StreamExecutor& executor)
+    {
+      return this->get_future(executor, execution::callback_executor{detail::stream_of(executor)});
+    }
+
+    detail::host_future<T,execution::stream_executor> get_future()
+    {
+      return this->get_future(execution::stream_executor{});
     }
 
   private:
-    execution::callback_executor callback_ex_;
     std::promise<T> promise_;
 };
 

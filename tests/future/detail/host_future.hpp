@@ -95,13 +95,14 @@ void test_get()
 // these tests exercise each case of .then
 
 
-void test_then_void_to_void()
+template<class StreamExecutor>
+void test_then_void_to_void(StreamExecutor ex)
 {
   // then void -> void
   auto f1 = make_ready_host_future();
   assert(f1.valid());
 
-  auto f2 = std::move(f1).then([]{ return; });
+  auto f2 = std::move(f1).then(ex, [] __host__ __device__ { return; });
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -114,13 +115,14 @@ void test_then_void_to_void()
 }
 
 
-void test_then_int_to_void()
+template<class StreamExecutor>
+void test_then_int_to_void(StreamExecutor ex)
 {
   // then int -> void
   auto f1 = make_ready_host_future(7);
   assert(f1.valid());
 
-  auto f2 = std::move(f1).then([](int){return;});
+  auto f2 = std::move(f1).then(ex, [] __host__ __device__ (int){return;});
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -133,12 +135,13 @@ void test_then_int_to_void()
 }
 
 
-void test_then_void_to_int()
+template<class StreamExecutor>
+void test_then_void_to_int(StreamExecutor ex)
 {
   // then void -> int
   auto f1 = make_ready_host_future();
 
-  auto f2 = std::move(f1).then([]{return 13;});
+  auto f2 = std::move(f1).then(ex, [] __host__ __device__ {return 13;});
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -151,12 +154,13 @@ void test_then_void_to_int()
 }
 
 
-void test_then_int_to_int()
+template<class StreamExecutor>
+void test_then_int_to_int(StreamExecutor ex)
 {
   // then int -> int
   auto f1 = make_ready_host_future(7);
 
-  auto f2 = std::move(f1).then([] __host__ __device__ (int arg) { return arg + 6; });
+  auto f2 = std::move(f1).then(ex, [] __host__ __device__ (int arg) { return arg + 6; });
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -169,12 +173,13 @@ void test_then_int_to_int()
 }
 
 
-void test_then_int_to_float()
+template<class StreamExecutor>
+void test_then_int_to_float(StreamExecutor ex)
 {
   // then int -> float
   auto f1 = make_ready_host_future(7);
 
-  auto f2 = std::move(f1).then([](int arg){return static_cast<float>(arg + 6);});
+  auto f2 = std::move(f1).then(ex, [] __host__ __device__ (int arg){return static_cast<float>(arg + 6);});
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -187,74 +192,87 @@ void test_then_int_to_float()
 }
 
 
-struct receive_at
+struct my_receiver
 {
-  int* address;
-
-  void set_value() && noexcept
+  __host__ __device__
+  bool set_value() && noexcept
   {
-    *address = true;
+    return true;
   }
 
-  void set_value(int value) && noexcept
+  __host__ __device__
+  int set_value(int value) && noexcept
   {
-    std::cout << "receive_at::set_value: received " << value << std::endl;
-    *address = value;
+    return value;
   }
 
   template<class E>
+  __host__ __device__
   void set_error(E&&) && noexcept {}
 
+  __host__ __device__
   void set_done() && noexcept {}
 };
 
 
-void test_then_receiver()
+template<class StreamExecutor>
+void test_then_receiver(StreamExecutor ex)
 {
   {
     // receive int
-
     int expected = 7;
     auto f1 = make_ready_host_future(expected);
 
-    int result = -1;
-    auto f2 = std::move(f1).then(receive_at{&result});
+    auto f2 = std::move(f1).then(ex, my_receiver{});
 
     assert(!f1.valid());
     assert(f2.valid());
     f2.wait();
 
     assert(f2.is_ready());
-    assert(expected == result);
+    assert(expected == std::move(f2).get());
   }
 
   {
     // receive void
     auto f1 = make_ready_host_future();
 
-    int result = false;
-    auto f2 = std::move(f1).then(receive_at{&result});
+    auto f2 = std::move(f1).then(ex, my_receiver{});
 
     assert(!f1.valid());
     assert(f2.valid());
     f2.wait();
 
     assert(f2.is_ready());
-    assert(result);
+    assert(std::move(f2).get());
   }
+}
+
+
+template<class StreamExecutor>
+void test(StreamExecutor ex)
+{
+  test_move_construction();
+  test_move_assignment();
+  test_get();
+
+  test_then_void_to_void(ex);
+  test_then_int_to_void(ex);
+  test_then_void_to_int(ex);
+  test_then_int_to_int(ex);
+  test_then_int_to_float(ex);
+
+  test_then_receiver(ex);
 }
 
 
 void test_host_future()
 {
-  test_move_construction();
-  test_move_assignment();
-  test_get();
-  test_then_void_to_void();
-  test_then_int_to_void();
-  test_then_void_to_int();
-  test_then_int_to_int();
-  test_then_int_to_float();
-  test_then_receiver();
+#ifdef __CUDACC__
+  // stream_executor launches kernels, so only test it with a CUDA compiler
+  test(ns::execution::stream_executor{});
+#endif
+
+  test(ns::execution::callback_executor{});
 }
 
