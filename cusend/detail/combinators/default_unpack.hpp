@@ -114,10 +114,6 @@ class unpack_receiver
       : receiver_(std::forward<R>(receiver))
     {}
 
-    CUSEND_EXEC_CHECK_DISABLE
-    CUSEND_ANNOTATION
-    ~unpack_receiver() noexcept {}
-
     template<class Tuple,
              CUSEND_REQUIRES(is_receiver_of_unpacked_tuple<Receiver&&, Tuple&&>::value)
             >
