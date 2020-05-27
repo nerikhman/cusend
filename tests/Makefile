@@ -55,3 +55,9 @@ $(DIRECTORIES):
 # the all target tests absolutely everything
 all: test $(DIRECTORIES)
 
+# the all_clean target cleans absolutely everything
+all_clean: clean
+	for dir in $(DIRECTORIES); do \
+	  $(MAKE) --directory=$$dir $@; \
+	 done
+
