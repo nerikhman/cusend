@@ -32,6 +32,7 @@
 #include <utility>
 #include "detail/combinators/on/dispatch_on.hpp"
 #include "detail/combinators/then/dispatch_then.hpp"
+#include "detail/combinators/via/dispatch_via.hpp"
 #include "sender/connect.hpp"
 #include "sender/is_sender.hpp"
 #include "sender/sender_traits.hpp"
@@ -117,6 +118,17 @@ class chaining_sender
       on(const Executor& ex) &&
     {
       return {detail::dispatch_on(std::move(sender_), ex)};
+    }
+
+
+    template<class Executor,
+             CUSEND_REQUIRES(detail::can_dispatch_via<Sender&&,const Executor&>::value)
+            >
+    CUSEND_ANNOTATION
+    chaining_sender<detail::dispatch_via_t<Sender&&,const Executor&>>
+      via(const Executor& ex) &&
+    {
+      return {detail::dispatch_via(std::move(sender_), ex)};
     }
 };
 
