@@ -70,15 +70,13 @@ class then_receiver
     {}
 
     CUSEND_EXEC_CHECK_DISABLE
-    CUSEND_ANNOTATION
-    then_receiver(then_receiver&& other) noexcept
-      : receiver_{std::move(other.receiver_)},
-        f_{std::move(other.f_)}
-    {}
+    then_receiver(const then_receiver&) = default;
 
     CUSEND_EXEC_CHECK_DISABLE
-    CUSEND_ANNOTATION
-    ~then_receiver() noexcept {}
+    then_receiver(then_receiver&&) = default;
+
+    CUSEND_EXEC_CHECK_DISABLE
+    ~then_receiver() = default;
 
 
     // Function returns void case
