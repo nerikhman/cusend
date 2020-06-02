@@ -70,6 +70,9 @@ class closure
 
     closure(const closure&) = default;
 
+
+    closure(closure&&) = default;
+
     
     // indirect use of Invocable via a defaulted parameter enables SFINAE in CUSEND_REQUIRES
     template<class I = Invocable, CUSEND_REQUIRES(is_applicable<I&,tuple_type&>::value)>
