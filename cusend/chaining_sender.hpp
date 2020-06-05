@@ -33,6 +33,7 @@
 #include "detail/combinators/on/dispatch_on.hpp"
 #include "detail/combinators/then/dispatch_then.hpp"
 #include "detail/combinators/via/dispatch_via.hpp"
+#include "get_executor.hpp"
 #include "sender/connect.hpp"
 #include "sender/is_sender.hpp"
 #include "sender/sender_traits.hpp"
@@ -89,6 +90,27 @@ class chaining_sender
     }
 
 
+    // the use of a defaulted template parameter allows SFINAE to kick in
+    template<class S = Sender,
+             CUSEND_REQUIRES(detail::is_detected<get_executor_t,S>::value)>
+    CUSEND_ANNOTATION
+    get_executor_t<S> get_executor() const
+    {
+      return CUSEND_NAMESPACE::get_executor(sender_);
+    }
+
+
+    template<class Executor,
+             CUSEND_REQUIRES(detail::can_dispatch_on<Sender&&,const Executor&>::value)
+            >
+    CUSEND_ANNOTATION
+    chaining_sender<detail::dispatch_on_t<Sender&&,const Executor&>>
+      on(const Executor& ex) &&
+    {
+      return {detail::dispatch_on(std::move(sender_), ex)};
+    }
+
+
     template<class Receiver,
              CUSEND_REQUIRES(is_sender_to<Sender&&,Receiver&&>::value)
             >
@@ -107,17 +129,6 @@ class chaining_sender
       then(Function&& continuation) &&
     {
       return {detail::dispatch_then(std::move(sender_), std::forward<Function>(continuation))};
-    }
-
-
-    template<class Executor,
-             CUSEND_REQUIRES(detail::can_dispatch_on<Sender&&,const Executor&>::value)
-            >
-    CUSEND_ANNOTATION
-    chaining_sender<detail::dispatch_on_t<Sender&&,const Executor&>>
-      on(const Executor& ex) &&
-    {
-      return {detail::dispatch_on(std::move(sender_), ex)};
     }
 
 
