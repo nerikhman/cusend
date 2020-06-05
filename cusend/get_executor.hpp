@@ -75,6 +75,10 @@ const __device__ detail::get_executor_customization_point get_executor;
 } // end anonymous namespace
 
 
+template<class T>
+using get_executor_t = decltype(CUSEND_NAMESPACE::get_executor(std::declval<T>()));
+
+
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
