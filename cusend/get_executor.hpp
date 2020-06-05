@@ -29,8 +29,8 @@
 #include "detail/prologue.hpp"
 
 #include <utility>
-#include "detail/dispatch_get_executor.hpp"
 #include "detail/static_const.hpp"
+#include "detail/type_traits/is_detected.hpp"
 #include "execution/executor/is_executor.hpp"
 
 
@@ -41,18 +41,49 @@ namespace detail
 {
 
 
+template<class T>
+using executor_member_function_t = decltype(std::declval<T>().executor());
+
+template<class T>
+using has_executor_member_function = is_detected<executor_member_function_t, T>;
+
+
+template<class T>
+using get_executor_free_function_t = decltype(get_executor(std::declval<T>()));
+
+template<class T>
+using has_get_executor_free_function = is_detected<get_executor_free_function_t, T>;
+
+
 // this is the type of get_executor
-struct get_executor_customization_point
+struct dispatch_get_executor
 {
+  // case 1: arg.executor() exists
   CUSEND_EXEC_CHECK_DISABLE
   template<class T,
-           CUSEND_REQUIRES(can_dispatch_get_executor<T&&>::value),
-           CUSEND_REQUIRES(execution::is_executor<dispatch_get_executor_t<T&&>>::value)
+           CUSEND_REQUIRES(has_executor_member_function<T&&>::value),
+           CUSEND_REQUIRES(execution::is_executor<executor_member_function_t<T&&>>::value)
           >
   CUSEND_ANNOTATION
-  constexpr dispatch_get_executor_t<T&&> operator()(T&& arg) const
+  constexpr executor_member_function_t<T&&> operator()(T&& arg) const
   {
-    return detail::dispatch_get_executor(std::forward<T>(arg));
+    return std::forward<T>(arg).executor();
+  }
+
+
+  // case 2: get_executor(arg) exists
+  // we use "get_executor" when calling the free function in order to avoid
+  // colliding with the concept named "executor"
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class T,
+           CUSEND_REQUIRES(!has_executor_member_function<T&&>::value),
+           CUSEND_REQUIRES(has_get_executor_free_function<T&&>::value),
+           CUSEND_REQUIRES(execution::is_executor<get_executor_free_function_t<T&&>>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr get_executor_free_function_t<T&&> operator()(T&& arg) const
+  {
+    return get_executor(std::forward<T>(arg));
   }
 };
 
@@ -66,9 +97,9 @@ namespace
 
 // define the get_executor customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& get_executor = detail::static_const<detail::get_executor_customization_point>::value;
+constexpr auto const& get_executor = detail::static_const<detail::dispatch_get_executor>::value;
 #else
-const __device__ detail::get_executor_customization_point get_executor;
+const __device__ detail::dispatch_get_executor get_executor;
 #endif
 
 
