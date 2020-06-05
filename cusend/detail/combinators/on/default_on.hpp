@@ -65,7 +65,7 @@ class on_sender : public sender_base
     on_sender(on_sender&&) = default;
 
     CUSEND_ANNOTATION
-    const Executor& get_executor() const
+    const Executor& executor() const
     {
       return executor_;
     }

@@ -41,10 +41,10 @@ namespace detail
 
 
 template<class T>
-using get_executor_member_function_t = decltype(std::declval<T>().get_executor());
+using executor_member_function_t = decltype(std::declval<T>().executor());
 
 template<class T>
-using has_get_executor_member_function = is_detected<get_executor_member_function_t, T>;
+using has_executor_member_function = is_detected<executor_member_function_t, T>;
 
 
 template<class T>
@@ -54,21 +54,23 @@ template<class T>
 using has_get_executor_free_function = is_detected<get_executor_free_function_t, T>;
 
 
-// dispatch case 1: arg.get_executor() exists
+// dispatch case 1: arg.executor() exists
 template<class T,
-         CUSEND_REQUIRES(has_get_executor_member_function<T&&>::value)
+         CUSEND_REQUIRES(has_executor_member_function<T&&>::value)
         >
 CUSEND_ANNOTATION
 auto dispatch_get_executor(T&& arg)
-  -> decltype(std::forward<T>(arg).get_executor())
+  -> decltype(std::forward<T>(arg).executor())
 {
-  return std::forward<T>(arg).get_executor();
+  return std::forward<T>(arg).executor();
 }
 
 
 // dispatch case 2: get_executor(arg) exists
+// We use "get_executor" when calling the free function in order to avoid
+// colliding with the concept named "executor"
 template<class T,
-         CUSEND_REQUIRES(!has_get_executor_member_function<T&&>::value),
+         CUSEND_REQUIRES(!has_executor_member_function<T&&>::value),
          CUSEND_REQUIRES(has_get_executor_free_function<T&&>::value)
         >
 CUSEND_ANNOTATION

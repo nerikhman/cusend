@@ -94,7 +94,7 @@ class chaining_sender
     template<class S = Sender,
              CUSEND_REQUIRES(detail::is_detected<get_executor_t,S>::value)>
     CUSEND_ANNOTATION
-    get_executor_t<S> get_executor() const
+    get_executor_t<S> executor() const
     {
       return CUSEND_NAMESPACE::get_executor(sender_);
     }

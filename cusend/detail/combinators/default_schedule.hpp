@@ -68,7 +68,7 @@ class executor_as_sender
 
 
     CUSEND_ANNOTATION
-    const Executor& get_executor() const
+    const Executor& executor() const
     {
       return executor_;
     }

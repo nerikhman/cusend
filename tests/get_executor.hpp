@@ -13,10 +13,10 @@
 #endif
 
 
-struct has_get_executor_member_function
+struct has_executor_member_function
 {
   __host__ __device__
-  cusend::execution::inline_executor get_executor() const
+  cusend::execution::inline_executor executor() const
   {
     return {};
   }
@@ -94,13 +94,13 @@ void test(T&& arg)
 void test_get_executor()
 {
   test(has_get_executor_free_function{});
-  test(has_get_executor_member_function{});
+  test(has_executor_member_function{});
 
 #ifdef __CUDACC__
   device_invoke([] __device__ ()
   {
     test(has_get_executor_free_function{});
-    test(has_get_executor_member_function{});
+    test(has_executor_member_function{});
   });
 #endif
 }
