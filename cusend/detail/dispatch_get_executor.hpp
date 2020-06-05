@@ -26,8 +26,9 @@
 
 #pragma once
 
-#include "type_traits/is_detected.hpp"
 #include "prologue.hpp"
+
+#include "type_traits/is_detected.hpp"
 
 #include <utility>
 
