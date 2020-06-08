@@ -37,6 +37,7 @@
 #include "../../../sender/sender_base.hpp"
 #include "../../../sender/submit.hpp"
 #include "../../functional/closure.hpp"
+#include "../../functional/move_and_invoke.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -87,7 +88,8 @@ class on_sender : public sender_base
         void start() &&
         {
           // create a function that will submit the sender to the receiver and then execute that function on our executor
-          CUSEND_NAMESPACE::execution::execute(executor_, detail::bind(CUSEND_NAMESPACE::submit, std::move(sender_), std::move(receiver_)));
+          // binding with move_and_invoke ensures that the sender and receiver are moved() into submit() when it is called
+          CUSEND_NAMESPACE::execution::execute(executor_, detail::bind(move_and_invoke{}, CUSEND_NAMESPACE::submit, std::move(sender_), std::move(receiver_)));
         }
 
       private:
