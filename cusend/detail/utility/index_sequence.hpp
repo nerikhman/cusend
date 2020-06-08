@@ -67,6 +67,10 @@ template<std::size_t N>
 using make_index_sequence = typename make_index_sequence_impl<0, index_sequence<>, N>::type;
 
 
+template<class... Types>
+using index_sequence_for = make_index_sequence<sizeof...(Types)>;
+
+
 } // end detail
 
 
