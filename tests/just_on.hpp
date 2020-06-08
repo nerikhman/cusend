@@ -1,9 +1,14 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/execution/executor/inline_executor.hpp>
+#include <cusend/just.hpp>
 #include <cusend/just_on.hpp>
 #include <exception>
 #include <utility>
+
+
+namespace ns = cusend;
+
 
 #ifndef __CUDACC__
 #define __host__
@@ -73,23 +78,23 @@ __host__ __device__
 void test_is_typed_sender(Executor ex)
 {
   {
-    auto result = cusend::just_on(ex);
-    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+    auto result = ns::just_on(ex);
+    static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = cusend::just_on(ex,1);
-    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+    auto result = ns::just_on(ex,1);
+    static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = cusend::just_on(ex,1,2);
-    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+    auto result = ns::just_on(ex,1,2);
+    static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = cusend::just_on(ex,1,2,3);
-    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+    auto result = ns::just_on(ex,1,2,3);
+    static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 }
 
@@ -103,7 +108,7 @@ void test_copyable(Executor ex)
 
   my_receiver r;
 
-  cusend::just_on(ex, expected).connect(std::move(r)).start();
+  ns::just_on(ex, expected).connect(std::move(r)).start();
 
   assert(expected == result1);
 }
@@ -118,7 +123,7 @@ void test_move_only(Executor ex)
 
   my_receiver r;
 
-  cusend::just_on(ex, move_only{expected}).connect(std::move(r)).start();
+  ns::just_on(ex, move_only{expected}).connect(std::move(r)).start();
 
   assert(expected == result1);
 }
@@ -137,7 +142,7 @@ void test_variadic(Executor ex)
 
     my_receiver r;
 
-    cusend::just_on(ex).connect(std::move(r)).start();
+    ns::just_on(ex).connect(std::move(r)).start();
 
     assert(true == result1);
   }
@@ -147,7 +152,7 @@ void test_variadic(Executor ex)
 
     my_receiver r;
 
-    cusend::just_on(ex, expected1).connect(std::move(r)).start();
+    ns::just_on(ex, expected1).connect(std::move(r)).start();
 
     assert(expected1 == result1);
   }
@@ -158,7 +163,7 @@ void test_variadic(Executor ex)
 
     my_receiver r;
 
-    cusend::just_on(ex, expected1, expected2).connect(std::move(r)).start();
+    ns::just_on(ex, expected1, expected2).connect(std::move(r)).start();
 
     assert(expected1 == result1);
     assert(expected2 == result2);
@@ -171,7 +176,7 @@ void test_variadic(Executor ex)
 
     my_receiver r;
 
-    cusend::just_on(ex, expected1, expected2, expected3).connect(std::move(r)).start();
+    ns::just_on(ex, expected1, expected2, expected3).connect(std::move(r)).start();
 
     assert(expected1 == result1);
     assert(expected2 == result2);
@@ -180,27 +185,71 @@ void test_variadic(Executor ex)
 }
 
 
-struct my_executor_with_just_on_member_function : cusend::execution::inline_executor
+struct my_executor_with_just_on_member_function : ns::execution::inline_executor
 {
   template<class... Types>
   __host__ __device__
   auto just_on(Types&&... values) const
-    -> decltype(cusend::just_on(cusend::execution::inline_executor(), std::forward<Types>(values)...))
+    -> decltype(ns::just_on(ns::execution::inline_executor(), std::forward<Types>(values)...))
   {
-    return cusend::just_on(cusend::execution::inline_executor(), std::forward<Types>(values)...);
+    return ns::just_on(ns::execution::inline_executor(), std::forward<Types>(values)...);
   }
 };
 
 
-struct my_executor_with_just_on_free_function : cusend::execution::inline_executor {};
-
+struct my_executor_with_just_on_free_function : ns::execution::inline_executor {};
 
 template<class... Types>
 __host__ __device__
 auto just_on(my_executor_with_just_on_free_function, Types&&... values)
-  -> decltype(cusend::just_on(cusend::execution::inline_executor{}, std::forward<Types>(values)...))
+  -> decltype(ns::just_on(ns::execution::inline_executor{}, std::forward<Types>(values)...))
 {
-  return cusend::just_on(cusend::execution::inline_executor{}, std::forward<Types>(values)...);
+  return ns::just_on(ns::execution::inline_executor{}, std::forward<Types>(values)...);
+}
+
+
+struct my_scheduler
+{
+  __host__ __device__
+  ns::just_t<> schedule() const
+  {
+    return ns::just();
+  }
+
+  bool operator==(const my_scheduler&) const;
+  bool operator!=(const my_scheduler&) const;
+};
+
+
+struct my_scheduler_with_just_on_member_function
+{
+  ns::just_t<> schedule() const;
+
+  bool operator==(const my_scheduler_with_just_on_member_function&) const;
+  bool operator!=(const my_scheduler_with_just_on_member_function&) const;
+
+  template<class... Values>
+  __host__ __device__
+  ns::just_t<Values&&...> just_on(Values&&... values) const
+  {
+    return ns::just(std::forward<Values>(values)...);
+  }
+};
+
+
+struct my_scheduler_with_just_on_free_function
+{
+  ns::just_t<> schedule() const;
+
+  bool operator==(const my_scheduler_with_just_on_free_function&) const;
+  bool operator!=(const my_scheduler_with_just_on_free_function&) const;
+};
+
+template<class... Values>
+__host__ __device__
+ns::just_t<Values...> just_on(const my_scheduler_with_just_on_free_function, Values&&... values)
+{
+  return ns::just(std::forward<Values>(values)...);
 }
 
 
@@ -263,21 +312,33 @@ struct gpu_executor
 
 void test_just_on()
 {
-  test_is_typed_sender(cusend::execution::inline_executor{});
+  test_is_typed_sender(ns::execution::inline_executor{});
   test_is_typed_sender(my_executor_with_just_on_member_function{});
   test_is_typed_sender(my_executor_with_just_on_free_function{});
+  test_is_typed_sender(my_scheduler{});
+  test_is_typed_sender(my_scheduler_with_just_on_member_function{});
+  test_is_typed_sender(my_scheduler_with_just_on_free_function{});
 
-  test_copyable(cusend::execution::inline_executor{});
+  test_copyable(ns::execution::inline_executor{});
   test_copyable(my_executor_with_just_on_member_function{});
   test_copyable(my_executor_with_just_on_free_function{});
+  test_copyable(my_scheduler{});
+  test_copyable(my_scheduler_with_just_on_member_function{});
+  test_copyable(my_scheduler_with_just_on_free_function{});
 
-  test_move_only(cusend::execution::inline_executor{});
+  test_move_only(ns::execution::inline_executor{});
   test_move_only(my_executor_with_just_on_member_function{});
   test_move_only(my_executor_with_just_on_free_function{});
+  test_move_only(my_scheduler{});
+  test_move_only(my_scheduler_with_just_on_member_function{});
+  test_move_only(my_scheduler_with_just_on_free_function{});
 
-  test_variadic(cusend::execution::inline_executor{});
+  test_variadic(ns::execution::inline_executor{});
   test_variadic(my_executor_with_just_on_member_function{});
   test_variadic(my_executor_with_just_on_free_function{});
+  test_variadic(my_scheduler{});
+  test_variadic(my_scheduler_with_just_on_member_function{});
+  test_variadic(my_scheduler_with_just_on_free_function{});
 
 #ifdef __CUDACC__
   test_is_typed_sender(gpu_executor{});
@@ -286,24 +347,36 @@ void test_just_on()
 
   device_invoke([] __device__ ()
   {
-    test_is_typed_sender(cusend::execution::inline_executor{});
+    test_is_typed_sender(ns::execution::inline_executor{});
     test_is_typed_sender(my_executor_with_just_on_member_function{});
     test_is_typed_sender(my_executor_with_just_on_free_function{});
+    test_is_typed_sender(my_scheduler{});
+    test_is_typed_sender(my_scheduler_with_just_on_member_function{});
+    test_is_typed_sender(my_scheduler_with_just_on_free_function{});
     test_is_typed_sender(gpu_executor{});
 
-    test_copyable(cusend::execution::inline_executor{});
+    test_copyable(ns::execution::inline_executor{});
     test_copyable(my_executor_with_just_on_member_function{});
     test_copyable(my_executor_with_just_on_free_function{});
+    test_copyable(my_scheduler{});
+    test_copyable(my_scheduler_with_just_on_member_function{});
+    test_copyable(my_scheduler_with_just_on_free_function{});
+    test_copyable(gpu_executor{});
 
-    test_move_only(cusend::execution::inline_executor{});
+    test_move_only(ns::execution::inline_executor{});
     test_move_only(my_executor_with_just_on_member_function{});
     test_move_only(my_executor_with_just_on_free_function{});
+    test_move_only(my_scheduler{});
+    test_move_only(my_scheduler_with_just_on_member_function{});
+    test_move_only(my_scheduler_with_just_on_free_function{});
+    // XXX note we don't test move only with gpu_executor because that's not possible
 
-    test_variadic(cusend::execution::inline_executor{});
+    test_variadic(ns::execution::inline_executor{});
     test_variadic(my_executor_with_just_on_member_function{});
     test_variadic(my_executor_with_just_on_free_function{});
-
-    test_copyable(gpu_executor{});
+    test_variadic(my_scheduler{});
+    test_variadic(my_scheduler_with_just_on_member_function{});
+    test_variadic(my_scheduler_with_just_on_free_function{});
     test_variadic(gpu_executor{});
   });
   assert(cudaDeviceSynchronize() == cudaSuccess);

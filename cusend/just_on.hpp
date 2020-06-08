@@ -42,57 +42,57 @@ namespace detail
 {
 
 
-template<class E, class... Types>
-using just_on_member_function_t = decltype(std::declval<E>().just_on(std::declval<Types>()...));
+template<class S, class... Types>
+using just_on_member_function_t = decltype(std::declval<S>().just_on(std::declval<Types>()...));
 
-template<class E, class... Types>
-using has_just_on_member_function = is_detected<just_on_member_function_t, E, Types...>;
+template<class S, class... Types>
+using has_just_on_member_function = is_detected<just_on_member_function_t, S, Types...>;
 
 
-template<class E, class... Types>
-using just_on_free_function_t = decltype(just_on(std::declval<E>(), std::declval<Types>()...));
+template<class S, class... Types>
+using just_on_free_function_t = decltype(just_on(std::declval<S>(), std::declval<Types>()...));
 
-template<class E, class... Types>
-using has_just_on_free_function = is_detected<just_on_free_function_t, E, Types...>;
+template<class S, class... Types>
+using has_just_on_free_function = is_detected<just_on_free_function_t, S, Types...>;
 
 
 // this is the type of the just_on CPO
 struct dispatch_just_on
 {
   CUSEND_EXEC_CHECK_DISABLE
-  template<class E, class... Types,
-           CUSEND_REQUIRES(has_just_on_member_function<E&&,Types&&...>::value)
+  template<class S, class... Types,
+           CUSEND_REQUIRES(has_just_on_member_function<S&&,Types&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<just_on_member_function_t<E&&,Types&&...>>
-    operator()(E&& ex, Types&&... values) const
+  constexpr ensure_chaining_sender_t<just_on_member_function_t<S&&,Types&&...>>
+    operator()(S&& scheduler, Types&&... values) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(std::forward<E>(ex).just_on(std::forward<Types>(values)...));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(std::forward<S>(scheduler).just_on(std::forward<Types>(values)...));
   }
 
   CUSEND_EXEC_CHECK_DISABLE
-  template<class E, class... Types,
-           CUSEND_REQUIRES(!has_just_on_member_function<E&&,Types&&...>::value),
-           CUSEND_REQUIRES(has_just_on_free_function<E&&,Types&&...>::value)
+  template<class S, class... Types,
+           CUSEND_REQUIRES(!has_just_on_member_function<S&&,Types&&...>::value),
+           CUSEND_REQUIRES(has_just_on_free_function<S&&,Types&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<just_on_free_function_t<E&&,Types&&...>>
-    operator()(E&& ex, Types&&... values) const
+  constexpr ensure_chaining_sender_t<just_on_free_function_t<S&&,Types&&...>>
+    operator()(S&& scheduler, Types&&... values) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(just_on(std::forward<E>(ex), std::forward<Types>(values)...));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(just_on(std::forward<S>(scheduler), std::forward<Types>(values)...));
   }
 
   CUSEND_EXEC_CHECK_DISABLE
-  template<class E, class... Types,
-           CUSEND_REQUIRES(!has_just_on_member_function<E&&,Types&&...>::value),
-           CUSEND_REQUIRES(!has_just_on_free_function<E&&,Types&&...>::value),
-           CUSEND_REQUIRES(is_detected<default_just_on_t,E&&,Types&&...>::value)
+  template<class S, class... Types,
+           CUSEND_REQUIRES(!has_just_on_member_function<S&&,Types&&...>::value),
+           CUSEND_REQUIRES(!has_just_on_free_function<S&&,Types&&...>::value),
+           CUSEND_REQUIRES(is_detected<default_just_on_t,S&&,Types&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<default_just_on_t<E&&,Types&&...>>
-    operator()(E&& ex, Types&&... values) const
+  constexpr ensure_chaining_sender_t<default_just_on_t<S&&,Types&&...>>
+    operator()(S&& scheduler, Types&&... values) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::default_just_on(std::forward<E>(ex), std::forward<Types>(values)...));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::default_just_on(std::forward<S>(scheduler), std::forward<Types>(values)...));
   }
 };
 
@@ -115,8 +115,8 @@ const __device__ detail::dispatch_just_on just_on;
 } // end anonymous namespace
 
 
-template<class E, class... Types>
-using just_on_t = decltype(CUSEND_NAMESPACE::just_on(std::declval<E>(), std::declval<Types>()...));
+template<class S, class... Types>
+using just_on_t = decltype(CUSEND_NAMESPACE::just_on(std::declval<S>(), std::declval<Types>()...));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

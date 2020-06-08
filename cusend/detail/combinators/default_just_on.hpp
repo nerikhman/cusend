@@ -29,11 +29,16 @@
 #include "../prologue.hpp"
 
 #include <utility>
-#include "../../execution/executor/is_executor.hpp"
-#include "../../invoke_on.hpp"
-#include "../../unpack.hpp"
+#include "../../is_scheduler.hpp"
+#include "../../schedule.hpp"
+#include "../../sender/is_receiver_of.hpp"
+#include "../../sender/set_done.hpp"
+#include "../../sender/set_error.hpp"
+#include "../../sender/set_value.hpp"
+#include "../functional/apply.hpp"
 #include "../tuple.hpp"
-#include "../type_traits/decay.hpp"
+#include "../type_traits/remove_cvref.hpp"
+#include "../utility/index_sequence.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -43,71 +48,164 @@ namespace detail
 {
 
 
-struct no_op
+template<class Receiver, class... Values>
+class just_receiver
 {
-  CUSEND_ANNOTATION
-  inline void operator()() const {}
+  private:
+    detail::tuple<Receiver, Values...> receiver_and_values_;
+
+    CUSEND_ANNOTATION
+    Receiver& receiver()
+    {
+      return detail::get<0>(receiver_and_values_);
+    }
+
+  public:
+    CUSEND_ANNOTATION
+    just_receiver(Receiver&& receiver, Values&&... values)
+      : receiver_and_values_{std::move(receiver), std::move(values)...}
+    {}
+
+    CUSEND_EXEC_CHECK_DISABLE
+    just_receiver(const just_receiver&) = default;
+
+    CUSEND_EXEC_CHECK_DISABLE
+    just_receiver(just_receiver&&) = default;
+
+
+    template<class R = Receiver,
+             CUSEND_REQUIRES(is_receiver_of<R&&,Values&&...>::value)
+            >
+    CUSEND_ANNOTATION
+    void set_value() &&
+    {
+      // note that this overload of set_value calls set_value on rvalue references to receiver_and_values_
+      detail::apply(CUSEND_NAMESPACE::set_value, std::move(receiver_and_values_));
+    }
+
+
+    template<class E>
+    CUSEND_ANNOTATION
+    void set_error(E&& e) && noexcept
+    {
+      CUSEND_NAMESPACE::set_error(std::move(receiver()), std::forward<E>(e));
+    }
+
+
+    CUSEND_ANNOTATION
+    void set_done() && noexcept
+    {
+      CUSEND_NAMESPACE::set_done(std::move(receiver()));
+    }
 };
 
 
-template<class Executor,
-         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
-        >
+template<class Receiver, class... Values, std::size_t... I>
 CUSEND_ANNOTATION
-auto default_just_on(const Executor& ex)
-  -> decltype(CUSEND_NAMESPACE::invoke_on(ex, detail::no_op{}))
+just_receiver<remove_cvref_t<Receiver>, Values...> make_just_receiver_impl(index_sequence<I...>, Receiver&& receiver, detail::tuple<Values...>&& values)
 {
-  return CUSEND_NAMESPACE::invoke_on(ex, detail::no_op{});
+  return {std::forward<Receiver>(receiver), detail::get<I>(std::move(values))...};
 }
 
 
-
-template<class T>
-struct return_value
+template<class Receiver, class... Values>
+CUSEND_ANNOTATION
+just_receiver<remove_cvref_t<Receiver>, Values...> make_just_receiver(Receiver&& receiver, detail::tuple<Values...>&& values)
 {
-  T value;
+  return detail::make_just_receiver_impl(index_sequence_for<Values...>{}, std::forward<Receiver>(receiver), std::move(values));
+}
 
-  CUSEND_ANNOTATION
-  T operator()()
-  {
-    return std::move(value);
-  }
+
+template<class Scheduler, class... Values>
+class just_sender
+{
+  private:
+    Scheduler scheduler_;
+    detail::tuple<Values...> values_;
+
+  public:
+    template<template<class...> class Tuple, template<class...> class Variant>
+    using value_types = Variant<Tuple<Values...>>;
+
+    template<template<class...> class Variant>
+    using error_types = Variant<std::exception_ptr>;
+
+    constexpr static bool sends_done = true;
+
+    CUSEND_EXEC_CHECK_DISABLE
+    CUSEND_ANNOTATION
+    just_sender(const Scheduler& scheduler, detail::tuple<Values...>&& values)
+      : scheduler_{scheduler},
+        values_{std::move(values)}
+    {}
+
+    template<class... OtherValues>
+    CUSEND_ANNOTATION
+    just_sender(const Scheduler& scheduler, OtherValues&&... values)
+      : just_sender{scheduler, detail::make_tuple(std::forward<OtherValues>(values)...)}
+    {}
+
+    CUSEND_EXEC_CHECK_DISABLE
+    just_sender(const just_sender&) = default;
+
+    CUSEND_EXEC_CHECK_DISABLE
+    just_sender(just_sender&&) = default;
+
+    template<class Receiver,
+             CUSEND_REQUIRES(is_receiver_of<Receiver, Values...>::value)
+            >
+    CUSEND_ANNOTATION
+    auto connect(Receiver&& r) &&
+      -> decltype(CUSEND_NAMESPACE::connect(schedule(scheduler_), detail::make_just_receiver(std::forward<Receiver>(r), std::move(values_))))
+    {
+      return CUSEND_NAMESPACE::connect(schedule(scheduler_), detail::make_just_receiver(std::forward<Receiver>(r), std::move(values_)));
+    }
+
+    template<class Receiver,
+             CUSEND_REQUIRES(is_receiver_of<Receiver, Values...>::value)
+            >
+    CUSEND_ANNOTATION
+    auto connect(Receiver&& r) const &
+      -> decltype(CUSEND_NAMESPACE::connect(schedule(scheduler_), detail::make_just_receiver(std::forward<Receiver>(r), values_)))
+    {
+      return CUSEND_NAMESPACE::connect(scheduler(scheduler_), detail::make_just_receiver(std::forward<Receiver>(r), values_));
+    }
+
+
+    template<class OtherScheduler,
+             CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value),
+             CUSEND_REQUIRES(std::is_copy_constructible<detail::tuple<Values...>>::value)
+            >
+    CUSEND_ANNOTATION
+    just_sender<OtherScheduler,Values...> on(const OtherScheduler& scheduler) const
+    {
+      return {scheduler, values_};
+    }
+
+
+    template<class OtherScheduler,
+             CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value)
+            >
+    CUSEND_ANNOTATION
+    just_sender<OtherScheduler,Values...> on(const OtherScheduler& scheduler) const
+    {
+      return {scheduler, std::move(values_)};
+    }
 };
 
 
-template<class T>
-CUSEND_ANNOTATION
-return_value<decay_t<T>> make_return_value(T&& value)
-{
-  return {std::forward<T>(value)};
-}
-
-
-template<class Executor, class T,
-         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
+template<class Scheduler, class... Values,
+         CUSEND_REQUIRES(is_scheduler<Scheduler>::value)
         >
 CUSEND_ANNOTATION
-auto default_just_on(const Executor& ex, T&& value)
-  -> decltype(CUSEND_NAMESPACE::invoke_on(ex, detail::make_return_value(std::forward<T>(value))))
+just_sender<Scheduler, remove_cvref_t<Values>...> default_just_on(const Scheduler& scheduler, Values&&... values)
 {
-  return CUSEND_NAMESPACE::invoke_on(ex, detail::make_return_value(std::forward<T>(value)));
+  return {scheduler, std::forward<Values>(values)...};
 }
 
 
-template<class Executor, class T, class... Types,
-         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
-        >
-CUSEND_ANNOTATION
-auto default_just_on(const Executor& ex, T&& value, Types&&... values)
-  -> decltype(CUSEND_NAMESPACE::unpack(CUSEND_NAMESPACE::invoke_on(ex, detail::make_return_value(detail::make_tuple(std::forward<T>(value), std::forward<Types>(values)...)))))
-{
-  // tuple up the values, and then unpack() the tuple
-  return CUSEND_NAMESPACE::unpack(CUSEND_NAMESPACE::invoke_on(ex, detail::make_return_value(detail::make_tuple(std::forward<T>(value), std::forward<Types>(values)...))));
-}
-
-
-template<class Executor, class... Types>
-using default_just_on_t = decltype(detail::default_just_on(std::declval<Executor>(), std::declval<Types>()...));
+template<class Scheduler, class... Values>
+using default_just_on_t = decltype(detail::default_just_on(std::declval<Scheduler>(), std::declval<Values>()...));
 
 
 } // end namespace detail
