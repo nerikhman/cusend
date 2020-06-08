@@ -32,6 +32,7 @@
 #include <type_traits>
 #include <utility>
 #include "../../functional/closure.hpp"
+#include "../../functional/move_and_invoke.hpp"
 #include "../../type_traits/remove_cvref.hpp"
 #include "../../../execution/executor/execute.hpp"
 #include "../../../sender/connect.hpp"
@@ -69,21 +70,6 @@ struct try_set_value
       set_error(std::move(r), std::current_exception());
     }
 #endif
-  }
-};
-
-
-// this functor accepts an invocable as its first parameter
-// and arguments to that invocable as trailing parameters
-// it invokes an rvalue reference to the invocable on the trailing parameters as rvalue references
-struct move_and_invoke
-{
-  template<class F, class... Args>
-  CUSEND_ANNOTATION
-  auto operator()(F&& f, Args&&... args) const
-    -> decltype(std::move(f)(std::move(args)...))
-  {
-    return std::move(f)(std::move(args)...);
   }
 };
 
