@@ -31,7 +31,7 @@
 #include <type_traits>
 #include <utility>
 #include "detail/combinators/on/dispatch_on.hpp"
-#include "detail/combinators/then/dispatch_then.hpp"
+#include "detail/combinators/transform/dispatch_transform.hpp"
 #include "detail/combinators/via/dispatch_via.hpp"
 #include "get_executor.hpp"
 #include "sender/connect.hpp"
@@ -122,13 +122,13 @@ class chaining_sender
 
 
     template<class Function,
-             CUSEND_REQUIRES(detail::can_dispatch_then<Sender&&,Function&&>::value)
+             CUSEND_REQUIRES(detail::can_dispatch_transform<Sender&&,Function&&>::value)
             >
     CUSEND_ANNOTATION
-    chaining_sender<detail::dispatch_then_t<Sender&&,Function&&>>
-      then(Function&& continuation) &&
+    chaining_sender<detail::dispatch_transform_t<Sender&&,Function&&>>
+      transform(Function&& continuation) &&
     {
-      return {detail::dispatch_then(std::move(sender_), std::forward<Function>(continuation))};
+      return {detail::dispatch_transform(std::move(sender_), std::forward<Function>(continuation))};
     }
 
 

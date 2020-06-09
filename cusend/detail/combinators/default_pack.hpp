@@ -29,7 +29,7 @@
 #include "../prologue.hpp"
 
 #include <utility>
-#include "../../then.hpp"
+#include "../../transform.hpp"
 #include "../tuple.hpp"
 
 
@@ -57,9 +57,9 @@ template<class S,
         >
 CUSEND_ANNOTATION
 auto default_pack(S&& predecessor)
-  -> decltype(CUSEND_NAMESPACE::then(std::forward<S>(predecessor), as_tuple{}))
+  -> decltype(CUSEND_NAMESPACE::transform(std::forward<S>(predecessor), as_tuple{}))
 {
-  return CUSEND_NAMESPACE::then(std::forward<S>(predecessor), as_tuple{});
+  return CUSEND_NAMESPACE::transform(std::forward<S>(predecessor), as_tuple{});
 }
 
 

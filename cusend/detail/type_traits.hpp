@@ -31,7 +31,6 @@
 #include "type_traits/conjunction.hpp"
 #include "type_traits/decay.hpp"
 #include "type_traits/disjunction.hpp"
-#include "type_traits/has_then.hpp"
 #include "type_traits/invoke_result.hpp"
 #include "type_traits/is_detected.hpp"
 #include "type_traits/is_equality_comparable.hpp"

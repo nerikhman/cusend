@@ -2,7 +2,7 @@
 #include <cstring>
 #include <cusend/just.hpp>
 #include <cusend/via.hpp>
-#include <cusend/then.hpp>
+#include <cusend/transform.hpp>
 
 #ifndef __CUDACC__
 #define __host__
@@ -147,7 +147,7 @@ void test(Executor ex)
 
   cusend::just(arg1)
     .via(ex)
-    .then([=] __host__ __device__ (int arg1)
+    .transform([=] __host__ __device__ (int arg1)
      {
        return arg1 + arg2;
      })

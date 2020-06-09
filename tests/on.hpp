@@ -2,7 +2,7 @@
 #include <cstring>
 #include <cusend/just.hpp>
 #include <cusend/on.hpp>
-#include <cusend/then.hpp>
+#include <cusend/transform.hpp>
 
 #ifndef __CUDACC__
 #define __host__
@@ -146,7 +146,7 @@ void test(Executor ex)
   Executor::initialize_num_calls_to_execute();
 
   cusend::just(arg1)
-    .then([=] __host__ __device__ (int arg1)
+    .transform([=] __host__ __device__ (int arg1)
      {
        return arg1 + arg2;
      })

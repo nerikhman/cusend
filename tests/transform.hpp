@@ -2,7 +2,7 @@
 #include <cstring>
 #include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/just.hpp>
-#include <cusend/then.hpp>
+#include <cusend/transform.hpp>
 
 #ifndef __CUDACC__
 #define __host__
@@ -68,24 +68,24 @@ void test_is_typed_sender()
   using namespace cusend;
 
   {
-    auto result = then(just(), [] { return; });
+    auto result = transform(just(), [] { return; });
     static_assert(is_typed_sender<decltype(result)>::value, "Error.");
   }
 
-//  {
-//    auto result = then(just(), [] { return 13; });
-//    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
-//  }
-//
-//  {
-//    auto result = then(just(13), [](int arg) { return arg; });
-//    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
-//  }
-//
-//  {
-//    auto result = then(just(13,7), [](int arg1, int arg2) { return arg1 + arg2; });
-//    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
-//  }
+  {
+    auto result = transform(just(), [] { return 13; });
+    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    auto result = transform(just(13), [](int arg) { return arg; });
+    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+  }
+
+  {
+    auto result = transform(just(13,7), [](int arg1, int arg2) { return arg1 + arg2; });
+    static_assert(is_typed_sender<decltype(result)>::value, "Error.");
+  }
 }
 
 
@@ -101,7 +101,7 @@ void test_copyable_continuation()
 
   my_receiver r;
 
-  then(just(arg1), [=] (int arg1) { return arg1 + arg2; }).connect(std::move(r)).start();
+  transform(just(arg1), [=] (int arg1) { return arg1 + arg2; }).connect(std::move(r)).start();
 
   assert(expected == result);
 }
@@ -121,28 +121,28 @@ void test_move_only_continuation()
 
   auto continuation = make_move_only_function([=] (int arg1) { return arg1 + arg2; });
 
-  then(just(arg1), std::move(continuation)).connect(std::move(r)).start();
+  transform(just(arg1), std::move(continuation)).connect(std::move(r)).start();
 
   assert(expected == result);
 }
 
 
-struct my_sender_with_then_member_function
+struct my_sender_with_transform_member_function
 {
   int arg;
 
   template<class Function>
   __host__ __device__
-  auto then(Function continuation) &&
-    -> decltype(cusend::just(arg).then(continuation))
+  auto transform(Function continuation) &&
+    -> decltype(cusend::just(arg).transform(continuation))
   {
-    return cusend::just(arg).then(continuation);
+    return cusend::just(arg).transform(continuation);
   }
 };
 
 
 __host__ __device__
-void test_sender_with_then_member_function()
+void test_sender_with_transform_member_function()
 {
   result = 0;
   int arg1 = 13;
@@ -151,15 +151,15 @@ void test_sender_with_then_member_function()
 
   my_receiver r;
 
-  my_sender_with_then_member_function s{arg1};
+  my_sender_with_transform_member_function s{arg1};
 
-  cusend::then(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
+  cusend::transform(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
 
   assert(expected == result);
 }
 
 
-struct my_sender_with_then_free_function
+struct my_sender_with_transform_free_function
 {
   int arg;
 };
@@ -167,15 +167,15 @@ struct my_sender_with_then_free_function
 
 template<class Function>
 __host__ __device__
-auto then(my_sender_with_then_free_function&& s, Function continuation)
-  -> decltype(cusend::just(s.arg).then(continuation))
+auto transform(my_sender_with_transform_free_function&& s, Function continuation)
+  -> decltype(cusend::just(s.arg).transform(continuation))
 {
-  return cusend::just(s.arg).then(continuation);
+  return cusend::just(s.arg).transform(continuation);
 }
 
 
 __host__ __device__
-void test_sender_with_then_free_function()
+void test_sender_with_transform_free_function()
 {
   result = 0;
   int arg1 = 13;
@@ -184,9 +184,9 @@ void test_sender_with_then_free_function()
 
   my_receiver r;
 
-  my_sender_with_then_member_function s{arg1};
+  my_sender_with_transform_member_function s{arg1};
 
-  cusend::then(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
+  cusend::transform(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
 
   assert(expected == result);
 }
@@ -232,22 +232,22 @@ void device_invoke(F f)
 }
 
 
-void test_then()
+void test_transform()
 {
   test_is_typed_sender();
   test_copyable_continuation();
   test_move_only_continuation();
-  test_sender_with_then_member_function();
-  test_sender_with_then_free_function();
+  test_sender_with_transform_member_function();
+  test_sender_with_transform_free_function();
 
 #ifdef __CUDACC__
   device_invoke([] __device__ ()
   {
-//    test_is_typed_sender();
+    test_is_typed_sender();
     test_copyable_continuation();
     test_move_only_continuation();
-    test_sender_with_then_member_function();
-    test_sender_with_then_free_function();
+    test_sender_with_transform_member_function();
+    test_sender_with_transform_free_function();
   });
   assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif

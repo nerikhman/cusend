@@ -55,7 +55,7 @@ namespace detail
 
 
 template<class Receiver, class Function>
-class then_receiver
+class transform_receiver
 {
   public:
     CUSEND_EXEC_CHECK_DISABLE
@@ -64,19 +64,19 @@ class then_receiver
              CUSEND_REQUIRES(std::is_constructible<Function,F&&>::value)
             >
     CUSEND_ANNOTATION
-    then_receiver(R&& receiver, F&& f)
+    transform_receiver(R&& receiver, F&& f)
       : receiver_{std::forward<R>(receiver)},
         f_{std::forward<F>(f)}
     {}
 
     CUSEND_EXEC_CHECK_DISABLE
-    then_receiver(const then_receiver&) = default;
+    transform_receiver(const transform_receiver&) = default;
 
     CUSEND_EXEC_CHECK_DISABLE
-    then_receiver(then_receiver&&) = default;
+    transform_receiver(transform_receiver&&) = default;
 
     CUSEND_EXEC_CHECK_DISABLE
-    ~then_receiver() = default;
+    ~transform_receiver() = default;
 
 
     // Function returns void case
@@ -126,16 +126,16 @@ class then_receiver
 
 template<class Receiver, class Function>
 CUSEND_ANNOTATION
-then_receiver<decay_t<Receiver>, decay_t<Function>> make_then_receiver(Receiver&& receiver, Function&& continuation)
+transform_receiver<decay_t<Receiver>, decay_t<Function>> make_transform_receiver(Receiver&& receiver, Function&& continuation)
 {
   return {std::forward<Receiver>(receiver), std::forward<Function>(continuation)};
 }
 
 
-namespace then_sender_detail
+namespace transform_sender_detail
 {
 
-// then_sender has a lot of details because we need to ensure
+// transform_sender has a lot of details because we need to ensure
 // it is a "typed sender" when possible.
 // That requires a lot of C++ metaprogramming, below.
 
@@ -189,14 +189,14 @@ template<class TypeList, template<class...> class Variant, template<class...> cl
 using type_list_as_single_element_tuples_t = typename type_list_as_single_element_tuples<TypeList, Variant, Tuple>::type;
 
 
-// the purpose of then_sender_base is to inject sender traits
-// into then_sender when it is possible to do (i.e., Sender is typed)
+// the purpose of transform_sender_base is to inject sender traits
+// into transform_sender when it is possible to do (i.e., Sender is typed)
 template<class Sender, class Function, class Enable = void>
-struct then_sender_base : public sender_base {};
+struct transform_sender_base : public sender_base {};
 
 // If Sender is typed, define nested traits
 template<class Sender, class Function>
-struct then_sender_base<Sender,Function, typename std::enable_if<is_typed_sender<Sender>::value>::type>
+struct transform_sender_base<Sender,Function, typename std::enable_if<is_typed_sender<Sender>::value>::type>
 {
   private:
     using adaptee_traits = sender_traits<Sender>;
@@ -230,11 +230,11 @@ struct then_sender_base<Sender,Function, typename std::enable_if<is_typed_sender
 };
 
 
-} // end then_sender_detail
+} // end transform_sender_detail
 
 
 template<class Sender, class Function>
-class then_sender : public then_sender_detail::then_sender_base<Sender,Function>
+class transform_sender : public transform_sender_detail::transform_sender_base<Sender,Function>
 {
   private:
     Sender predecessor_;
@@ -247,52 +247,52 @@ class then_sender : public then_sender_detail::then_sender_base<Sender,Function>
              CUSEND_REQUIRES(std::is_constructible<Function,OtherFunction&&>::value)
             >
     CUSEND_ANNOTATION
-    then_sender(OtherSender&& predecessor, OtherFunction&& continuation)
+    transform_sender(OtherSender&& predecessor, OtherFunction&& continuation)
       : predecessor_{std::forward<OtherSender>(predecessor)},
         continuation_{std::forward<OtherFunction>(continuation)}
     {}
 
     CUSEND_EXEC_CHECK_DISABLE
-    then_sender(const then_sender&) = default;
+    transform_sender(const transform_sender&) = default;
 
     CUSEND_EXEC_CHECK_DISABLE
-    then_sender(then_sender&&) = default;
+    transform_sender(transform_sender&&) = default;
 
     CUSEND_EXEC_CHECK_DISABLE
-    ~then_sender() = default;
+    ~transform_sender() = default;
 
     template<class Receiver,
              CUSEND_REQUIRES(is_receiver<Receiver>::value),
-             CUSEND_REQUIRES(is_sender_to<Sender, then_receiver<Receiver, Function>>::value)
+             CUSEND_REQUIRES(is_sender_to<Sender, transform_receiver<Receiver, Function>>::value)
             >
     CUSEND_ANNOTATION
     auto connect(Receiver&& r) &&
-      -> decltype(CUSEND_NAMESPACE::connect(std::move(predecessor_), detail::make_then_receiver(std::move(r), std::move(continuation_))))
+      -> decltype(CUSEND_NAMESPACE::connect(std::move(predecessor_), detail::make_transform_receiver(std::move(r), std::move(continuation_))))
     {
-      return CUSEND_NAMESPACE::connect(std::move(predecessor_), detail::make_then_receiver(std::move(r), std::move(continuation_)));
+      return CUSEND_NAMESPACE::connect(std::move(predecessor_), detail::make_transform_receiver(std::move(r), std::move(continuation_)));
     }
 
-    // this overload allows makes then_sender a "multi-shot" sender when both the predecessor and continuation are copyable
+    // this overload allows makes transform_sender a "multi-shot" sender when both the predecessor and continuation are copyable
     // XXX should introduce is_multishot_sender or something
     template<class Receiver,
              CUSEND_REQUIRES(is_receiver<Receiver>::value),
-             CUSEND_REQUIRES(is_sender_to<Sender, then_receiver<Receiver, Function>>::value)
+             CUSEND_REQUIRES(is_sender_to<Sender, transform_receiver<Receiver, Function>>::value)
             >
     CUSEND_ANNOTATION
     auto connect(Receiver&& r) const &
-      -> decltype(CUSEND_NAMESPACE::connect(predecessor_, detail::make_then_receiver(std::move(r), continuation_)))
+      -> decltype(CUSEND_NAMESPACE::connect(predecessor_, detail::make_transform_receiver(std::move(r), continuation_)))
     {
-      return CUSEND_NAMESPACE::connect(predecessor_, detail::make_then_receiver(std::move(r), continuation_));
+      return CUSEND_NAMESPACE::connect(predecessor_, detail::make_transform_receiver(std::move(r), continuation_));
     }
 };
 
 
 template<class Sender, class Function,
-         CUSEND_REQUIRES(is_sender_to<Sender, then_receiver<discard_receiver, Function>>::value)
+         CUSEND_REQUIRES(is_sender_to<Sender, transform_receiver<discard_receiver, Function>>::value)
         >
 CUSEND_ANNOTATION
-detail::then_sender<detail::decay_t<Sender>, detail::decay_t<Function>>
-  default_then(Sender&& predecessor, Function&& continuation)
+detail::transform_sender<detail::decay_t<Sender>, detail::decay_t<Function>>
+  default_transform(Sender&& predecessor, Function&& continuation)
 {
   return {std::forward<Sender>(predecessor), std::forward<Function>(continuation)};
 }

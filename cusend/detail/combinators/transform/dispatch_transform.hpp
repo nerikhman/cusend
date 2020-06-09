@@ -29,7 +29,7 @@
 #include "../../../detail/prologue.hpp"
 
 #include <utility>
-#include "default_then.hpp"
+#include "default_transform.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -40,64 +40,64 @@ namespace detail
 
 
 template<class S, class F>
-using then_member_function_t = decltype(std::declval<S>().then(std::declval<F>()));
+using transform_member_function_t = decltype(std::declval<S>().transform(std::declval<F>()));
 
 template<class S, class F>
-using has_then_member_function = is_detected<then_member_function_t, S, F>;
+using has_transform_member_function = is_detected<transform_member_function_t, S, F>;
 
 
 template<class S, class F>
-using then_free_function_t = decltype(then(std::declval<S>(), std::declval<F>()));
+using transform_free_function_t = decltype(transform(std::declval<S>(), std::declval<F>()));
 
 template<class S, class F>
-using has_then_free_function = is_detected<then_free_function_t, S, F>;
+using has_transform_free_function = is_detected<transform_free_function_t, S, F>;
 
 
-// dispatch case 1: predecessor.then(f) exists
+// dispatch case 1: predecessor.transform(f) exists
 template<class Sender, class Function,
-         CUSEND_REQUIRES(has_then_member_function<Sender&&,Function&&>::value)
+         CUSEND_REQUIRES(has_transform_member_function<Sender&&,Function&&>::value)
         >
 CUSEND_ANNOTATION
-auto dispatch_then(Sender&& predecessor, Function&& continuation)
-  -> decltype(std::forward<Sender>(predecessor).then(std::forward<Function>(continuation)))
+auto dispatch_transform(Sender&& predecessor, Function&& continuation)
+  -> decltype(std::forward<Sender>(predecessor).transform(std::forward<Function>(continuation)))
 {
-  return std::forward<Sender>(predecessor).then(std::forward<Function>(continuation));
+  return std::forward<Sender>(predecessor).transform(std::forward<Function>(continuation));
 }
 
 
-// dispatch case 1: predecessor.then(f) does not exist
-//                  then(predecessor, f) does exist
+// dispatch case 1: predecessor.transform(f) does not exist
+//                  transform(predecessor, f) does exist
 template<class Sender, class Function,
-         CUSEND_REQUIRES(!has_then_member_function<Sender&&,Function&&>::value),
-         CUSEND_REQUIRES(has_then_free_function<Sender&&,Function&&>::value)
+         CUSEND_REQUIRES(!has_transform_member_function<Sender&&,Function&&>::value),
+         CUSEND_REQUIRES(has_transform_free_function<Sender&&,Function&&>::value)
         >
 CUSEND_ANNOTATION
-auto dispatch_then(Sender&& predecessor, Function&& continuation)
-  -> decltype(then(std::forward<Sender>(predecessor), std::forward<Function>(continuation)))
+auto dispatch_transform(Sender&& predecessor, Function&& continuation)
+  -> decltype(transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation)))
 {
-  return then(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
+  return transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
 }
 
 
-// dispatch case 2: predecessor.then(f) does not exist
-//                  then(predecessor, f) does not exist
+// dispatch case 2: predecessor.transform(f) does not exist
+//                  transform(predecessor, f) does not exist
 template<class Sender, class Function,
-         CUSEND_REQUIRES(!has_then_member_function<Sender&&,Function&&>::value),
-         CUSEND_REQUIRES(!has_then_free_function<Sender&&,Function&&>::value)
+         CUSEND_REQUIRES(!has_transform_member_function<Sender&&,Function&&>::value),
+         CUSEND_REQUIRES(!has_transform_free_function<Sender&&,Function&&>::value)
         >
 CUSEND_ANNOTATION
-auto dispatch_then(Sender&& predecessor, Function&& continuation)
-  -> decltype(detail::default_then(std::forward<Sender>(predecessor), std::forward<Function>(continuation)))
+auto dispatch_transform(Sender&& predecessor, Function&& continuation)
+  -> decltype(detail::default_transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation)))
 {
-  return detail::default_then(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
+  return detail::default_transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
 }
 
 
 template<class S, class F>
-using dispatch_then_t = decltype(detail::dispatch_then(std::declval<S>(), std::declval<F>()));
+using dispatch_transform_t = decltype(detail::dispatch_transform(std::declval<S>(), std::declval<F>()));
 
 template<class S, class F>
-using can_dispatch_then = is_detected<dispatch_then_t, S, F>;
+using can_dispatch_transform = is_detected<dispatch_transform_t, S, F>;
 
 
 } // end detail

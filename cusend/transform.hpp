@@ -30,7 +30,7 @@
 
 #include <utility>
 #include "chaining_sender.hpp"
-#include "detail/combinators/then/dispatch_then.hpp"
+#include "detail/combinators/transform/dispatch_transform.hpp"
 #include "detail/static_const.hpp"
 
 
@@ -41,18 +41,18 @@ namespace detail
 {
 
 
-// this is the type of then
-struct then_customization_point
+// this is the type of transform
+struct transform_customization_point
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class S, class F,
-           CUSEND_REQUIRES(can_dispatch_then<S&&,F&&>::value)
+           CUSEND_REQUIRES(can_dispatch_transform<S&&,F&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<dispatch_then_t<S&&,F&&>>
+  constexpr ensure_chaining_sender_t<dispatch_transform_t<S&&,F&&>>
     operator()(S&& s, F&& f) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::dispatch_then(std::forward<S>(s), std::forward<F>(f)));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::dispatch_transform(std::forward<S>(s), std::forward<F>(f)));
   }
 };
 
@@ -64,11 +64,11 @@ namespace
 {
 
 
-// define the then customization point object
+// define the transform customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& then = detail::static_const<detail::then_customization_point>::value;
+constexpr auto const& transform = detail::static_const<detail::transform_customization_point>::value;
 #else
-const __device__ detail::then_customization_point then;
+const __device__ detail::transform_customization_point transform;
 #endif
 
 
@@ -76,7 +76,7 @@ const __device__ detail::then_customization_point then;
 
 
 template<class S, class F>
-using then_t = decltype(CUSEND_NAMESPACE::then(std::declval<S>(), std::declval<F>()));
+using transform_t = decltype(CUSEND_NAMESPACE::transform(std::declval<S>(), std::declval<F>()));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
