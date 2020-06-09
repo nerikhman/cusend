@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../prologue.hpp"
 
 #include <utility>
 #include "../static_const.hpp"
@@ -119,5 +119,5 @@ using transform_t = decltype(detail::transform(std::declval<S>(), std::declval<F
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../epilogue.hpp"
 

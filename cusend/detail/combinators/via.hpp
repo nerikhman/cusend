@@ -26,11 +26,11 @@
 
 #pragma once
 
-#include "../../prologue.hpp"
+#include "../prologue.hpp"
 
 #include <utility>
-#include "../../static_const.hpp"
-#include "../../type_traits/is_detected.hpp"
+#include "../static_const.hpp"
+#include "../type_traits/is_detected.hpp"
 #include "default_via.hpp"
 
 
@@ -55,52 +55,66 @@ template<class S, class E>
 using has_via_free_function = is_detected<via_free_function_t, S, E>;
 
 
-// dispatch case 1: sender.via(ex) exists
-CUSEND_EXEC_CHECK_DISABLE
-template<class S, class E,
-         CUSEND_REQUIRES(has_via_member_function<S&&,E&&>::value)
-        >
-CUSEND_ANNOTATION
-constexpr via_member_function_t<S&&,E&&> dispatch_via(S&& predecessor, E&& ex)
+// this is the type of the via CPO
+struct dispatch_via
 {
-  return std::forward<S>(predecessor).via(std::forward<E>(ex));
-}
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S, class E,
+           CUSEND_REQUIRES(has_via_member_function<S&&,E&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr via_member_function_t<S&&,E&&>
+    operator()(S&& predecessor, E&& ex) const
+  {
+    return std::forward<S>(predecessor).via(std::forward<E>(ex));
+  }
 
 
-// dispatch case 2: sender.via(ex) does not exist
-//                  via(sender, ex) does exist
-CUSEND_EXEC_CHECK_DISABLE
-template<class S, class E,
-         CUSEND_REQUIRES(!has_via_member_function<S&&,E&&>::value),
-         CUSEND_REQUIRES(has_via_free_function<S&&,E&&>::value)
-        >
-CUSEND_ANNOTATION
-constexpr via_free_function_t<E&&,S&&> dispatch_via(S&& predecessor, E&& ex)
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S, class E,
+           CUSEND_REQUIRES(!has_via_member_function<S&&,E&&>::value),
+           CUSEND_REQUIRES(has_via_free_function<S&&,E&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr via_free_function_t<E&&,S&&>
+    operator()(S&& predecessor, E&& ex) const
+  {
+    return via(std::forward<S>(predecessor), std::forward<E>(ex));
+  }
+
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S, class E,
+           CUSEND_REQUIRES(!has_via_member_function<S&&,E&&>::value),
+           CUSEND_REQUIRES(!has_via_free_function<S&&,E&&>::value),
+           CUSEND_REQUIRES(is_detected<default_via_t,S&&,E&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_via_t<S&&,E&&>
+    operator()(S&& predecessor, E&& ex) const
+  {
+    return detail::default_via(std::forward<S>(predecessor), std::forward<E>(ex));
+  }
+};
+
+
+namespace
 {
-  return via(std::forward<S>(predecessor), std::forward<E>(ex));
-}
 
 
-// dispatch case 3: sender.via(ex) does not exist
-//                  via(sender, ex) does not exist
-CUSEND_EXEC_CHECK_DISABLE
-template<class S, class E,
-         CUSEND_REQUIRES(!has_via_member_function<S&&,E&&>::value),
-         CUSEND_REQUIRES(!has_via_free_function<S&&,E&&>::value),
-         CUSEND_REQUIRES(is_detected<default_via_t,S&&,E&&>::value)
-        >
-CUSEND_ANNOTATION
-constexpr default_via_t<S&&,E&&> dispatch_via(S&& predecessor, E&& ex)
-{
-  return detail::default_via(std::forward<S>(predecessor), std::forward<E>(ex));
-}
+// define the via customization point object
+#ifndef __CUDA_ARCH__
+constexpr auto const& via = detail::static_const<detail::dispatch_via>::value;
+#else
+const __device__ detail::dispatch_via via;
+#endif
+
+
+} // end anonymous namespace
 
 
 template<class S, class E>
-using dispatch_via_t = decltype(detail::dispatch_via(std::declval<S>(), std::declval<E>()));
-
-template<class S, class E>
-using can_dispatch_via = is_detected<dispatch_via_t, S, E>;
+using via_t = decltype(detail::via(std::declval<S>(), std::declval<E>()));
 
 
 } // end detail
@@ -109,5 +123,5 @@ using can_dispatch_via = is_detected<dispatch_via_t, S, E>;
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../epilogue.hpp"
+#include "../epilogue.hpp"
 

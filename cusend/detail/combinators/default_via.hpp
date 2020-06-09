@@ -26,22 +26,22 @@
 
 #pragma once
 
-#include "../../prologue.hpp"
+#include "../prologue.hpp"
 
 #include <exception>
 #include <type_traits>
 #include <utility>
-#include "../../functional/closure.hpp"
-#include "../../functional/move_and_invoke.hpp"
-#include "../../type_traits/remove_cvref.hpp"
-#include "../../../execution/executor/execute.hpp"
-#include "../../../sender/connect.hpp"
-#include "../../../sender/is_sender_to.hpp"
-#include "../../../sender/is_typed_sender.hpp"
-#include "../../../sender/sender_base.hpp"
-#include "../../../sender/set_done.hpp"
-#include "../../../sender/set_error.hpp"
-#include "../../../sender/set_value.hpp"
+#include "../functional/closure.hpp"
+#include "../functional/move_and_invoke.hpp"
+#include "../type_traits/remove_cvref.hpp"
+#include "../../execution/executor/execute.hpp"
+#include "../../sender/connect.hpp"
+#include "../../sender/is_sender_to.hpp"
+#include "../../sender/is_typed_sender.hpp"
+#include "../../sender/sender_base.hpp"
+#include "../../sender/set_done.hpp"
+#include "../../sender/set_error.hpp"
+#include "../../sender/set_value.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -198,5 +198,5 @@ using default_via_t = decltype(detail::default_via(std::declval<S>(), std::declv
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../epilogue.hpp"
+#include "../epilogue.hpp"
 

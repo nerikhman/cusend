@@ -30,7 +30,7 @@
 
 #include <utility>
 #include "chaining_sender.hpp"
-#include "detail/combinators/via/dispatch_via.hpp"
+#include "detail/combinators/via.hpp"
 #include "detail/static_const.hpp"
 #include "detail/type_traits/is_detected.hpp"
 
@@ -42,18 +42,18 @@ namespace detail
 {
 
 
-// this is the type of the via CPO
-struct via_customization_point
+// this is the type of the chaining via CPO
+struct chaining_via
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class S, class E,
-           CUSEND_REQUIRES(can_dispatch_via<S&&,E&&>::value)
+           CUSEND_REQUIRES(is_detected<detail::via_t,S&&,E&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<dispatch_via_t<S&&,E&&>>
+  constexpr ensure_chaining_sender_t<detail::via_t<S&&,E&&>>
     operator()(S&& predecessor, E&& ex) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::dispatch_via(std::forward<S>(predecessor), std::forward<E>(ex)));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::via(std::forward<S>(predecessor), std::forward<E>(ex)));
   }
 };
 
@@ -67,9 +67,9 @@ namespace
 
 // define the via customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& via = detail::static_const<detail::via_customization_point>::value;
+constexpr auto const& via = detail::static_const<detail::chaining_via>::value;
 #else
-const __device__ detail::via_customization_point via;
+const __device__ detail::chaining_via via;
 #endif
 
 
