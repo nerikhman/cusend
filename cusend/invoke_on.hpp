@@ -42,57 +42,57 @@ namespace detail
 {
 
 
-template<class E, class F, class... Args>
-using invoke_on_member_function_t = decltype(std::declval<E>().invoke_on(std::declval<F>(), std::declval<Args>()...));
+template<class S, class F, class... Args>
+using invoke_on_member_function_t = decltype(std::declval<S>().invoke_on(std::declval<F>(), std::declval<Args>()...));
 
-template<class E, class F, class... Args>
-using has_invoke_on_member_function = is_detected<invoke_on_member_function_t, E, F, Args...>;
+template<class S, class F, class... Args>
+using has_invoke_on_member_function = is_detected<invoke_on_member_function_t, S, F, Args...>;
 
 
-template<class E, class F, class... Args>
-using invoke_on_free_function_t = decltype(invoke_on(std::declval<E>(), std::declval<F>(), std::declval<Args>()...));
+template<class S, class F, class... Args>
+using invoke_on_free_function_t = decltype(invoke_on(std::declval<S>(), std::declval<F>(), std::declval<Args>()...));
 
-template<class E, class F, class... Args>
-using has_invoke_on_free_function = is_detected<invoke_on_free_function_t, E, F, Args...>;
+template<class S, class F, class... Args>
+using has_invoke_on_free_function = is_detected<invoke_on_free_function_t, S, F, Args...>;
 
 
 // this is the type of the invoke_on CPO
 struct dispatch_invoke_on
 {
   CUSEND_EXEC_CHECK_DISABLE
-  template<class E, class F, class... Args,
-           CUSEND_REQUIRES(has_invoke_on_member_function<E&&,F&&,Args&&...>::value)
+  template<class S, class F, class... Args,
+           CUSEND_REQUIRES(has_invoke_on_member_function<S&&,F&&,Args&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<invoke_on_member_function_t<E&&,F&&,Args&&...>>
-    operator()(E&& ex, F&& f, Args&&... args) const
+  constexpr ensure_chaining_sender_t<invoke_on_member_function_t<S&&,F&&,Args&&...>>
+    operator()(S&& scheduler, F&& f, Args&&... args) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(std::forward<E>(ex).invoke_on(std::forward<F>(f), std::forward<Args>(args)...));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(std::forward<S>(scheduler).invoke_on(std::forward<F>(f), std::forward<Args>(args)...));
   }
 
   CUSEND_EXEC_CHECK_DISABLE
-  template<class E, class F, class... Args,
-           CUSEND_REQUIRES(!has_invoke_on_member_function<E&&,F&&,Args&&...>::value),
-           CUSEND_REQUIRES(has_invoke_on_free_function<E&&,F&&,Args&&...>::value)
+  template<class S, class F, class... Args,
+           CUSEND_REQUIRES(!has_invoke_on_member_function<S&&,F&&,Args&&...>::value),
+           CUSEND_REQUIRES(has_invoke_on_free_function<S&&,F&&,Args&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<invoke_on_free_function_t<E&&,F&&,Args&&...>>
-    operator()(E&& ex, F&& f, Args&&... args) const
+  constexpr ensure_chaining_sender_t<invoke_on_free_function_t<S&&,F&&,Args&&...>>
+    operator()(S&& scheduler, F&& f, Args&&... args) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(invoke_on(std::forward<E>(ex), std::forward<F>(f), std::forward<Args>(args)...));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(invoke_on(std::forward<S>(scheduler), std::forward<F>(f), std::forward<Args>(args)...));
   }
 
   CUSEND_EXEC_CHECK_DISABLE
-  template<class E, class F, class... Args,
-           CUSEND_REQUIRES(!has_invoke_on_member_function<E&&,F&&,Args&&...>::value),
-           CUSEND_REQUIRES(!has_invoke_on_free_function<E&&,F&&,Args&&...>::value),
-           CUSEND_REQUIRES(is_detected<default_invoke_on_t,E&&,F&&,Args&&...>::value)
+  template<class S, class F, class... Args,
+           CUSEND_REQUIRES(!has_invoke_on_member_function<S&&,F&&,Args&&...>::value),
+           CUSEND_REQUIRES(!has_invoke_on_free_function<S&&,F&&,Args&&...>::value),
+           CUSEND_REQUIRES(is_detected<default_invoke_on_t,S&&,F&&,Args&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<default_invoke_on_t<E&&,F&&,Args&&...>>
-    operator()(E&& ex, F&& f, Args&&... args) const
+  constexpr ensure_chaining_sender_t<default_invoke_on_t<S&&,F&&,Args&&...>>
+    operator()(S&& scheduler, F&& f, Args&&... args) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::default_invoke_on(std::forward<E>(ex), std::forward<F>(f), std::forward<Args>(args)...));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::default_invoke_on(std::forward<S>(scheduler), std::forward<F>(f), std::forward<Args>(args)...));
   }
 };
 
@@ -115,8 +115,8 @@ const __device__ detail::dispatch_invoke_on invoke_on;
 } // end anonymous namespace
 
 
-template<class E, class F, class... Args>
-using invoke_on_t = decltype(CUSEND_NAMESPACE::invoke_on(std::declval<E>(), std::declval<F>(), std::declval<Args>()...));
+template<class S, class F, class... Args>
+using invoke_on_t = decltype(CUSEND_NAMESPACE::invoke_on(std::declval<S>(), std::declval<F>(), std::declval<Args>()...));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

@@ -2,9 +2,14 @@
 #include <cstring>
 #include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/invoke_on.hpp>
+#include <cusend/just.hpp>
 #include <cusend/sender/is_typed_sender.hpp>
 #include <exception>
 #include <utility>
+
+
+namespace ns = cusend;
+
 
 #ifndef __CUDACC__
 #define __host__
@@ -50,7 +55,7 @@ template<class Executor>
 __host__ __device__
 void test_is_typed_sender(Executor ex)
 {
-  using namespace cusend;
+  using namespace ns;
 
   {
     // test with 0 args
@@ -78,7 +83,7 @@ template<class Executor>
 __host__ __device__
 void test_variadicity(Executor ex)
 {
-  using namespace cusend;
+  using namespace ns;
 
   {
     // test with 0 args
@@ -131,7 +136,7 @@ template<class Executor>
 __host__ __device__
 void test_move_only_invocable(Executor ex)
 {
-  using namespace cusend;
+  using namespace ns;
 
   // test with move-only invocable
 
@@ -147,27 +152,63 @@ void test_move_only_invocable(Executor ex)
 }
 
 
-struct my_executor_with_invoke_on_member_function : cusend::execution::inline_executor
+struct my_executor_with_invoke_on_member_function : ns::execution::inline_executor
 {
-  template<class Function>
+  template<class F, class... Args>
   __host__ __device__
-  auto invoke_on(Function f) const
-    -> decltype(cusend::invoke_on(cusend::execution::inline_executor(), f))
+  auto invoke_on(F&& f, Args&&... args) const
+    -> decltype(ns::invoke_on(ns::execution::inline_executor(), std::forward<F>(f), std::forward<Args>(args)...))
   {
-    return cusend::invoke_on(cusend::execution::inline_executor(), f);
+    return ns::invoke_on(ns::execution::inline_executor(), std::forward<F>(f), std::forward<Args>(args)...);
   }
 };
 
 
-struct my_executor_with_invoke_on_free_function : cusend::execution::inline_executor {};
+struct my_executor_with_invoke_on_free_function : ns::execution::inline_executor {};
 
 
-template<class Function>
+template<class F, class... Args>
 __host__ __device__
-auto invoke_on(my_executor_with_invoke_on_free_function, Function f)
-  -> decltype(cusend::invoke_on(cusend::execution::inline_executor{}, f))
+auto invoke_on(my_executor_with_invoke_on_free_function, F&& f, Args&&... args)
+  -> decltype(ns::invoke_on(ns::execution::inline_executor{}, std::forward<F>(f), std::forward<Args>(args)...))
 {
-  return cusend::invoke_on(cusend::execution::inline_executor{}, f);
+  return ns::invoke_on(ns::execution::inline_executor{}, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+
+struct my_scheduler
+{
+  __host__ __device__
+  ns::just_t<> schedule() const
+  {
+    return ns::just();
+  }
+
+  bool operator==(const my_scheduler&) const;
+  bool operator!=(const my_scheduler&) const;
+};
+
+
+struct my_scheduler_with_invoke_on_member_function : my_scheduler
+{
+  template<class F, class... Args>
+  __host__ __device__
+  auto invoke_on(F&& f, Args&&... args) const
+    -> decltype(ns::invoke_on(my_scheduler{}, std::forward<F>(f), std::forward<Args>(args)...))
+  {
+    return ns::invoke_on(my_scheduler{}, std::forward<F>(f), std::forward<Args>(args)...);
+  }
+};
+
+
+struct my_scheduler_with_invoke_on_free_function : my_scheduler {};
+
+template<class F, class... Args>
+__host__ __device__
+auto invoke_on(const my_scheduler_with_invoke_on_free_function&, F&& f, Args&&... args)
+  -> decltype(ns::invoke_on(my_scheduler{}, std::forward<F>(f), std::forward<Args>(args)...))
+{
+  return ns::invoke_on(my_scheduler{}, std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 
@@ -230,15 +271,26 @@ struct gpu_executor
 
 void test_invoke_on()
 {
-  test_is_typed_sender(cusend::execution::inline_executor{});
+  test_is_typed_sender(ns::execution::inline_executor{});
   test_is_typed_sender(my_executor_with_invoke_on_member_function{});
   test_is_typed_sender(my_executor_with_invoke_on_free_function{});
+  test_is_typed_sender(my_scheduler{});
+  test_is_typed_sender(my_scheduler_with_invoke_on_member_function{});
+  test_is_typed_sender(my_scheduler_with_invoke_on_free_function{});
 
-  test_variadicity(cusend::execution::inline_executor{});
+  test_variadicity(ns::execution::inline_executor{});
   test_variadicity(my_executor_with_invoke_on_member_function{});
   test_variadicity(my_executor_with_invoke_on_free_function{});
+  test_variadicity(my_scheduler{});
+  test_variadicity(my_scheduler_with_invoke_on_member_function{});
+  test_variadicity(my_scheduler_with_invoke_on_free_function{});
 
-  test_move_only_invocable(cusend::execution::inline_executor{});
+  test_move_only_invocable(ns::execution::inline_executor{});
+  test_move_only_invocable(my_executor_with_invoke_on_member_function{});
+  test_move_only_invocable(my_executor_with_invoke_on_free_function{});
+  test_move_only_invocable(my_scheduler{});
+  test_move_only_invocable(my_scheduler_with_invoke_on_member_function{});
+  test_move_only_invocable(my_scheduler_with_invoke_on_free_function{});
 
 #ifdef __CUDACC__
   test_is_typed_sender(gpu_executor{});
@@ -246,17 +298,29 @@ void test_invoke_on()
 
   device_invoke([] __device__ ()
   {
-    test_is_typed_sender(cusend::execution::inline_executor{});
-    test_is_typed_sender(gpu_executor{});
+    test_is_typed_sender(ns::execution::inline_executor{});
     test_is_typed_sender(my_executor_with_invoke_on_member_function{});
     test_is_typed_sender(my_executor_with_invoke_on_free_function{});
+    test_is_typed_sender(my_scheduler{});
+    test_is_typed_sender(my_scheduler_with_invoke_on_member_function{});
+    test_is_typed_sender(my_scheduler_with_invoke_on_free_function{});
 
-    test_variadicity(cusend::execution::inline_executor{});
-    test_variadicity(gpu_executor{});
+    test_variadicity(ns::execution::inline_executor{});
     test_variadicity(my_executor_with_invoke_on_member_function{});
     test_variadicity(my_executor_with_invoke_on_free_function{});
+    test_variadicity(my_scheduler{});
+    test_variadicity(my_scheduler_with_invoke_on_member_function{});
+    test_variadicity(my_scheduler_with_invoke_on_free_function{});
 
-    test_move_only_invocable(cusend::execution::inline_executor{});
+    test_move_only_invocable(ns::execution::inline_executor{});
+    test_move_only_invocable(my_executor_with_invoke_on_member_function{});
+    test_move_only_invocable(my_executor_with_invoke_on_free_function{});
+    test_move_only_invocable(my_scheduler{});
+    test_move_only_invocable(my_scheduler_with_invoke_on_member_function{});
+    test_move_only_invocable(my_scheduler_with_invoke_on_free_function{});
+
+    test_is_typed_sender(gpu_executor{});
+    test_variadicity(gpu_executor{});
   });
   assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif
