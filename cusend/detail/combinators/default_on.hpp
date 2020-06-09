@@ -26,18 +26,18 @@
 
 #pragma once
 
-#include "../../prologue.hpp"
+#include "../prologue.hpp"
 
 #include <type_traits>
 #include <utility>
-#include "../../../execution/executor/execute.hpp"
-#include "../../../execution/executor/is_executor.hpp"
-#include "../../../sender/is_sender.hpp"
-#include "../../../sender/is_sender_to.hpp"
-#include "../../../sender/sender_base.hpp"
-#include "../../../sender/submit.hpp"
-#include "../../functional/closure.hpp"
-#include "../../functional/move_and_invoke.hpp"
+#include "../../execution/executor/execute.hpp"
+#include "../../execution/executor/is_executor.hpp"
+#include "../../sender/is_sender.hpp"
+#include "../../sender/is_sender_to.hpp"
+#include "../../sender/sender_base.hpp"
+#include "../../sender/submit.hpp"
+#include "../functional/closure.hpp"
+#include "../functional/move_and_invoke.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -143,11 +143,15 @@ on_sender<decay_t<Sender>, Executor> default_on(Sender&& s, const Executor& ex)
 }
 
 
+template<class S, class E>
+using default_on_t = decltype(detail::default_on(std::declval<S>(), std::declval<E>()));
+
+
 } // end namespace detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../epilogue.hpp"
+#include "../epilogue.hpp"
 

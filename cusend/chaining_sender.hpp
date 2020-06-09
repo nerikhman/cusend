@@ -30,7 +30,7 @@
 
 #include <type_traits>
 #include <utility>
-#include "detail/combinators/on/dispatch_on.hpp"
+#include "detail/combinators/on.hpp"
 #include "detail/combinators/transform.hpp"
 #include "detail/combinators/via/dispatch_via.hpp"
 #include "get_executor.hpp"
@@ -101,13 +101,13 @@ class chaining_sender
 
 
     template<class Executor,
-             CUSEND_REQUIRES(detail::can_dispatch_on<Sender&&,const Executor&>::value)
+             CUSEND_REQUIRES(detail::is_detected<detail::on_t,Sender&&,const Executor&>::value)
             >
     CUSEND_ANNOTATION
-    chaining_sender<detail::dispatch_on_t<Sender&&,const Executor&>>
+    chaining_sender<detail::on_t<Sender&&,const Executor&>>
       on(const Executor& ex) &&
     {
-      return {detail::dispatch_on(std::move(sender_), ex)};
+      return {detail::on(std::move(sender_), ex)};
     }
 
 

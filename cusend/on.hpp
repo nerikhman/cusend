@@ -30,7 +30,7 @@
 
 #include <utility>
 #include "chaining_sender.hpp"
-#include "detail/combinators/on/dispatch_on.hpp"
+#include "detail/combinators/on.hpp"
 #include "detail/static_const.hpp"
 
 
@@ -41,18 +41,18 @@ namespace detail
 {
 
 
-// this is the type of on
-struct on_customization_point
+// this is the type of the chaining on customization point
+struct chaining_on
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class S, class E,
-           CUSEND_REQUIRES(can_dispatch_on<S&&,const E&>::value)
+           CUSEND_REQUIRES(is_detected<detail::on_t,S&&,const E&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<dispatch_on_t<S&&,const E&>>
+  constexpr ensure_chaining_sender_t<detail::on_t<S&&,const E&>>
     operator()(S&& sender, const E& ex) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::dispatch_on(std::forward<S>(sender), ex));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::on(std::forward<S>(sender), ex));
   }
 };
 
@@ -64,11 +64,11 @@ namespace
 {
 
 
-// define the on customization point object
+// define the chaining on customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& on = detail::static_const<detail::on_customization_point>::value;
+constexpr auto const& on = detail::static_const<detail::chaining_on>::value;
 #else
-const __device__ detail::on_customization_point on;
+const __device__ detail::chaining_on on;
 #endif
 
 
