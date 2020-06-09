@@ -26,13 +26,12 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../prologue.hpp"
 
 #include <utility>
-#include "chaining_sender.hpp"
-#include "detail/combinators/pack.hpp"
-#include "detail/static_const.hpp"
-#include "detail/type_traits/is_detected.hpp"
+#include "../static_const.hpp"
+#include "../type_traits/is_detected.hpp"
+#include "default_pack.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -42,23 +41,59 @@ namespace detail
 {
 
 
-// this is the type of the chaining pack CPO
-struct chaining_pack
+template<class S>
+using pack_member_function_t = decltype(std::declval<S>().pack());
+
+template<class S>
+using has_pack_member_function = is_detected<pack_member_function_t, S>;
+
+
+template<class S>
+using pack_free_function_t = decltype(pack(std::declval<S>()));
+
+template<class S>
+using has_pack_free_function = is_detected<pack_free_function_t, S>;
+
+
+// this is the type of the pack CPO
+struct dispatch_pack
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class S,
-           CUSEND_REQUIRES(is_detected<detail::pack_t,S&&>::value)
+           CUSEND_REQUIRES(has_pack_member_function<S&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::pack_t<S&&>>
+  constexpr pack_member_function_t<S&&>
     operator()(S&& s) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::pack(std::forward<S>(s)));
+    return std::forward<S>(s).pack();
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S,
+           CUSEND_REQUIRES(!has_pack_member_function<S&&>::value),
+           CUSEND_REQUIRES(has_pack_free_function<S&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr pack_free_function_t<S&&>
+    operator()(S&& s) const
+  {
+    return pack(std::forward<S>(s));
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S,
+           CUSEND_REQUIRES(!has_pack_member_function<S&&>::value),
+           CUSEND_REQUIRES(!has_pack_free_function<S&&>::value),
+           CUSEND_REQUIRES(is_detected<default_pack_t, S&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_pack_t<S&&>
+    operator()(S&& s) const
+  {
+    return detail::default_pack(std::forward<S>(s));
   }
 };
-
-
-} // end detail
 
 
 namespace
@@ -67,9 +102,9 @@ namespace
 
 // define the pack customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& pack = detail::static_const<detail::chaining_pack>::value;
+constexpr auto const& pack = detail::static_const<detail::dispatch_pack>::value;
 #else
-const __device__ detail::chaining_pack pack;
+const __device__ detail::dispatch_pack pack;
 #endif
 
 
@@ -77,11 +112,14 @@ const __device__ detail::chaining_pack pack;
 
 
 template<class S>
-using pack_t = decltype(CUSEND_NAMESPACE::pack(std::declval<S>()));
+using pack_t = decltype(detail::pack(std::declval<S>()));
+
+
+} // end detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "detail/epilogue.hpp"
+#include "../epilogue.hpp"
 
