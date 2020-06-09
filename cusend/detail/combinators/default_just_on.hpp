@@ -30,7 +30,6 @@
 
 #include <utility>
 #include "../../is_scheduler.hpp"
-#include "../../schedule.hpp"
 #include "../../sender/is_receiver_of.hpp"
 #include "../../sender/set_done.hpp"
 #include "../../sender/set_error.hpp"
@@ -39,6 +38,7 @@
 #include "../tuple.hpp"
 #include "../type_traits/remove_cvref.hpp"
 #include "../utility/index_sequence.hpp"
+#include "schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

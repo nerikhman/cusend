@@ -26,13 +26,12 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../prologue.hpp"
 
 #include <utility>
-#include "chaining_sender.hpp"
-#include "detail/combinators/schedule.hpp"
-#include "detail/static_const.hpp"
-#include "detail/type_traits/is_detected.hpp"
+#include "../static_const.hpp"
+#include "../type_traits/is_detected.hpp"
+#include "default_schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -42,23 +41,59 @@ namespace detail
 {
 
 
-// this is the type of the chaining schedule CPO
-struct chaining_schedule
+template<class S>
+using schedule_member_function_t = decltype(std::declval<S>().schedule());
+
+template<class S>
+using has_schedule_member_function = is_detected<schedule_member_function_t, S>;
+
+
+template<class S>
+using schedule_free_function_t = decltype(schedule(std::declval<S>()));
+
+template<class S>
+using has_schedule_free_function = is_detected<schedule_free_function_t, S>;
+
+
+// this is the type of the schedule CPO
+struct dispatch_schedule
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class S,
-           CUSEND_REQUIRES(is_detected<detail::schedule_t, S&&>::value)
+           CUSEND_REQUIRES(has_schedule_member_function<S&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::schedule_t<S&&>>
+  constexpr schedule_member_function_t<S&&>
     operator()(S&& scheduler) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::schedule(std::forward<S>(scheduler)));
+    return std::forward<S>(scheduler).schedule();
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S,
+           CUSEND_REQUIRES(!has_schedule_member_function<S&&>::value),
+           CUSEND_REQUIRES(has_schedule_free_function<S&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr schedule_free_function_t<S&&>
+    operator()(S&& scheduler) const
+  {
+    return schedule(std::forward<S>(scheduler));
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S,
+           CUSEND_REQUIRES(!has_schedule_member_function<S&&>::value),
+           CUSEND_REQUIRES(!has_schedule_free_function<S&&>::value),
+           CUSEND_REQUIRES(is_detected<default_schedule_t,S&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_schedule_t<S&&>
+    operator()(S&& scheduler) const
+  {
+    return detail::default_schedule(std::forward<S>(scheduler));
   }
 };
-
-
-} // end detail
 
 
 namespace
@@ -67,9 +102,9 @@ namespace
 
 // define the schedule customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& schedule = detail::static_const<detail::chaining_schedule>::value;
+constexpr auto const& schedule = detail::static_const<detail::dispatch_schedule>::value;
 #else
-const __device__ detail::chaining_schedule schedule;
+const __device__ detail::dispatch_schedule schedule;
 #endif
 
 
@@ -77,11 +112,14 @@ const __device__ detail::chaining_schedule schedule;
 
 
 template<class S>
-using schedule_t = decltype(CUSEND_NAMESPACE::schedule(std::declval<S>()));
+using schedule_t = decltype(detail::schedule(std::declval<S>()));
+
+
+} // end detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "detail/epilogue.hpp"
+#include "../epilogue.hpp"
 
