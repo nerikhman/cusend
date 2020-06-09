@@ -30,7 +30,7 @@
 
 #include <utility>
 #include "chaining_sender.hpp"
-#include "detail/combinators/transform/dispatch_transform.hpp"
+#include "detail/combinators/transform.hpp"
 #include "detail/static_const.hpp"
 
 
@@ -41,18 +41,18 @@ namespace detail
 {
 
 
-// this is the type of transform
-struct transform_customization_point
+// this is the type of the chaining transform CPO
+struct chaining_transform
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class S, class F,
-           CUSEND_REQUIRES(can_dispatch_transform<S&&,F&&>::value)
+           CUSEND_REQUIRES(is_detected<detail::transform_t,S&&,F&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<dispatch_transform_t<S&&,F&&>>
+  constexpr ensure_chaining_sender_t<detail::transform_t<S&&,F&&>>
     operator()(S&& s, F&& f) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::dispatch_transform(std::forward<S>(s), std::forward<F>(f)));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::transform(std::forward<S>(s), std::forward<F>(f)));
   }
 };
 
@@ -66,9 +66,9 @@ namespace
 
 // define the transform customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& transform = detail::static_const<detail::transform_customization_point>::value;
+constexpr auto const& transform = detail::static_const<detail::chaining_transform>::value;
 #else
-const __device__ detail::transform_customization_point transform;
+const __device__ detail::chaining_transform transform;
 #endif
 
 

@@ -26,25 +26,25 @@
 
 #pragma once
 
-#include "../../prologue.hpp"
+#include "../prologue.hpp"
 
 #include <utility>
-#include "../../../discard_receiver.hpp"
-#include "../../../sender/connect.hpp"
-#include "../../../sender/is_receiver.hpp"
-#include "../../../sender/is_receiver_of.hpp"
-#include "../../../sender/is_sender_to.hpp"
-#include "../../../sender/is_typed_sender.hpp"
-#include "../../../sender/sender_base.hpp"
-#include "../../../sender/set_done.hpp"
-#include "../../../sender/set_error.hpp"
-#include "../../../sender/set_value.hpp"
-#include "../../functional/invoke.hpp"
-#include "../../type_traits/decay.hpp"
-#include "../../type_traits/invoke_result.hpp"
-#include "../../type_traits/is_nothrow_invocable.hpp"
-#include "../../type_traits/is_nothrow_receiver_of.hpp"
-#include "../detail/type_list.hpp"
+#include "../../discard_receiver.hpp"
+#include "../../sender/connect.hpp"
+#include "../../sender/is_receiver.hpp"
+#include "../../sender/is_receiver_of.hpp"
+#include "../../sender/is_sender_to.hpp"
+#include "../../sender/is_typed_sender.hpp"
+#include "../../sender/sender_base.hpp"
+#include "../../sender/set_done.hpp"
+#include "../../sender/set_error.hpp"
+#include "../../sender/set_value.hpp"
+#include "../functional/invoke.hpp"
+#include "../type_traits/decay.hpp"
+#include "../type_traits/invoke_result.hpp"
+#include "../type_traits/is_nothrow_invocable.hpp"
+#include "../type_traits/is_nothrow_receiver_of.hpp"
+#include "detail/type_list.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -298,10 +298,14 @@ detail::transform_sender<detail::decay_t<Sender>, detail::decay_t<Function>>
 }
 
 
+template<class S, class F>
+using default_transform_t = decltype(detail::default_transform(std::declval<S>(), std::declval<F>()));
+
+
 } // end detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../epilogue.hpp"
+#include "../epilogue.hpp"
 

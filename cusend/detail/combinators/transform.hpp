@@ -26,9 +26,11 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <utility>
+#include "../static_const.hpp"
+#include "../type_traits/is_detected.hpp"
 #include "default_transform.hpp"
 
 
@@ -53,51 +55,62 @@ template<class S, class F>
 using has_transform_free_function = is_detected<transform_free_function_t, S, F>;
 
 
-// dispatch case 1: predecessor.transform(f) exists
-template<class Sender, class Function,
-         CUSEND_REQUIRES(has_transform_member_function<Sender&&,Function&&>::value)
-        >
-CUSEND_ANNOTATION
-auto dispatch_transform(Sender&& predecessor, Function&& continuation)
-  -> decltype(std::forward<Sender>(predecessor).transform(std::forward<Function>(continuation)))
+// this is the type of the transform CPO
+struct dispatch_transform
 {
-  return std::forward<Sender>(predecessor).transform(std::forward<Function>(continuation));
-}
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class Sender, class Function,
+           CUSEND_REQUIRES(has_transform_member_function<Sender&&,Function&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr transform_member_function_t<Sender&&,Function&&>
+    operator()(Sender&& predecessor, Function&& continuation) const
+  {
+    return std::forward<Sender>(predecessor).transform(std::forward<Function>(continuation));
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class Sender, class Function,
+           CUSEND_REQUIRES(!has_transform_member_function<Sender&&,Function&&>::value),
+           CUSEND_REQUIRES(has_transform_free_function<Sender&&,Function&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr transform_free_function_t<Sender&&,Function&&>
+    operator()(Sender&& predecessor, Function&& continuation) const
+  {
+    return transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
+  }
+
+  template<class Sender, class Function,
+           CUSEND_REQUIRES(!has_transform_member_function<Sender&&,Function&&>::value),
+           CUSEND_REQUIRES(!has_transform_free_function<Sender&&,Function&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_transform_t<Sender&&,Function&&>
+    operator()(Sender&& predecessor, Function&& continuation) const
+  {
+    return detail::default_transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
+  }
+};
 
 
-// dispatch case 1: predecessor.transform(f) does not exist
-//                  transform(predecessor, f) does exist
-template<class Sender, class Function,
-         CUSEND_REQUIRES(!has_transform_member_function<Sender&&,Function&&>::value),
-         CUSEND_REQUIRES(has_transform_free_function<Sender&&,Function&&>::value)
-        >
-CUSEND_ANNOTATION
-auto dispatch_transform(Sender&& predecessor, Function&& continuation)
-  -> decltype(transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation)))
+namespace
 {
-  return transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
-}
 
 
-// dispatch case 2: predecessor.transform(f) does not exist
-//                  transform(predecessor, f) does not exist
-template<class Sender, class Function,
-         CUSEND_REQUIRES(!has_transform_member_function<Sender&&,Function&&>::value),
-         CUSEND_REQUIRES(!has_transform_free_function<Sender&&,Function&&>::value)
-        >
-CUSEND_ANNOTATION
-auto dispatch_transform(Sender&& predecessor, Function&& continuation)
-  -> decltype(detail::default_transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation)))
-{
-  return detail::default_transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
-}
+// define the transform customization point object
+#ifndef __CUDA_ARCH__
+constexpr auto const& transform = detail::static_const<detail::dispatch_transform>::value;
+#else
+const __device__ detail::dispatch_transform transform;
+#endif
+
+
+} // end anonymous namespace
 
 
 template<class S, class F>
-using dispatch_transform_t = decltype(detail::dispatch_transform(std::declval<S>(), std::declval<F>()));
-
-template<class S, class F>
-using can_dispatch_transform = is_detected<dispatch_transform_t, S, F>;
+using transform_t = decltype(detail::transform(std::declval<S>(), std::declval<F>()));
 
 
 } // end detail
@@ -106,5 +119,5 @@ using can_dispatch_transform = is_detected<dispatch_transform_t, S, F>;
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 
