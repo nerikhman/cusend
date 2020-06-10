@@ -31,10 +31,7 @@
 #include <exception>
 #include <type_traits>
 #include <utility>
-#include "../functional/closure.hpp"
-#include "../functional/move_and_invoke.hpp"
 #include "../type_traits/remove_cvref.hpp"
-#include "../../execution/executor/execute.hpp"
 #include "../../sender/connect.hpp"
 #include "../../sender/is_sender_to.hpp"
 #include "../../sender/is_typed_sender.hpp"
@@ -42,6 +39,8 @@
 #include "../../sender/set_done.hpp"
 #include "../../sender/set_error.hpp"
 #include "../../sender/set_value.hpp"
+#include "../../sender/submit.hpp"
+#include "just_on.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -51,41 +50,18 @@ namespace detail
 {
 
 
-// XXX consider promoting this to go alongside set_value
-struct try_set_value
-{
-  template<class R, class... Args>
-  CUSEND_ANNOTATION
-  void operator()(R&& r, Args&&... args) const
-  {
-#ifdef __CUDA_ARCH__
-    set_value(std::move(r), std::move(args)...);
-#else
-    try
-    {
-      set_value(std::move(r), std::move(args)...);
-    }
-    catch(...)
-    {
-      set_error(std::move(r), std::current_exception());
-    }
-#endif
-  }
-};
-
-
-template<class Executor, class Receiver>
+template<class Scheduler, class Receiver>
 class via_receiver
 {
   private:
-    Executor ex_;
+    Scheduler scheduler_;
     Receiver receiver_;
 
   public:
     CUSEND_EXEC_CHECK_DISABLE
     CUSEND_ANNOTATION
-    via_receiver(const Executor& ex, Receiver&& receiver)
-      : ex_{ex},
+    via_receiver(const Scheduler& scheduler, Receiver&& receiver)
+      : scheduler_{scheduler},
         receiver_{std::move(receiver)}
     {}
 
@@ -99,35 +75,29 @@ class via_receiver
     CUSEND_ANNOTATION
     void set_value(Args&&... args) &&
     {
-      // binding with move_and_invoke ensures that the receiver and arguments are moved() into try_set_value
-      auto f = detail::bind(move_and_invoke{}, try_set_value{}, std::move(receiver_), std::forward<Args>(args)...);
-      execution::execute(ex_, std::move(f));
+      submit(detail::just_on(scheduler_, std::forward<Args>(args)...), std::move(receiver_));
     }
 
     template<class E>
     CUSEND_ANNOTATION
     void set_error(E&& error) && noexcept
     {
-      // binding with move_and_invoke ensures that the receiver and arguments are moved() into set_error
-      auto f = detail::bind(move_and_invoke{}, CUSEND_NAMESPACE::set_error, std::move(receiver_), std::forward<E>(error));
-      execution::execute(ex_, std::move(f));
+      CUSEND_NAMESPACE::set_error(std::move(receiver_), std::forward<E>(error));
     }
 
     CUSEND_ANNOTATION
     void set_done() && noexcept
     {
-      // binding with move_and_invoke ensures that the receiver and arguments are moved() into set_done
-      auto f = detail::bind(move_and_invoke{}, CUSEND_NAMESPACE::set_done, std::move(receiver_));
-      execution::execute(ex_, std::move(f));
+      CUSEND_NAMESPACE::set_done(std::move(receiver_));
     }
 };
 
 
-template<class Executor, class Receiver>
+template<class Scheduler, class Receiver>
 CUSEND_ANNOTATION
-via_receiver<Executor,Receiver> make_via_receiver(const Executor& ex, Receiver&& r)
+via_receiver<Scheduler,Receiver> make_via_receiver(const Scheduler& scheduler, Receiver&& r)
 {
-  return {ex, std::forward<Receiver>(r)};
+  return {scheduler, std::forward<Receiver>(r)};
 }
 
 
@@ -149,18 +119,14 @@ struct via_sender_base<Sender, typename std::enable_if<is_typed_sender<Sender>::
 };
 
 
-template<class Sender, class Executor>
+template<class Sender, class Scheduler>
 class via_sender : public via_sender_base<Sender>
 {
-  private:
-    Sender predecessor_;
-    Executor ex_;
-
   public:
     CUSEND_ANNOTATION
-    via_sender(Sender&& predecessor, const Executor& ex)
-      : predecessor_{std::move(predecessor)},
-        ex_{ex}
+    via_sender(Sender&& sender, const Scheduler& scheduler)
+      : sender_{std::move(sender)},
+        scheduler_{scheduler}
     {}
 
     CUSEND_EXEC_CHECK_DISABLE
@@ -169,28 +135,55 @@ class via_sender : public via_sender_base<Sender>
     CUSEND_EXEC_CHECK_DISABLE
     via_sender(via_sender&&) = default;
 
+
     template<class Receiver,
              CUSEND_REQUIRES(is_sender_to<Sender&&,Receiver&&>::value)
             >
     CUSEND_ANNOTATION
-    connect_t<Sender,via_receiver<Executor,remove_cvref_t<Receiver>>>
+    connect_t<Sender,via_receiver<Scheduler,remove_cvref_t<Receiver>>>
       connect(Receiver&& receiver) &&
     {
-      return CUSEND_NAMESPACE::connect(std::move(predecessor_), make_via_receiver(std::move(ex_), std::move(receiver)));
+      return CUSEND_NAMESPACE::connect(std::move(sender_), make_via_receiver(scheduler_, std::move(receiver)));
     }
+
+
+    template<class OtherScheduler,
+             CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value)
+            >
+    CUSEND_ANNOTATION
+    via_sender<Sender, OtherScheduler> on(const OtherScheduler& scheduler) &&
+    {
+      return {std::move(sender_), scheduler};
+    }
+
+
+    template<class OtherScheduler,
+             CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value),
+             CUSEND_REQUIRES(std::is_copy_constructible<Sender>::value)
+            >
+    CUSEND_ANNOTATION
+    via_sender<Sender, OtherScheduler> on(const OtherScheduler& scheduler) const &
+    {
+      return {sender_, scheduler};
+    }
+
+
+  private:
+    Sender sender_;
+    Scheduler scheduler_;
 };
 
 
-template<class Sender, class Executor>
+template<class Sender, class Scheduler>
 CUSEND_ANNOTATION
-via_sender<remove_cvref_t<Sender>, Executor> default_via(Sender&& predecessor, const Executor& ex)
+via_sender<remove_cvref_t<Sender>, Scheduler> default_via(Sender&& sender, const Scheduler& scheduler)
 {
-  return {std::forward<Sender>(predecessor), ex};
+  return {std::forward<Sender>(sender), scheduler};
 }
 
 
-template<class S, class E>
-using default_via_t = decltype(detail::default_via(std::declval<S>(), std::declval<E>()));
+template<class Sender, class Scheduler>
+using default_via_t = decltype(detail::default_via(std::declval<Sender>(), std::declval<Scheduler>()));
 
 
 } // end detail

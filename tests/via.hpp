@@ -4,6 +4,10 @@
 #include <cusend/via.hpp>
 #include <cusend/transform.hpp>
 
+
+namespace ns = cusend;
+
+
 #ifndef __CUDACC__
 #define __host__
 #define __device__
@@ -52,7 +56,7 @@ void device_invoke(F f)
 }
 
 
-__managed__ int num_calls_to_my_executor_execute = 0;
+__managed__ int num_calls_to_customizations = 0;
 
 struct my_executor
 {
@@ -62,29 +66,15 @@ struct my_executor
   __host__ __device__
   bool operator!=(const my_executor&) const { return false; }
 
-  __host__ __device__
-  static int num_calls_to_execute()
-  {
-    return num_calls_to_my_executor_execute;
-  }
-
-  __host__ __device__
-  static void initialize_num_calls_to_execute()
-  {
-    num_calls_to_my_executor_execute = 0;
-  }
-
   template<class Function>
   __host__ __device__
   void execute(Function&& f) const noexcept
   {
     std::forward<Function>(f)();
-    ++num_calls_to_my_executor_execute;
+    ++num_calls_to_customizations;
   }
 };
 
-
-__managed__ int num_calls_to_my_gpu_executor_execute = 0;
 
 struct my_gpu_executor
 {
@@ -94,24 +84,33 @@ struct my_gpu_executor
   __host__ __device__
   bool operator!=(const my_gpu_executor&) const { return false; }
 
-  __host__ __device__
-  static int num_calls_to_execute()
-  {
-    return num_calls_to_my_gpu_executor_execute;
-  }
-
-  __host__ __device__
-  static void initialize_num_calls_to_execute()
-  {
-    num_calls_to_my_gpu_executor_execute = 0;
-  }
-
   template<class Function>
   __host__ __device__
   void execute(Function f) const noexcept
   {
     device_invoke(f);
-    ++num_calls_to_my_gpu_executor_execute;
+    ++num_calls_to_customizations;
+  }
+};
+
+
+struct my_scheduler_with_via_free_function : my_executor
+{
+  __host__ __device__
+  ns::just_t<> schedule() const
+  {
+    return ns::just();
+  }
+
+  bool operator==(const my_scheduler_with_via_free_function&) const;
+  bool operator!=(const my_scheduler_with_via_free_function&) const;
+
+  template<class Sender>
+  __host__ __device__
+  friend ns::via_t<Sender,ns::execution::inline_executor> via(Sender&& sender, const my_scheduler_with_via_free_function&)
+  {
+    ++num_calls_to_customizations;
+    return ns::via(std::forward<Sender>(sender), ns::execution::inline_executor{});
   }
 };
 
@@ -143,9 +142,9 @@ void test(Executor ex)
   int expected = arg1 + arg2;
 
   result = 0;
-  Executor::initialize_num_calls_to_execute();
+  num_calls_to_customizations = 0;
 
-  cusend::just(arg1)
+  ns::just(arg1)
     .via(ex)
     .transform([=] __host__ __device__ (int arg1)
      {
@@ -154,13 +153,14 @@ void test(Executor ex)
     .submit(my_receiver{});
 
   assert(result == expected);
-  assert(1 == my_executor::num_calls_to_execute());
+  assert(1 == num_calls_to_customizations);
 }
 
 
 void test_via()
 {
   test(my_executor{});
+  test(my_scheduler_with_via_free_function{});
 
 #if __CUDACC__
   test(my_gpu_executor{});
@@ -168,6 +168,7 @@ void test_via()
   device_invoke([] __device__ ()
   {
     test(my_executor{});
+    test(my_scheduler_with_via_free_function{});
     test(my_gpu_executor{});
   });
 #endif

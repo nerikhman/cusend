@@ -165,14 +165,14 @@ class chaining_sender
     }
 
 
-    template<class Executor,
-             CUSEND_REQUIRES(detail::is_detected<detail::via_t,Sender&&,const Executor&>::value)
+    template<class Scheduler,
+             CUSEND_REQUIRES(detail::is_detected<detail::via_t,Sender&&,const Scheduler&>::value)
             >
     CUSEND_ANNOTATION
-    ensure_chaining_sender_t<detail::via_t<Sender&&,const Executor&>>
-      via(const Executor& ex) &&
+    ensure_chaining_sender_t<detail::via_t<Sender&&,const Scheduler&>>
+      via(const Scheduler& scheduler) &&
     {
-      return CUSEND_NAMESPACE::ensure_chaining_sender(detail::via(std::move(sender_), ex));
+      return CUSEND_NAMESPACE::ensure_chaining_sender(detail::via(std::move(sender_), scheduler));
     }
 };
 

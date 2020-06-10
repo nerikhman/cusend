@@ -125,15 +125,18 @@ class on_sender : public sender_base
 
     on_sender(on_sender&&) = default;
 
+
     template<class Receiver,
              CUSEND_REQUIRES(is_sender_to<Sender&&,Receiver&&>::value)
             >
     CUSEND_ANNOTATION
-    connect_t<detail::schedule_t<Scheduler>, on_receiver<Sender, remove_cvref_t<Receiver>>> connect(Receiver&& r) &&
+    connect_t<detail::schedule_t<Scheduler>, on_receiver<Sender, remove_cvref_t<Receiver>>>
+      connect(Receiver&& r) &&
     {
       // call detail::schedule instead of schedule to avoid circular dependency
       return CUSEND_NAMESPACE::connect(detail::schedule(scheduler_), detail::make_on_receiver(std::move(sender_), std::forward<Receiver>(r)));
     }
+
 
     template<class OtherScheduler,
              CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value)
@@ -144,6 +147,7 @@ class on_sender : public sender_base
       return {std::move(sender_), scheduler};
     }
 
+
     template<class OtherScheduler,
              CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value),
              CUSEND_REQUIRES(std::is_copy_constructible<Sender>::value)
@@ -153,6 +157,7 @@ class on_sender : public sender_base
     {
       return {sender_, scheduler};
     }
+
 
   private:
     Sender sender_;
