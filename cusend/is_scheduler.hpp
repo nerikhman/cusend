@@ -29,10 +29,10 @@
 #include "detail/prologue.hpp"
 
 #include <type_traits>
+#include "detail/combinators/schedule.hpp"
 #include "detail/type_traits/conjunction.hpp"
 #include "detail/type_traits/is_detected.hpp"
 #include "detail/type_traits/is_equality_comparable.hpp"
-#include "schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -43,7 +43,10 @@ using is_scheduler = detail::conjunction<
   std::is_nothrow_copy_constructible<detail::remove_cvref_t<S>>,
   std::is_nothrow_destructible<detail::remove_cvref_t<S>>,
   detail::is_equality_comparable<detail::remove_cvref_t<S>>,
-  detail::is_detected<schedule_t, S>
+
+  // we check for detail::schedule_t instead of schedule_t
+  // to avoid circular dependency between this header and chaining_sender.hpp
+  detail::is_detected<detail::schedule_t, S>
 >;
 
 

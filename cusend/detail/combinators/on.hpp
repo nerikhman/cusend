@@ -40,61 +40,61 @@ namespace detail
 {
 
 
-template<class S, class E>
-using on_member_function_t = decltype(std::declval<S>().on(std::declval<E>()));
+template<class Sender, class Scheduler>
+using on_member_function_t = decltype(std::declval<Sender>().on(std::declval<Scheduler>()));
 
-template<class S, class E>
-using has_on_member_function = is_detected<on_member_function_t, S, E>;
+template<class Sender, class Scheduler>
+using has_on_member_function = is_detected<on_member_function_t, Sender, Scheduler>;
 
 
-template<class S, class E>
-using on_free_function_t = decltype(on(std::declval<S>(), std::declval<E>()));
+template<class Sender, class Scheduler>
+using on_free_function_t = decltype(on(std::declval<Sender>(), std::declval<Scheduler>()));
 
-template<class S, class E>
-using has_on_free_function = is_detected<on_free_function_t, S, E>;
+template<class Sender, class Scheduler>
+using has_on_free_function = is_detected<on_free_function_t, Sender, Scheduler>;
 
 
 // this is the type of the on CPO
 struct dispatch_on
 {
-  // dispatch case 1: sender.on(ex) exists
-  template<class Sender, class Executor,
-           CUSEND_REQUIRES(has_on_member_function<Sender&&,const Executor&>::value)
+  // dispatch case 1: sender.on(ex) schedulerists
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(has_on_member_function<Sender&&,Scheduler&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr on_member_function_t<Sender&&,const Executor&>
-    operator()(Sender&& sender, const Executor& ex) const
+  constexpr on_member_function_t<Sender&&,Scheduler&&>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
   {
-    return std::forward<Sender>(sender).on(ex);
+    return std::forward<Sender>(sender).on(std::forward<Scheduler>(scheduler));
   }
   
   
-  // dispatch case 1: sender.on(ex) does not exist
-  //                  on(sender, ex) does exist
-  template<class Sender, class Executor,
-           CUSEND_REQUIRES(!has_on_member_function<Sender&&,const Executor&>::value),
-           CUSEND_REQUIRES(has_on_free_function<Sender&&,const Executor&>::value)
+  // dispatch case 1: sender.on(ex) does not schedulerist
+  //                  on(sender, scheduler) does schedulerist
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(!has_on_member_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(has_on_free_function<Sender&&,Scheduler&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr on_free_function_t<Sender&&,const Executor&>
-    operator()(Sender&& sender, const Executor& ex) const
+  constexpr on_free_function_t<Sender&&,Scheduler&&>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
   {
-    return on(std::forward<Sender>(sender), ex);
+    return on(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler));
   }
   
   
-  // dispatch case 2: sender.on(ex) does not exist
-  //                  on(sender, ex) does not exist
-  template<class Sender, class Executor,
-           CUSEND_REQUIRES(!has_on_member_function<Sender&&,const Executor&>::value),
-           CUSEND_REQUIRES(!has_on_free_function<Sender&&,const Executor&>::value),
-           CUSEND_REQUIRES(is_detected<default_on_t,Sender&&,const Executor&>::value)
+  // dispatch case 2: sender.on(ex) does not schedulerist
+  //                  on(sender, scheduler) does not schedulerist
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(!has_on_member_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(!has_on_free_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(is_detected<default_on_t,Sender&&,Scheduler&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr default_on_t<Sender&&,const Executor&>
-    operator()(Sender&& sender, const Executor& ex) const
+  constexpr default_on_t<Sender&&,Scheduler&&>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
   {
-    return detail::default_on(std::forward<Sender>(sender), ex);
+    return detail::default_on(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler));
   }
 };
 
@@ -114,8 +114,8 @@ const __device__ detail::dispatch_on on;
 } // end anonymous namespace
 
 
-template<class S, class E>
-using on_t = decltype(detail::on(std::declval<S>(), std::declval<E>()));
+template<class Sender, class Scheduler>
+using on_t = decltype(detail::on(std::declval<Sender>(), std::declval<Scheduler>()));
 
 
 } // end detail

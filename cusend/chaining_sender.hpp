@@ -43,7 +43,40 @@
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
+// this template wraps another sender and introduces convenient chaining of combinators via member functions
+template<class Sender>
+class chaining_sender;
+
+
+// make multiply-wrapped chaining_senders illegal for now 
+template<class Sender>
+class chaining_sender<chaining_sender<Sender>>;
+
+
+// ensure_chaining_sender allows clients (such as the sender combinator CPOs) to ensure that the senders they return
+// are chaining_senders but aren't multiply-wrapped chaining_senders
+// i.e., chaining_sender<chaining_sender<...>> is unhelpful, so let's avoid creating those
+template<class Sender,
+         CUSEND_REQUIRES(is_sender<Sender&&>::value),
+         CUSEND_REQUIRES(std::is_rvalue_reference<Sender&&>::value)
+        >
+CUSEND_ANNOTATION
+chaining_sender<detail::decay_t<Sender>> ensure_chaining_sender(Sender&& sender);
+
+
+template<class Sender>
+CUSEND_ANNOTATION
+chaining_sender<Sender> ensure_chaining_sender(chaining_sender<Sender>&& sender);
+
+
+template<class Sender>
+using ensure_chaining_sender_t = decltype(ensure_chaining_sender(std::declval<Sender>()));
+
+
 // this template wraps another sender and introduces convenient chaining via member functions
+// its member functions call the combinator CPOs in namespace cusend::detail:: because the
+// public combinator CPOs in namespace cusend:: themselves return chaining_senders
+// using the combinator CPOs in namespace cusend::detail avoids circular dependency
 template<class Sender>
 class chaining_sender
 {
@@ -90,7 +123,7 @@ class chaining_sender
     }
 
 
-    // the use of a defaulted template parameter allows SFINAE to kick in
+    // the use of the defaulted template parameter S allows SFINAE to kick in
     template<class S = Sender,
              CUSEND_REQUIRES(detail::is_detected<get_executor_t,S>::value)>
     CUSEND_ANNOTATION
@@ -100,14 +133,14 @@ class chaining_sender
     }
 
 
-    template<class Executor,
-             CUSEND_REQUIRES(detail::is_detected<detail::on_t,Sender&&,const Executor&>::value)
+    template<class Scheduler,
+             CUSEND_REQUIRES(detail::is_detected<detail::on_t,Sender&&,const Scheduler&>::value)
             >
     CUSEND_ANNOTATION
-    chaining_sender<detail::on_t<Sender&&,const Executor&>>
-      on(const Executor& ex) &&
+    ensure_chaining_sender_t<detail::on_t<Sender&&,const Scheduler&>>
+      on(const Scheduler& scheduler) &&
     {
-      return {detail::on(std::move(sender_), ex)};
+      return CUSEND_NAMESPACE::ensure_chaining_sender(detail::on(std::move(sender_), scheduler));
     }
 
 
@@ -125,10 +158,10 @@ class chaining_sender
              CUSEND_REQUIRES(detail::is_detected<detail::transform_t,Sender&&,Function&&>::value)
             >
     CUSEND_ANNOTATION
-    chaining_sender<detail::transform_t<Sender&&,Function&&>>
+    ensure_chaining_sender_t<detail::transform_t<Sender&&,Function&&>>
       transform(Function&& continuation) &&
     {
-      return {detail::transform(std::move(sender_), std::forward<Function>(continuation))};
+      return CUSEND_NAMESPACE::ensure_chaining_sender(detail::transform(std::move(sender_), std::forward<Function>(continuation)));
     }
 
 
@@ -136,25 +169,22 @@ class chaining_sender
              CUSEND_REQUIRES(detail::is_detected<detail::via_t,Sender&&,const Executor&>::value)
             >
     CUSEND_ANNOTATION
-    chaining_sender<detail::via_t<Sender&&,const Executor&>>
+    ensure_chaining_sender_t<detail::via_t<Sender&&,const Executor&>>
       via(const Executor& ex) &&
     {
-      return {detail::via(std::move(sender_), ex)};
+      return CUSEND_NAMESPACE::ensure_chaining_sender(detail::via(std::move(sender_), ex));
     }
 };
 
 
-// specialize sender_traits
+// specialize sender_traits for chaining_sender
 template<class Sender>
 struct sender_traits<chaining_sender<Sender>> : sender_traits<Sender> {};
 
 
-// this utility allows clients (such as the sender combinator CPOs) to ensure that the senders they return
-// aren't multiply-wrapped chaining_senders
-// i.e., chaining_sender<chaining_sender<...>> is unhelpful, so let's avoid creating those
 template<class Sender,
-         CUSEND_REQUIRES(is_sender<Sender&&>::value),
-         CUSEND_REQUIRES(std::is_rvalue_reference<Sender&&>::value)
+         CUSEND_REQUIRES_DEF(is_sender<Sender&&>::value),
+         CUSEND_REQUIRES_DEF(std::is_rvalue_reference<Sender&&>::value)
         >
 CUSEND_ANNOTATION
 chaining_sender<detail::decay_t<Sender>> ensure_chaining_sender(Sender&& sender)
@@ -172,12 +202,6 @@ chaining_sender<Sender> ensure_chaining_sender(chaining_sender<Sender>&& sender)
 
 template<class Sender>
 using ensure_chaining_sender_t = decltype(ensure_chaining_sender(std::declval<Sender>()));
-
-
-// make multiply-wrapped chaining_senders illegal for now 
-// XXX eliminate this ASAP, there might be some use case for multiple-wrapping
-template<class Sender>
-class chaining_sender<chaining_sender<Sender>>;
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

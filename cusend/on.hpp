@@ -45,14 +45,14 @@ namespace detail
 struct chaining_on
 {
   CUSEND_EXEC_CHECK_DISABLE
-  template<class S, class E,
-           CUSEND_REQUIRES(is_detected<detail::on_t,S&&,const E&>::value)
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(is_detected<detail::on_t,Sender&&,Scheduler&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::on_t<S&&,const E&>>
-    operator()(S&& sender, const E& ex) const
+  constexpr ensure_chaining_sender_t<detail::on_t<Sender&&,Scheduler&&>>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::on(std::forward<S>(sender), ex));
+    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::on(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler)));
   }
 };
 
@@ -75,8 +75,8 @@ const __device__ detail::chaining_on on;
 } // end anonymous namespace
 
 
-template<class S, class E>
-using on_t = decltype(CUSEND_NAMESPACE::on(std::declval<S>(), std::declval<E>()));
+template<class Sender, class Scheduler>
+using on_t = decltype(CUSEND_NAMESPACE::on(std::declval<Sender>(), std::declval<Scheduler>()));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

@@ -30,14 +30,17 @@
 
 #include <type_traits>
 #include <utility>
-#include "../../execution/executor/execute.hpp"
-#include "../../execution/executor/is_executor.hpp"
+#include "../../is_scheduler.hpp"
+#include "../../sender/connect.hpp"
 #include "../../sender/is_sender.hpp"
 #include "../../sender/is_sender_to.hpp"
 #include "../../sender/sender_base.hpp"
+#include "../../sender/set_done.hpp"
+#include "../../sender/set_error.hpp"
+#include "../../sender/set_value.hpp"
 #include "../../sender/submit.hpp"
-#include "../functional/closure.hpp"
-#include "../functional/move_and_invoke.hpp"
+#include "../type_traits/remove_cvref.hpp"
+#include "schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -47,7 +50,64 @@ namespace detail
 {
 
 
-template<class Sender, class Executor>
+// on_receiver calls submit(sender,receiver) inside set_value
+// thus ensuring that the sender is submitted on the execution
+// context associated with the originating on_sender
+template<class Sender, class Receiver>
+class on_receiver
+{
+  public:
+    CUSEND_EXEC_CHECK_DISABLE
+    CUSEND_ANNOTATION
+    on_receiver(Sender&& sender, Receiver&& receiver)
+      : sender_{std::move(sender)},
+        receiver_{std::move(receiver)}
+    {}
+
+    CUSEND_EXEC_CHECK_DISABLE
+    on_receiver(const on_receiver&) = default;
+
+    CUSEND_EXEC_CHECK_DISABLE
+    on_receiver(on_receiver&&) = default;
+
+
+    CUSEND_ANNOTATION
+    void set_value() &&
+    {
+      submit(std::move(sender_), std::move(receiver_));
+    }
+
+
+    template<class E>
+    void set_error(E&& e) && noexcept
+    {
+      CUSEND_NAMESPACE::set_error(std::forward<E>(e));
+    }
+
+
+    CUSEND_ANNOTATION
+    void set_done() && noexcept
+    {
+      CUSEND_NAMESPACE::set_done(std::move(receiver_));
+    }
+
+  private:
+    Sender sender_;
+    Receiver receiver_;
+};
+
+
+template<class Sender, class Receiver>
+CUSEND_ANNOTATION
+on_receiver<remove_cvref_t<Sender>, remove_cvref_t<Receiver>> make_on_receiver(Sender&& sender, Receiver&& receiver)
+{
+  return {std::forward<Sender>(sender), std::forward<Receiver>(receiver)};
+}
+
+
+// XXX instead of deriving from sender_base,
+//     this sender should send Sender's types, if any
+template<class Sender, class Scheduler>
 class on_sender : public sender_base
 {
   public:
@@ -56,90 +116,58 @@ class on_sender : public sender_base
              CUSEND_REQUIRES(std::is_constructible<Sender,OtherSender&&>::value)
             >
     CUSEND_ANNOTATION
-    on_sender(OtherSender&& sender, const Executor& executor)
+    on_sender(OtherSender&& sender, const Scheduler& scheduler)
       : sender_(std::forward<OtherSender>(sender)),
-        executor_(executor)
+        scheduler_(scheduler)
     {}
 
     on_sender(const on_sender&) = default;
 
     on_sender(on_sender&&) = default;
 
-    CUSEND_ANNOTATION
-    const Executor& executor() const
-    {
-      return executor_;
-    }
-
-    // the type of operation returned by on_sender::connect
-    template<class Receiver>
-    class operation
-    {
-      public:
-        CUSEND_EXEC_CHECK_DISABLE
-        CUSEND_ANNOTATION
-        operation(const Executor& executor, Sender&& sender, Receiver&& receiver)
-          : executor_(executor),
-            sender_(std::move(sender)),
-            receiver_(std::move(receiver))
-        {}
-
-        CUSEND_ANNOTATION
-        void start() &&
-        {
-          // create a function that will submit the sender to the receiver and then execute that function on our executor
-          // binding with move_and_invoke ensures that the sender and receiver are moved() into submit() when it is called
-          CUSEND_NAMESPACE::execution::execute(executor_, detail::bind(move_and_invoke{}, CUSEND_NAMESPACE::submit, std::move(sender_), std::move(receiver_)));
-        }
-
-      private:
-        Executor executor_;
-        Sender sender_;
-        Receiver receiver_;
-    };
-
     template<class Receiver,
              CUSEND_REQUIRES(is_sender_to<Sender&&,Receiver&&>::value)
             >
     CUSEND_ANNOTATION
-    operation<decay_t<Receiver>> connect(Receiver&& r) &&
+    connect_t<detail::schedule_t<Scheduler>, on_receiver<Sender, remove_cvref_t<Receiver>>> connect(Receiver&& r) &&
     {
-      return {executor_, std::move(sender_), std::move(r)};
+      // call detail::schedule instead of schedule to avoid circular dependency
+      return CUSEND_NAMESPACE::connect(detail::schedule(scheduler_), detail::make_on_receiver(std::move(sender_), std::forward<Receiver>(r)));
     }
 
-    template<class OtherExecutor,
-             CUSEND_REQUIRES(execution::is_executor<OtherExecutor>::value)
+    template<class OtherScheduler,
+             CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value)
             >
     CUSEND_ANNOTATION
-    on_sender<Sender, OtherExecutor> on(const OtherExecutor& executor) &&
+    on_sender<Sender, OtherScheduler> on(const OtherScheduler& scheduler) &&
     {
-      return {std::move(sender_), executor};
+      return {std::move(sender_), scheduler};
     }
 
-    template<class OtherExecutor,
-             CUSEND_REQUIRES(execution::is_executor<OtherExecutor>::value),
+    template<class OtherScheduler,
+             CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value),
              CUSEND_REQUIRES(std::is_copy_constructible<Sender>::value)
             >
     CUSEND_ANNOTATION
-    on_sender<Sender, OtherExecutor> on(const OtherExecutor& executor) const &
+    on_sender<Sender, OtherScheduler> on(const OtherScheduler& scheduler) const &
     {
-      return {sender_, executor};
+      return {sender_, scheduler};
     }
 
   private:
     Sender sender_;
-    Executor executor_;
+    Scheduler scheduler_;
 };
 
 
-template<class Sender, class Executor,
+template<class Sender, class Scheduler,
          CUSEND_REQUIRES(is_sender<Sender>::value),
-         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
+         CUSEND_REQUIRES(is_scheduler<Scheduler>::value)
         >
 CUSEND_ANNOTATION
-on_sender<decay_t<Sender>, Executor> default_on(Sender&& s, const Executor& ex)
+on_sender<remove_cvref_t<Sender>, Scheduler> default_on(Sender&& s, const Scheduler& scheduler)
 {
-  return {std::forward<Sender>(s), ex};
+  return {std::forward<Sender>(s), scheduler};
 }
 
 
