@@ -75,7 +75,7 @@ class host_future_base
     static constexpr bool sends_done = false;
 
     // explicitly define this ctor to avoid viral __host__ __device__ infection of defaulted functions
-    host_future_base(host_future_base&& other)
+    host_future_base(host_future_base&& other) noexcept
       : executor_{std::move(other.executor_)},
         waiting_executor_{std::move(other.waiting_executor_)},
         future_{std::move(other.future_)}
@@ -286,7 +286,7 @@ class host_future : public host_future_base<T,Executor>
     {
       static_assert(std::is_trivially_copyable<R>::value, "Error.");
 
-      auto sender = CUSEND_NAMESPACE::just(std::move(*this)).then([receiver = std::move(receiver)](host_future&& self) mutable
+      auto sender = CUSEND_NAMESPACE::just(std::move(*this)).transform([receiver = std::move(receiver)](host_future&& self) mutable
       {
         std::move(self).then(std::move(receiver));
       });
