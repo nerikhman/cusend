@@ -89,6 +89,12 @@ class host_promise
       std::move(*this).set_error(std::make_exception_ptr(error));
     }
 
+
+    // this is an alias for the type of future returned by get_future
+    template<class StreamExecutor>
+    using future_type = detail::host_future<T,StreamExecutor>;
+
+
     template<class StreamExecutor,
              CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
             >

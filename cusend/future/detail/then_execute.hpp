@@ -30,11 +30,11 @@
 
 #include <future>
 #include <type_traits>
-#include "../../detail/type_traits/is_invocable.hpp"
 #include "../../detail/event.hpp"
+#include "../../detail/is_stream_executor.hpp"
+#include "../../detail/type_traits/is_invocable.hpp"
 #include "../../execution/executor/callback_executor.hpp"
 #include "../../execution/executor/execute.hpp"
-#include "is_stream_executor.hpp"
 #include "stream_of.hpp"
 
 

@@ -28,6 +28,7 @@
 
 #include "../../detail/prologue.hpp"
 
+#include "../../detail/is_stream_executor.hpp"
 #include "../../execution/property/stream.hpp"
 #include "../../property/query.hpp"
 

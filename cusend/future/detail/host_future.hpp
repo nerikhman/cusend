@@ -32,6 +32,7 @@
 #include <future>
 #include <type_traits>
 #include <utility>
+#include "../../detail/is_stream_executor.hpp"
 #include "../../discard_receiver.hpp"
 #include "../../execution/executor/callback_executor.hpp"
 #include "../../just.hpp"
@@ -39,7 +40,6 @@
 #include "../future.hpp"
 #include "invocable.hpp"
 #include "invocable_as_receiver.hpp"
-#include "is_stream_executor.hpp"
 #include "then_execute.hpp"
 
 
