@@ -32,6 +32,7 @@
 #include <type_traits>
 #include <utility>
 #include "../detail/event.hpp"
+#include "../detail/is_stream_executor.hpp"
 #include "../detail/type_traits/invoke_result.hpp"
 #include "../detail/type_traits/is_invocable.hpp"
 #include "../detail/type_traits/remove_cvref.hpp"
@@ -42,7 +43,6 @@
 #include "../sender/is_receiver_of.hpp"
 #include "detail/invocable.hpp"
 #include "detail/invocable_as_receiver.hpp"
-#include "detail/is_stream_executor.hpp"
 #include "detail/stream_of.hpp"
 #include "detail/stream_wait_for.hpp"
 

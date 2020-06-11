@@ -26,12 +26,12 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "prologue.hpp"
 
-#include "../../detail/type_traits/conjunction.hpp"
-#include "../../execution/executor/is_executor.hpp"
-#include "../../execution/property/stream.hpp"
-#include "../../property/can_query.hpp"
+#include "../execution/executor/is_executor.hpp"
+#include "../execution/property/stream.hpp"
+#include "../property/can_query.hpp"
+#include "type_traits/conjunction.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -53,5 +53,5 @@ using is_stream_executor = detail::conjunction<
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../detail/epilogue.hpp"
+#include "epilogue.hpp"
 

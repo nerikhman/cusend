@@ -29,9 +29,9 @@
 #include "../detail/prologue.hpp"
 
 #include <utility>
+#include "../detail/is_stream_executor.hpp"
 #include "../execution/executor/callback_executor.hpp"
 #include "detail/host_future.hpp"
-#include "detail/is_stream_executor.hpp"
 #include "detail/stream_of.hpp"
 
 
