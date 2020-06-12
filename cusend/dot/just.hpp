@@ -26,36 +26,42 @@
 
 #pragma once
 
-#include "../prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "../../execution/executor/inline_executor.hpp"
-#include "../../just_on.hpp"
+#include <utility>
+#include "../chaining_sender.hpp"
+#include "../just.hpp"
+#include "../detail/type_traits/is_detected.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-namespace detail
+namespace dot
 {
 
 
-template<class... Types>
+CUSEND_EXEC_CHECK_DISABLE
+template<class... Types
+         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::just_t, Types&&...>::value)
+        >
 CUSEND_ANNOTATION
-auto default_just(Types&&... values)
-  -> decltype(just_on(execution::inline_executor{}, std::forward<Types>(values)...))
+constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::just_t<Types&&...>>
+  just()(Types&&... values)
 {
-  return just_on(execution::inline_executor{}, std::forward<Types>(values)...);
+  return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::just(std::forward<Types>(values)...));
 }
 
 
 template<class... Types>
-using default_just_t = decltype(detail::default_just(std::declval<Types>()...));
+using just_t = decltype(dot::just(std::declval<Types>()...));
 
 
-} // end detail
+} // end dot
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../epilogue.hpp"
+
+#include "../detail/epilogue.hpp"
 

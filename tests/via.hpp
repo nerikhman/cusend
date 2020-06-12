@@ -144,13 +144,12 @@ void test(Executor ex)
   result = 0;
   num_calls_to_customizations = 0;
 
-  ns::just(arg1)
-    .via(ex)
-    .transform([=] __host__ __device__ (int arg1)
-     {
-       return arg1 + arg2;
-     })
-    .submit(my_receiver{});
+  auto sender = ns::transform(ns::via(ns::just(arg1), ex), [=] __host__ __device__ (int arg1)
+  {
+    return arg1 + arg2;
+  });
+
+  ns::submit(std::move(sender), my_receiver{});
 
   assert(result == expected);
   assert(1 == num_calls_to_customizations);

@@ -31,7 +31,7 @@
 #include <exception>
 #include <type_traits>
 #include <utility>
-#include "../type_traits/remove_cvref.hpp"
+#include "../../just_on.hpp"
 #include "../../sender/connect.hpp"
 #include "../../sender/is_sender_to.hpp"
 #include "../../sender/is_typed_sender.hpp"
@@ -40,7 +40,7 @@
 #include "../../sender/set_error.hpp"
 #include "../../sender/set_value.hpp"
 #include "../../sender/submit.hpp"
-#include "just_on.hpp"
+#include "../type_traits/remove_cvref.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -75,7 +75,7 @@ class via_receiver
     CUSEND_ANNOTATION
     void set_value(Args&&... args) &&
     {
-      submit(detail::just_on(scheduler_, std::forward<Args>(args)...), std::move(receiver_));
+      submit(just_on(scheduler_, std::forward<Args>(args)...), std::move(receiver_));
     }
 
     template<class E>

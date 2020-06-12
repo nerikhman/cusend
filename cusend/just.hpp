@@ -29,8 +29,7 @@
 #include "detail/prologue.hpp"
 
 #include <utility>
-#include "chaining_sender.hpp"
-#include "detail/combinators/just.hpp"
+#include "detail/combinators/default_just.hpp"
 #include "detail/static_const.hpp"
 #include "detail/type_traits/is_detected.hpp"
 
@@ -42,18 +41,69 @@ namespace detail
 {
 
 
-// this is the type of the chaining just CPO
-struct chaining_just
+template<class Type, class... Types>
+using just_member_function_t = decltype(std::declval<Type>().just(std::declval<Types>()...));
+
+template<class Type, class... Types>
+using has_just_member_function = is_detected<just_member_function_t, Type, Types...>;
+
+
+template<class Type, class... Types>
+using just_free_function_t = decltype(just(std::declval<Type>(), std::declval<Types>()...));
+
+template<class Type, class... Types>
+using has_just_free_function = is_detected<just_free_function_t, Type, Types...>;
+
+
+// this is the type of the just CPO
+struct dispatch_just
 {
   CUSEND_EXEC_CHECK_DISABLE
-  template<class... Types,
-           CUSEND_REQUIRES(is_detected<detail::just_t,Types&&...>::value)
+  template<class Type, class... Types,
+           CUSEND_REQUIRES(has_just_member_function<Type&&,Types&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::just_t<Types&&...>>
+  constexpr just_member_function_t<Type&&,Types&&...>
+    operator()(Type&& value, Types&&... values) const
+  {
+    return std::forward<Type>(value).just(std::forward<Types>(values)...);
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class Type, class... Types,
+           CUSEND_REQUIRES(!has_just_member_function<Type&&,Types&&...>::value),
+           CUSEND_REQUIRES(has_just_free_function<Type&&,Types&&...>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr just_free_function_t<Type&&,Types&&...>
+    operator()(Type&& value, Types&&... values) const
+  {
+    return just(std::forward<Type>(value), std::forward<Types>(values)...);
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class Type, class... Types,
+           CUSEND_REQUIRES(!has_just_member_function<Type&&,Types&&...>::value),
+           CUSEND_REQUIRES(!has_just_free_function<Type&&,Types&&...>::value),
+           CUSEND_REQUIRES(is_detected<default_just_t,Type&&,Types&&...>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_just_t<Type&&,Types&&...>
+    operator()(Type&& value, Types&&... values) const
+  {
+    return detail::default_just(std::forward<Type>(value), std::forward<Types>(values)...);
+  }
+
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class... Types,
+           CUSEND_REQUIRES(is_detected<default_just_t,Types&&...>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_just_t<Types&&...>
     operator()(Types&&... values) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::just(std::forward<Types>(values)...));
+    return detail::default_just(std::forward<Types>(values)...);
   }
 };
 
@@ -67,9 +117,9 @@ namespace
 
 // define the just customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& just = detail::static_const<detail::chaining_just>::value;
+constexpr auto const& just = detail::static_const<detail::dispatch_just>::value;
 #else
-const __device__ detail::chaining_just just;
+const __device__ detail::dispatch_just just;
 #endif
 
 
@@ -77,7 +127,7 @@ const __device__ detail::chaining_just just;
 
 
 template<class... Types>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<Types>()...));
+using just_t = decltype(just(std::declval<Types>()...));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

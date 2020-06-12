@@ -26,36 +26,42 @@
 
 #pragma once
 
-#include "../prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include "../../execution/executor/inline_executor.hpp"
-#include "../../just_on.hpp"
+#include <utility>
+#include "../chaining_sender.hpp"
+#include "../just_on.hpp"
+#include "../detail/type_traits/is_detected.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-namespace detail
+namespace dot
 {
 
 
-template<class... Types>
+CUSEND_EXEC_CHECK_DISABLE
+template<class S, class... Types
+         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::just_on_t, S&&, Types&&...>::value)
+        >
 CUSEND_ANNOTATION
-auto default_just(Types&&... values)
-  -> decltype(just_on(execution::inline_executor{}, std::forward<Types>(values)...))
+constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::just_on_t<S&&, Types&&...>>
+  just_on()(S&& scheduler, Types&&... values)
 {
-  return just_on(execution::inline_executor{}, std::forward<Types>(values)...);
+  return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::just_on(std::forward<S>(scheduler), std::forward<Types>(values)...));
 }
 
 
-template<class... Types>
-using default_just_t = decltype(detail::default_just(std::declval<Types>()...));
+template<class S, class... Types>
+using just_on_t = decltype(dot::just_on(std::declval<S>(), std::declval<Types>()...));
 
 
-} // end detail
+} // end dot
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../epilogue.hpp"
+
+#include "../detail/epilogue.hpp"
 

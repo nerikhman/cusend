@@ -31,6 +31,7 @@
 #include <utility>
 #include "../../is_scheduler.hpp"
 #include "../../schedule.hpp"
+#include "../../sender/connect.hpp"
 #include "../../sender/is_receiver_of.hpp"
 #include "../../sender/set_done.hpp"
 #include "../../sender/set_error.hpp"

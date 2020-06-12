@@ -4,6 +4,10 @@
 #include <cusend/just.hpp>
 #include <cusend/transform.hpp>
 
+
+namespace ns = cusend;
+
+
 #ifndef __CUDACC__
 #define __host__
 #define __device__
@@ -65,7 +69,7 @@ struct my_receiver
 __host__ __device__
 void test_is_typed_sender()
 {
-  using namespace cusend;
+  using namespace ns;
 
   {
     auto result = transform(just(), [] { return; });
@@ -92,7 +96,7 @@ void test_is_typed_sender()
 __host__ __device__
 void test_copyable_continuation()
 {
-  using namespace cusend;
+  using namespace ns;
 
   result = 0;
   int arg1 = 13;
@@ -110,7 +114,7 @@ void test_copyable_continuation()
 __host__ __device__
 void test_move_only_continuation()
 {
-  using namespace cusend;
+  using namespace ns;
 
   result = 0;
   int arg1 = 13;
@@ -134,9 +138,9 @@ struct my_sender_with_transform_member_function
   template<class Function>
   __host__ __device__
   auto transform(Function continuation) &&
-    -> decltype(cusend::just(arg).transform(continuation))
+    -> decltype(ns::transform(ns::just(arg), continuation))
   {
-    return cusend::just(arg).transform(continuation);
+    return ns::transform(ns::just(arg), continuation);
   }
 };
 
@@ -153,7 +157,7 @@ void test_sender_with_transform_member_function()
 
   my_sender_with_transform_member_function s{arg1};
 
-  cusend::transform(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
+  ns::transform(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
 
   assert(expected == result);
 }
@@ -168,9 +172,9 @@ struct my_sender_with_transform_free_function
 template<class Function>
 __host__ __device__
 auto transform(my_sender_with_transform_free_function&& s, Function continuation)
-  -> decltype(cusend::just(s.arg).transform(continuation))
+  -> decltype(ns::transform(ns::just(s.arg), continuation))
 {
-  return cusend::just(s.arg).transform(continuation);
+  return ns::transform(ns::just(s.arg), continuation);
 }
 
 
@@ -186,7 +190,7 @@ void test_sender_with_transform_free_function()
 
   my_sender_with_transform_member_function s{arg1};
 
-  cusend::transform(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
+  ns::transform(std::move(s), [=](int arg1) {return arg1 + arg2;}).connect(std::move(r)).start();
 
   assert(expected == result);
 }

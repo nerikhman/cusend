@@ -144,13 +144,15 @@ void test(Executor ex)
   result = 0;
   num_calls_to_customizations = 0;
 
-  ns::just(arg1)
-    .transform([=] __host__ __device__ (int arg1)
-     {
-       return arg1 + arg2;
-     })
-    .on(ex)
-    .submit(my_receiver{});
+  auto just_arg1 = ns::just(arg1);
+
+  auto xfrm_arg1 = ns::transform(std::move(just_arg1), [=] __host__ __device__ (int arg1)
+  {
+    return arg1 + arg2;
+  });
+
+  // submit on ex
+  ns::on(std::move(xfrm_arg1), ex).submit(my_receiver{});
 
   assert(result == expected);
   assert(1 == num_calls_to_customizations);

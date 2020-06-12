@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/just.hpp>
+#include <cusend/sender/is_typed_sender.hpp>
 #include <exception>
 #include <utility>
 

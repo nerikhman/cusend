@@ -3,6 +3,7 @@
 #include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/just.hpp>
 #include <cusend/just_on.hpp>
+#include <cusend/sender/is_typed_sender.hpp>
 #include <exception>
 #include <utility>
 

@@ -29,8 +29,7 @@
 #include "detail/prologue.hpp"
 
 #include <utility>
-#include "chaining_sender.hpp"
-#include "detail/combinators/just_on.hpp"
+#include "detail/combinators/default_just_on.hpp"
 #include "detail/static_const.hpp"
 #include "detail/type_traits/is_detected.hpp"
 
@@ -42,18 +41,57 @@ namespace detail
 {
 
 
-// this is the type of the chaining just_on CPO
-struct chaining_just_on
+template<class S, class... Types>
+using just_on_member_function_t = decltype(std::declval<S>().just_on(std::declval<Types>()...));
+
+template<class S, class... Types>
+using has_just_on_member_function = is_detected<just_on_member_function_t, S, Types...>;
+
+
+template<class S, class... Types>
+using just_on_free_function_t = decltype(just_on(std::declval<S>(), std::declval<Types>()...));
+
+template<class S, class... Types>
+using has_just_on_free_function = is_detected<just_on_free_function_t, S, Types...>;
+
+
+// this is the type of the just_on CPO
+struct dispatch_just_on
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class S, class... Types,
-           CUSEND_REQUIRES(is_detected<detail::just_on_t,S&&,Types&&...>::value)
+           CUSEND_REQUIRES(has_just_on_member_function<S&&,Types&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::just_on_t<S&&,Types&&...>>
+  constexpr just_on_member_function_t<S&&,Types&&...>
     operator()(S&& scheduler, Types&&... values) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::just_on(std::forward<S>(scheduler), std::forward<Types>(values)...));
+    return std::forward<S>(scheduler).just_on(std::forward<Types>(values)...);
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S, class... Types,
+           CUSEND_REQUIRES(!has_just_on_member_function<S&&,Types&&...>::value),
+           CUSEND_REQUIRES(has_just_on_free_function<S&&,Types&&...>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr just_on_free_function_t<S&&,Types&&...>
+    operator()(S&& scheduler, Types&&... values) const
+  {
+    return just_on(std::forward<S>(scheduler), std::forward<Types>(values)...);
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S, class... Types,
+           CUSEND_REQUIRES(!has_just_on_member_function<S&&,Types&&...>::value),
+           CUSEND_REQUIRES(!has_just_on_free_function<S&&,Types&&...>::value),
+           CUSEND_REQUIRES(is_detected<default_just_on_t,S&&,Types&&...>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_just_on_t<S&&,Types&&...>
+    operator()(S&& scheduler, Types&&... values) const
+  {
+    return detail::default_just_on(std::forward<S>(scheduler), std::forward<Types>(values)...);
   }
 };
 
@@ -67,9 +105,9 @@ namespace
 
 // define the just_on customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& just_on = detail::static_const<detail::chaining_just_on>::value;
+constexpr auto const& just_on = detail::static_const<detail::dispatch_just_on>::value;
 #else
-const __device__ detail::chaining_just_on just_on;
+const __device__ detail::dispatch_just_on just_on;
 #endif
 
 
@@ -77,7 +115,7 @@ const __device__ detail::chaining_just_on just_on;
 
 
 template<class S, class... Types>
-using just_on_t = decltype(CUSEND_NAMESPACE::just_on(std::declval<S>(), std::declval<Types>()...));
+using just_on_t = decltype(just_on(std::declval<S>(), std::declval<Types>()...));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
