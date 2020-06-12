@@ -30,6 +30,7 @@
 
 #include <utility>
 #include "detail/combinators/default_via.hpp"
+#include "detail/combinators/via_stream_executor.hpp"
 #include "detail/static_const.hpp"
 #include "detail/type_traits/is_detected.hpp"
 
@@ -87,6 +88,21 @@ struct dispatch_via
   template<class Sender, class Scheduler,
            CUSEND_REQUIRES(!has_via_member_function<Sender&&,Scheduler&&>::value),
            CUSEND_REQUIRES(!has_via_free_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(is_detected<via_stream_executor_t,Sender&&,Scheduler&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr via_stream_executor_t<Sender&&,Scheduler&&>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
+  {
+    return detail::via_stream_executor(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler));
+  }
+
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(!has_via_member_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(!has_via_free_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(!is_detected<via_stream_executor_t,Sender&&,Scheduler&&>::value),
            CUSEND_REQUIRES(is_detected<default_via_t,Sender&&,Scheduler&&>::value)
           >
   CUSEND_ANNOTATION

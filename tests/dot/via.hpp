@@ -1,7 +1,8 @@
 #include <cassert>
 #include <cstring>
-#include <cusend/just.hpp>
+#include <cusend/execution/executor/stream_executor.hpp>
 #include <cusend/dot/via.hpp>
+#include <cusend/just.hpp>
 #include <cusend/transform.hpp>
 
 
@@ -115,21 +116,37 @@ struct my_scheduler_with_via_free_function : my_executor
 };
 
 
-__managed__ int result;
+__managed__ int result1;
+__managed__ int result2;
 
 
 struct my_receiver
 {
   __host__ __device__
-  void set_value(int value)
+  void set_value() &&
   {
-    result = value;
+    result1 = true;
   }
 
-  void set_error(std::exception_ptr) {}
+  __host__ __device__
+  void set_value(int value) &&
+  {
+    result1 = value;
+  }
 
   __host__ __device__
-  void set_done() noexcept {}
+  void set_value(int value1, int value2) &&
+  {
+    result1 = value1;
+    result2 = value2;
+  }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
 };
 
 
@@ -150,7 +167,7 @@ void test(Executor ex)
   int arg2 = 7;
   int expected = arg1 + arg2;
 
-  result = 0;
+  result1 = 0;
   num_calls_to_customizations = 0;
 
   auto sender = ns::transform(ns::dot::via(ns::just(arg1), ex), [=] __host__ __device__ (int arg1)
@@ -162,8 +179,55 @@ void test(Executor ex)
 
   ns::submit(std::move(sender), my_receiver{});
 
-  assert(result == expected);
+  assert(result1 == expected);
   assert(1 == num_calls_to_customizations);
+}
+
+
+void test_via_stream_executor()
+{
+  // via() has a customization for stream_executors
+
+  {
+    result1 = false;
+
+    // just().via(ex)
+    auto sender = cusend::via(cusend::just(), cusend::execution::stream_executor{});
+
+    std::move(sender).connect(my_receiver{}).start();
+
+    cudaStreamSynchronize(0);
+    assert(result1);
+  }
+
+  {
+    result1 = -1;
+
+    // just(13).via(ex)
+    int expected1 = 13;
+    auto sender = cusend::via(cusend::just(expected1), cusend::execution::stream_executor{});
+
+    std::move(sender).connect(my_receiver{}).start();
+
+    cudaStreamSynchronize(0);
+    assert(expected1 == result1);
+  }
+
+  {
+    result1 = -1;
+    result2 = -1;
+
+    // just(13,7).via(ex)
+    int expected1 = 13;
+    int expected2 = 7;
+    auto sender = cusend::via(cusend::just(expected1,expected2), cusend::execution::stream_executor{});
+
+    std::move(sender).connect(my_receiver{}).start();
+
+    cudaStreamSynchronize(0);
+    assert(expected1 == result1);
+    assert(expected2 == result2);
+  }
 }
 
 
@@ -174,6 +238,7 @@ void test_via()
 
 #if __CUDACC__
   test(my_gpu_executor{});
+  test_via_stream_executor();
 
   device_invoke([] __device__ ()
   {
