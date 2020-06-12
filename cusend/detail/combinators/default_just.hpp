@@ -26,13 +26,10 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../prologue.hpp"
 
-#include <utility>
-#include "chaining_sender.hpp"
-#include "detail/combinators/just.hpp"
-#include "detail/static_const.hpp"
-#include "detail/type_traits/is_detected.hpp"
+#include "../../execution/executor/inline_executor.hpp"
+#include "just_on.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -42,46 +39,23 @@ namespace detail
 {
 
 
-// this is the type of the chaining just CPO
-struct chaining_just
+template<class... Types>
+CUSEND_ANNOTATION
+auto default_just(Types&&... values)
+  -> decltype(detail::just_on(execution::inline_executor{}, std::forward<Types>(values)...))
 {
-  CUSEND_EXEC_CHECK_DISABLE
-  template<class... Types,
-           CUSEND_REQUIRES(is_detected<detail::just_t,Types&&...>::value)
-          >
-  CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::just_t<Types&&...>>
-    operator()(Types&&... values) const
-  {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::just(std::forward<Types>(values)...));
-  }
-};
+  return detail::just_on(execution::inline_executor{}, std::forward<Types>(values)...);
+}
+
+
+template<class... Types>
+using default_just_t = decltype(detail::default_just(std::declval<Types>()...));
 
 
 } // end detail
 
 
-namespace
-{
-
-
-// define the just customization point object
-#ifndef __CUDA_ARCH__
-constexpr auto const& just = detail::static_const<detail::chaining_just>::value;
-#else
-const __device__ detail::chaining_just just;
-#endif
-
-
-} // end anonymous namespace
-
-
-template<class... Types>
-using just_t = decltype(CUSEND_NAMESPACE::just(std::declval<Types>()...));
-
-
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-
-#include "detail/epilogue.hpp"
+#include "../epilogue.hpp"
 
