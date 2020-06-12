@@ -42,12 +42,12 @@ namespace dot
 
 
 CUSEND_EXEC_CHECK_DISABLE
-template<class Sender, class Function
-         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::transform_t, Sender&&, Function&&...>::value)
+template<class Sender, class Function,
+         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::transform_t, Sender&&, Function&&>::value)
         >
 CUSEND_ANNOTATION
-constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::transform_t<Sender&&, Function&&...>>
-  transform()(Sender&& sender, Function&& f)
+constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::transform_t<Sender&&, Function&&>>
+  transform(Sender&& sender, Function&& f)
 {
   return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::transform(std::forward<Sender>(sender), std::forward<Function>(f)));
 }
