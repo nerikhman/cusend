@@ -29,8 +29,8 @@
 #include "../prologue.hpp"
 
 #include <utility>
-#include "../../transform.hpp"
 #include "../tuple.hpp"
+#include "transform.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -57,9 +57,9 @@ template<class S,
         >
 CUSEND_ANNOTATION
 auto default_pack(S&& predecessor)
-  -> decltype(CUSEND_NAMESPACE::transform(std::forward<S>(predecessor), as_tuple{}))
+  -> decltype(transform(std::forward<S>(predecessor), as_tuple{}))
 {
-  return CUSEND_NAMESPACE::transform(std::forward<S>(predecessor), as_tuple{});
+  return transform(std::forward<S>(predecessor), as_tuple{});
 }
 
 
