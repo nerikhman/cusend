@@ -47,7 +47,7 @@ template<class S,
         >
 CUSEND_ANNOTATION
 constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::schedule_t<S&&>>
-  schedule()(S&& scheduler)
+  schedule(S&& scheduler)
 {
   return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::schedule(std::forward<S>(scheduler)));
 }
