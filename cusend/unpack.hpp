@@ -29,8 +29,7 @@
 #include "detail/prologue.hpp"
 
 #include <utility>
-#include "chaining_sender.hpp"
-#include "detail/combinators/unpack.hpp"
+#include "detail/combinators/default_unpack.hpp"
 #include "detail/static_const.hpp"
 #include "detail/type_traits/is_detected.hpp"
 
@@ -42,18 +41,57 @@ namespace detail
 {
 
 
-// this is the type of the chaining unpack CPO
-struct chaining_unpack
+template<class S>
+using unpack_member_function_t = decltype(std::declval<S>().unpack());
+
+template<class S>
+using has_unpack_member_function = is_detected<unpack_member_function_t, S>;
+
+
+template<class S>
+using unpack_free_function_t = decltype(unpack(std::declval<S>()));
+
+template<class S>
+using has_unpack_free_function = is_detected<unpack_free_function_t, S>;
+
+
+// this is the type of the unpack CPO
+struct dispatch_unpack
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class S,
-           CUSEND_REQUIRES(is_detected<detail::unpack_t,S&&>::value)
+           CUSEND_REQUIRES(has_unpack_member_function<S&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::unpack_t<S&&>>
+  constexpr unpack_member_function_t<S&&>
     operator()(S&& s) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::unpack(std::forward<S>(s)));
+    return std::forward<S>(s).unpack();
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S,
+           CUSEND_REQUIRES(!has_unpack_member_function<S&&>::value),
+           CUSEND_REQUIRES(has_unpack_free_function<S&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr unpack_free_function_t<S&&>
+    operator()(S&& s) const
+  {
+    return unpack(std::forward<S>(s));
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class S,
+           CUSEND_REQUIRES(!has_unpack_member_function<S&&>::value),
+           CUSEND_REQUIRES(!has_unpack_free_function<S&&>::value),
+           CUSEND_REQUIRES(is_detected<default_unpack_t, S&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_unpack_t<S&&>
+    operator()(S&& s) const
+  {
+    return detail::default_unpack(std::forward<S>(s));
   }
 };
 
@@ -67,9 +105,9 @@ namespace
 
 // define the unpack customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& unpack = detail::static_const<detail::chaining_unpack>::value;
+constexpr auto const& unpack = detail::static_const<detail::dispatch_unpack>::value;
 #else
-const __device__ detail::chaining_unpack unpack;
+const __device__ detail::dispatch_unpack unpack;
 #endif
 
 
@@ -77,7 +115,7 @@ const __device__ detail::chaining_unpack unpack;
 
 
 template<class S>
-using unpack_t = decltype(CUSEND_NAMESPACE::unpack(std::declval<S>()));
+using unpack_t = decltype(unpack(std::declval<S>()));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
