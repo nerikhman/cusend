@@ -30,7 +30,6 @@
 
 #include <type_traits>
 #include <utility>
-#include "detail/combinators/via.hpp"
 #include "get_executor.hpp"
 #include "on.hpp"
 #include "sender/connect.hpp"
@@ -38,6 +37,7 @@
 #include "sender/sender_traits.hpp"
 #include "sender/submit.hpp"
 #include "transform.hpp"
+#include "via.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -166,13 +166,13 @@ class chaining_sender
 
 
     template<class Scheduler,
-             CUSEND_REQUIRES(detail::is_detected<detail::via_t,Sender&&,const Scheduler&>::value)
+             CUSEND_REQUIRES(detail::is_detected<via_t,Sender&&,const Scheduler&>::value)
             >
     CUSEND_ANNOTATION
-    ensure_chaining_sender_t<detail::via_t<Sender&&,const Scheduler&>>
+    ensure_chaining_sender_t<via_t<Sender&&,const Scheduler&>>
       via(const Scheduler& scheduler) &&
     {
-      return CUSEND_NAMESPACE::ensure_chaining_sender(detail::via(std::move(sender_), scheduler));
+      return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::via(std::move(sender_), scheduler));
     }
 };
 

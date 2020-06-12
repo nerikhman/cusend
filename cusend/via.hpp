@@ -29,8 +29,7 @@
 #include "detail/prologue.hpp"
 
 #include <utility>
-#include "chaining_sender.hpp"
-#include "detail/combinators/via.hpp"
+#include "detail/combinators/default_via.hpp"
 #include "detail/static_const.hpp"
 #include "detail/type_traits/is_detected.hpp"
 
@@ -42,18 +41,59 @@ namespace detail
 {
 
 
-// this is the type of the chaining via CPO
-struct chaining_via
+template<class Sender, class Scheduler>
+using via_member_function_t = decltype(std::declval<Sender>().via(std::declval<Scheduler>()));
+
+template<class Sender, class Scheduler>
+using has_via_member_function = is_detected<via_member_function_t, Sender, Scheduler>;
+
+
+template<class Sender, class Scheduler>
+using via_free_function_t = decltype(via(std::declval<Sender>(), std::declval<Scheduler>()));
+
+template<class Sender, class Scheduler>
+using has_via_free_function = is_detected<via_free_function_t, Sender, Scheduler>;
+
+
+// this is the type of the via CPO
+struct dispatch_via
 {
   CUSEND_EXEC_CHECK_DISABLE
-  template<class S, class E,
-           CUSEND_REQUIRES(is_detected<detail::via_t,S&&,E&&>::value)
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(has_via_member_function<Sender&&,Scheduler&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::via_t<S&&,E&&>>
-    operator()(S&& predecessor, E&& ex) const
+  constexpr via_member_function_t<Sender&&,Scheduler&&>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::via(std::forward<S>(predecessor), std::forward<E>(ex)));
+    return std::forward<Sender>(sender).via(std::forward<Scheduler>(scheduler));
+  }
+
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(!has_via_member_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(has_via_free_function<Sender&&,Scheduler&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr via_free_function_t<Sender&&,Scheduler&&>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
+  {
+    return via(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler));
+  }
+
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(!has_via_member_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(!has_via_free_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(is_detected<default_via_t,Sender&&,Scheduler&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_via_t<Sender&&,Scheduler&&>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
+  {
+    return detail::default_via(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler));
   }
 };
 
@@ -67,17 +107,17 @@ namespace
 
 // define the via customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& via = detail::static_const<detail::chaining_via>::value;
+constexpr auto const& via = detail::static_const<detail::dispatch_via>::value;
 #else
-const __device__ detail::chaining_via via;
+const __device__ detail::dispatch_via via;
 #endif
 
 
 } // end anonymous namespace
 
 
-template<class S, class E>
-using via_t = decltype(CUSEND_NAMESPACE::via(std::declval<S>(), std::declval<E>()));
+template<class Sender, class Scheduler>
+using via_t = decltype(via(std::declval<Sender>(), std::declval<Scheduler>()));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
