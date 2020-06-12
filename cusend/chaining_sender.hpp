@@ -31,13 +31,13 @@
 #include <type_traits>
 #include <utility>
 #include "detail/combinators/on.hpp"
-#include "detail/combinators/transform.hpp"
 #include "detail/combinators/via.hpp"
 #include "get_executor.hpp"
 #include "sender/connect.hpp"
 #include "sender/is_sender.hpp"
 #include "sender/sender_traits.hpp"
 #include "sender/submit.hpp"
+#include "transform.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -155,13 +155,13 @@ class chaining_sender
 
 
     template<class Function,
-             CUSEND_REQUIRES(detail::is_detected<detail::transform_t,Sender&&,Function&&>::value)
+             CUSEND_REQUIRES(detail::is_detected<transform_t,Sender&&,Function&&>::value)
             >
     CUSEND_ANNOTATION
-    ensure_chaining_sender_t<detail::transform_t<Sender&&,Function&&>>
+    ensure_chaining_sender_t<transform_t<Sender&&,Function&&>>
       transform(Function&& continuation) &&
     {
-      return CUSEND_NAMESPACE::ensure_chaining_sender(detail::transform(std::move(sender_), std::forward<Function>(continuation)));
+      return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::transform(std::move(sender_), std::forward<Function>(continuation)));
     }
 
 

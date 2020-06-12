@@ -29,9 +29,9 @@
 #include "detail/prologue.hpp"
 
 #include <utility>
-#include "chaining_sender.hpp"
-#include "detail/combinators/transform.hpp"
+#include "detail/combinators/default_transform.hpp"
 #include "detail/static_const.hpp"
+#include "detail/type_traits/is_detected.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -41,18 +41,55 @@ namespace detail
 {
 
 
-// this is the type of the chaining transform CPO
-struct chaining_transform
+template<class S, class F>
+using transform_member_function_t = decltype(std::declval<S>().transform(std::declval<F>()));
+
+template<class S, class F>
+using has_transform_member_function = is_detected<transform_member_function_t, S, F>;
+
+
+template<class S, class F>
+using transform_free_function_t = decltype(transform(std::declval<S>(), std::declval<F>()));
+
+template<class S, class F>
+using has_transform_free_function = is_detected<transform_free_function_t, S, F>;
+
+
+// this is the type of the transform CPO
+struct dispatch_transform
 {
   CUSEND_EXEC_CHECK_DISABLE
-  template<class S, class F,
-           CUSEND_REQUIRES(is_detected<detail::transform_t,S&&,F&&>::value)
+  template<class Sender, class Function,
+           CUSEND_REQUIRES(has_transform_member_function<Sender&&,Function&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::transform_t<S&&,F&&>>
-    operator()(S&& s, F&& f) const
+  constexpr transform_member_function_t<Sender&&,Function&&>
+    operator()(Sender&& predecessor, Function&& continuation) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::transform(std::forward<S>(s), std::forward<F>(f)));
+    return std::forward<Sender>(predecessor).transform(std::forward<Function>(continuation));
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class Sender, class Function,
+           CUSEND_REQUIRES(!has_transform_member_function<Sender&&,Function&&>::value),
+           CUSEND_REQUIRES(has_transform_free_function<Sender&&,Function&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr transform_free_function_t<Sender&&,Function&&>
+    operator()(Sender&& predecessor, Function&& continuation) const
+  {
+    return transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
+  }
+
+  template<class Sender, class Function,
+           CUSEND_REQUIRES(!has_transform_member_function<Sender&&,Function&&>::value),
+           CUSEND_REQUIRES(!has_transform_free_function<Sender&&,Function&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_transform_t<Sender&&,Function&&>
+    operator()(Sender&& predecessor, Function&& continuation) const
+  {
+    return detail::default_transform(std::forward<Sender>(predecessor), std::forward<Function>(continuation));
   }
 };
 
@@ -66,9 +103,9 @@ namespace
 
 // define the transform customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& transform = detail::static_const<detail::chaining_transform>::value;
+constexpr auto const& transform = detail::static_const<detail::dispatch_transform>::value;
 #else
-const __device__ detail::chaining_transform transform;
+const __device__ detail::dispatch_transform transform;
 #endif
 
 
@@ -76,7 +113,7 @@ const __device__ detail::chaining_transform transform;
 
 
 template<class S, class F>
-using transform_t = decltype(CUSEND_NAMESPACE::transform(std::declval<S>(), std::declval<F>()));
+using transform_t = decltype(transform(std::declval<S>(), std::declval<F>()));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
