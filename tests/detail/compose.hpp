@@ -2,7 +2,7 @@
 #include <cusend/detail/functional/compose.hpp>
 #include <utility>
 
-#ifndef __CUDACC__
+#ifndef __host__
 #define __host__
 #define __device__
 #endif

@@ -2,7 +2,7 @@
 #include <cusend/detail/execute_operation.hpp>
 #include <cusend/execution/executor/inline_executor.hpp>
 
-#ifndef __CUDACC__
+#ifndef __host__
 #define __host__
 #define __device__
 #endif

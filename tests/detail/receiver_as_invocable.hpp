@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cusend/detail/receiver_as_invocable.hpp>
 
-#ifndef __CUDACC__
+#ifndef __host__
 #define __host__
 #define __device__
 #endif

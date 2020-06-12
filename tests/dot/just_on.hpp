@@ -11,7 +11,7 @@
 namespace ns = cusend;
 
 
-#ifndef __CUDACC__
+#ifndef __host__
 #define __host__
 #define __device__
 #define __managed__
