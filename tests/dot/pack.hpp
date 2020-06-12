@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/just.hpp>
-#include <cusend/pack.hpp>
+#include <cusend/dot/pack.hpp>
 #include <exception>
 #include <utility>
 
@@ -76,23 +76,57 @@ __host__ __device__
 void test_is_typed_sender()
 {
   {
-    auto result = ns::pack(ns::just());
+    auto result = ns::dot::pack(ns::just());
     static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = ns::pack(ns::just(1));
+    auto result = ns::dot::pack(ns::just(1));
     static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = ns::pack(ns::just(1,2));
+    auto result = ns::dot::pack(ns::just(1,2));
     static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = ns::pack(ns::just(1,2,3));
+    auto result = ns::dot::pack(ns::just(1,2,3));
     static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
+  }
+}
+
+
+template<class S>
+__host__ __device__
+constexpr bool is_chaining(const S&) { return false; }
+
+template<class S>
+__host__ __device__
+constexpr bool is_chaining(const ns::chaining_sender<S>&) { return true; }
+
+
+__host__ __device__
+void test_is_chaining()
+{
+  {
+    auto result = ns::dot::pack(ns::just());
+    static_assert(is_chaining(result), "Error.");
+  }
+
+  {
+    auto result = ns::dot::pack(ns::just(1));
+    static_assert(is_chaining(result), "Error.");
+  }
+
+  {
+    auto result = ns::dot::pack(ns::just(1,2));
+    static_assert(is_chaining(result), "Error.");
+  }
+
+  {
+    auto result = ns::dot::pack(ns::just(1,2,3));
+    static_assert(is_chaining(result), "Error.");
   }
 }
 
@@ -105,7 +139,7 @@ void test_move_only()
 
   my_tuple_receiver r;
 
-  ns::pack(ns::just(move_only{expected})).connect(std::move(r)).start();
+  ns::dot::pack(ns::just(move_only{expected})).connect(std::move(r)).start();
 
   assert(expected == result1);
 }
@@ -123,7 +157,7 @@ void test_variadic()
 
     my_tuple_receiver r;
 
-    ns::pack(ns::just()).connect(std::move(r)).start();
+    ns::dot::pack(ns::just()).connect(std::move(r)).start();
 
     assert(true == result1);
   }
@@ -133,7 +167,7 @@ void test_variadic()
 
     my_tuple_receiver r;
 
-    ns::pack(ns::just(expected1)).connect(std::move(r)).start();
+    ns::dot::pack(ns::just(expected1)).connect(std::move(r)).start();
 
     assert(expected1 == result1);
   }
@@ -144,7 +178,7 @@ void test_variadic()
 
     my_tuple_receiver r;
 
-    ns::pack(ns::just(expected1, expected2)).connect(std::move(r)).start();
+    ns::dot::pack(ns::just(expected1, expected2)).connect(std::move(r)).start();
 
     assert(expected1 == result1);
     assert(expected2 == result2);
@@ -157,7 +191,7 @@ void test_variadic()
 
     my_tuple_receiver r;
 
-    ns::pack(ns::just(expected1, expected2, expected3)).connect(std::move(r)).start();
+    ns::dot::pack(ns::just(expected1, expected2, expected3)).connect(std::move(r)).start();
 
     assert(expected1 == result1);
     assert(expected2 == result2);
@@ -209,6 +243,7 @@ void device_invoke(F f)
 void test_pack()
 {
   test_is_typed_sender();
+  test_is_chaining();
   test_move_only();
   test_variadic();
 
