@@ -42,12 +42,12 @@ namespace dot
 
 
 CUSEND_EXEC_CHECK_DISABLE
-template<class S, class... Types
+template<class S, class... Types,
          CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::just_on_t, S&&, Types&&...>::value)
         >
 CUSEND_ANNOTATION
 constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::just_on_t<S&&, Types&&...>>
-  just_on()(S&& scheduler, Types&&... values)
+  just_on(S&& scheduler, Types&&... values)
 {
   return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::just_on(std::forward<S>(scheduler), std::forward<Types>(values)...));
 }
