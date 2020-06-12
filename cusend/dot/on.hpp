@@ -47,7 +47,7 @@ template<class Sender, class Scheduler,
         >
 CUSEND_ANNOTATION
 constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::on_t<Sender&&,Scheduler&&>>
-  on()(Sender&& sender, Scheduler&& scheduler)
+  on(Sender&& sender, Scheduler&& scheduler)
 {
   return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::on(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler)));
 }
