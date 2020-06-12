@@ -37,6 +37,7 @@
 #include "../../execution/executor/callback_executor.hpp"
 #include "../../just.hpp"
 #include "../../memory/unique_ptr.hpp"
+#include "../../transform.hpp"
 #include "../future.hpp"
 #include "invocable.hpp"
 #include "invocable_as_receiver.hpp"
@@ -161,7 +162,7 @@ class host_future : public host_future_base<T,Executor>
              class Result = set_value_t<R&&,T&&>,
              CUSEND_REQUIRES(std::is_void<Result>::value)
             >
-    CUSEND_NAMESPACE::future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
@@ -192,7 +193,7 @@ class host_future : public host_future_base<T,Executor>
              CUSEND_REQUIRES(!std::is_void<Result>::value),
              CUSEND_REQUIRES(std::is_same<Result,T>::value)
             >
-    CUSEND_NAMESPACE::future<T,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    future<T,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
@@ -223,7 +224,7 @@ class host_future : public host_future_base<T,Executor>
              CUSEND_REQUIRES(!std::is_void<Result>::value),
              CUSEND_REQUIRES(!std::is_same<Result,T>::value)
             >
-    CUSEND_NAMESPACE::future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
@@ -251,7 +252,7 @@ class host_future : public host_future_base<T,Executor>
              CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
              class Result = set_value_t<R&&,T&&>
             >
-    CUSEND_NAMESPACE::future<Result,Executor> then(R receiver) &&
+    future<Result,Executor> then(R receiver) &&
     {
       return std::move(*this).then(executor(), receiver);
     }
@@ -263,7 +264,7 @@ class host_future : public host_future_base<T,Executor>
              CUSEND_REQUIRES(is_invocable<F,T&&>::value),
              class Result = invoke_result_t<F,T&&>
             >
-    CUSEND_NAMESPACE::future<Result,StreamExecutor> then(const StreamExecutor& ex, F&& f) &&
+    future<Result,StreamExecutor> then(const StreamExecutor& ex, F&& f) &&
     {
       return std::move(*this).then(ex, detail::as_receiver(std::forward<F>(f)));
     }
@@ -272,7 +273,7 @@ class host_future : public host_future_base<T,Executor>
              CUSEND_REQUIRES(is_invocable<F,T&&>::value),
              class Result = invoke_result_t<F,T&&>
             >
-    CUSEND_NAMESPACE::future<Result,Executor> then(F&& f) &&
+    future<Result,Executor> then(F&& f) &&
     {
       return std::move(*this).then(executor(), std::forward<F>(f));
     }
@@ -286,7 +287,7 @@ class host_future : public host_future_base<T,Executor>
     {
       static_assert(std::is_trivially_copyable<R>::value, "Error.");
 
-      auto sender = CUSEND_NAMESPACE::just(std::move(*this)).transform([receiver = std::move(receiver)](host_future&& self) mutable
+      auto sender = transform(just(std::move(*this)), [receiver = std::move(receiver)](host_future&& self) mutable
       {
         std::move(self).then(std::move(receiver));
       });
@@ -342,7 +343,7 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
              class Result = set_value_t<R&&>,
              CUSEND_REQUIRES(std::is_void<Result>::value)
             >
-    CUSEND_NAMESPACE::future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
@@ -371,7 +372,7 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
              class Result = set_value_t<R&&>,
              CUSEND_REQUIRES(!std::is_void<Result>::value)
             >
-    CUSEND_NAMESPACE::future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       if(!valid())
       {
@@ -399,7 +400,7 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
              CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
              class Result = set_value_t<R&&>
             >
-    CUSEND_NAMESPACE::future<Result,Executor> then(R receiver) &&
+    future<Result,Executor> then(R receiver) &&
     {
       return std::move(*this).then(executor(), receiver);
     }
@@ -411,7 +412,7 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
              CUSEND_REQUIRES(is_invocable<F>::value),
              class Result = invoke_result_t<F>
             >
-    CUSEND_NAMESPACE::future<Result,StreamExecutor> then(const StreamExecutor& ex, F&& f) &&
+    future<Result,StreamExecutor> then(const StreamExecutor& ex, F&& f) &&
     {
       return std::move(*this).then(ex, detail::as_receiver(std::forward<F>(f)));
     }
@@ -420,7 +421,7 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
              CUSEND_REQUIRES(is_invocable<F>::value),
              class Result = invoke_result_t<F>
             >
-    CUSEND_NAMESPACE::future<Result,Executor> then(F&& f) &&
+    future<Result,Executor> then(F&& f) &&
     {
       return std::move(*this).then(executor(), std::forward<F>(f));
     }
@@ -431,7 +432,7 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
             >
     auto connect(R&& r) &&
     {
-      auto sender = CUSEND_NAMESPACE::just(std::move(*this)).then([r = std::move(r)](host_future&& self) mutable
+      auto sender = transform(std::move(*this), [r = std::move(r)](host_future&& self) mutable
       {
         std::move(self).then(std::move(r));
       });
