@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cusend/just.hpp>
 #include <cusend/on.hpp>
+#include <cusend/sender/submit.hpp>
 #include <cusend/transform.hpp>
 
 
@@ -152,7 +153,8 @@ void test(Executor ex)
   });
 
   // submit on ex
-  ns::on(std::move(xfrm_arg1), ex).submit(my_receiver{});
+  auto sender = ns::on(std::move(xfrm_arg1), ex);
+  ns::submit(std::move(sender), my_receiver{});
 
   assert(result == expected);
   assert(1 == num_calls_to_customizations);

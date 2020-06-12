@@ -175,8 +175,8 @@ on_sender<remove_cvref_t<Sender>, Scheduler> default_on(Sender&& s, const Schedu
 }
 
 
-template<class S, class E>
-using default_on_t = decltype(detail::default_on(std::declval<S>(), std::declval<E>()));
+template<class Sender, class Scheduler>
+using default_on_t = decltype(detail::default_on(std::declval<Sender>(), std::declval<Scheduler>()));
 
 
 } // end namespace detail

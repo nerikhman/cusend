@@ -29,9 +29,8 @@
 #include "detail/prologue.hpp"
 
 #include <utility>
-#include "chaining_sender.hpp"
-#include "detail/combinators/on.hpp"
-#include "detail/static_const.hpp"
+#include "detail/combinators/default_on.hpp"
+#include "detail/type_traits/is_detected.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -41,18 +40,61 @@ namespace detail
 {
 
 
-// this is the type of the chaining on customization point
-struct chaining_on
+template<class Sender, class Scheduler>
+using on_member_function_t = decltype(std::declval<Sender>().on(std::declval<Scheduler>()));
+
+template<class Sender, class Scheduler>
+using has_on_member_function = is_detected<on_member_function_t, Sender, Scheduler>;
+
+
+template<class Sender, class Scheduler>
+using on_free_function_t = decltype(on(std::declval<Sender>(), std::declval<Scheduler>()));
+
+template<class Sender, class Scheduler>
+using has_on_free_function = is_detected<on_free_function_t, Sender, Scheduler>;
+
+
+// this is the type of the on CPO
+struct dispatch_on
 {
-  CUSEND_EXEC_CHECK_DISABLE
+  // dispatch case 1: sender.on(ex) schedulerists
   template<class Sender, class Scheduler,
-           CUSEND_REQUIRES(is_detected<detail::on_t,Sender&&,Scheduler&&>::value)
+           CUSEND_REQUIRES(has_on_member_function<Sender&&,Scheduler&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<detail::on_t<Sender&&,Scheduler&&>>
+  constexpr on_member_function_t<Sender&&,Scheduler&&>
     operator()(Sender&& sender, Scheduler&& scheduler) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::on(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler)));
+    return std::forward<Sender>(sender).on(std::forward<Scheduler>(scheduler));
+  }
+  
+  
+  // dispatch case 1: sender.on(ex) does not schedulerist
+  //                  on(sender, scheduler) does schedulerist
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(!has_on_member_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(has_on_free_function<Sender&&,Scheduler&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr on_free_function_t<Sender&&,Scheduler&&>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
+  {
+    return on(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler));
+  }
+  
+  
+  // dispatch case 2: sender.on(ex) does not schedulerist
+  //                  on(sender, scheduler) does not schedulerist
+  template<class Sender, class Scheduler,
+           CUSEND_REQUIRES(!has_on_member_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(!has_on_free_function<Sender&&,Scheduler&&>::value),
+           CUSEND_REQUIRES(is_detected<default_on_t,Sender&&,Scheduler&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_on_t<Sender&&,Scheduler&&>
+    operator()(Sender&& sender, Scheduler&& scheduler) const
+  {
+    return detail::default_on(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler));
   }
 };
 
@@ -64,11 +106,11 @@ namespace
 {
 
 
-// define the chaining on customization point object
+// define the on customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& on = detail::static_const<detail::chaining_on>::value;
+constexpr auto const& on = detail::static_const<detail::dispatch_on>::value;
 #else
-const __device__ detail::chaining_on on;
+const __device__ detail::dispatch_on on;
 #endif
 
 
@@ -76,7 +118,7 @@ const __device__ detail::chaining_on on;
 
 
 template<class Sender, class Scheduler>
-using on_t = decltype(CUSEND_NAMESPACE::on(std::declval<Sender>(), std::declval<Scheduler>()));
+using on_t = decltype(on(std::declval<Sender>(), std::declval<Scheduler>()));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

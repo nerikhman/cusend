@@ -30,9 +30,9 @@
 
 #include <type_traits>
 #include <utility>
-#include "detail/combinators/on.hpp"
 #include "detail/combinators/via.hpp"
 #include "get_executor.hpp"
+#include "on.hpp"
 #include "sender/connect.hpp"
 #include "sender/is_sender.hpp"
 #include "sender/sender_traits.hpp"
@@ -134,13 +134,13 @@ class chaining_sender
 
 
     template<class Scheduler,
-             CUSEND_REQUIRES(detail::is_detected<detail::on_t,Sender&&,const Scheduler&>::value)
+             CUSEND_REQUIRES(detail::is_detected<on_t,Sender&&,const Scheduler&>::value)
             >
     CUSEND_ANNOTATION
-    ensure_chaining_sender_t<detail::on_t<Sender&&,const Scheduler&>>
+    ensure_chaining_sender_t<on_t<Sender&&,const Scheduler&>>
       on(const Scheduler& scheduler) &&
     {
-      return CUSEND_NAMESPACE::ensure_chaining_sender(detail::on(std::move(sender_), scheduler));
+      return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::on(std::move(sender_), scheduler));
     }
 
 
