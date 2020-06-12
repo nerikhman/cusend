@@ -32,11 +32,13 @@
 #include <utility>
 #include "get_executor.hpp"
 #include "on.hpp"
+#include "pack.hpp"
 #include "sender/connect.hpp"
 #include "sender/is_sender.hpp"
 #include "sender/sender_traits.hpp"
 #include "sender/submit.hpp"
 #include "transform.hpp"
+#include "unpack.hpp"
 #include "via.hpp"
 
 
@@ -125,7 +127,8 @@ class chaining_sender
 
     // the use of the defaulted template parameter S allows SFINAE to kick in
     template<class S = Sender,
-             CUSEND_REQUIRES(detail::is_detected<get_executor_t,S>::value)>
+             CUSEND_REQUIRES(detail::is_detected<get_executor_t,S>::value)
+            >
     CUSEND_ANNOTATION
     get_executor_t<S> executor() const
     {
@@ -141,6 +144,17 @@ class chaining_sender
       on(const Scheduler& scheduler) &&
     {
       return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::on(std::move(sender_), scheduler));
+    }
+
+
+    // the use of the defaulted template parameter S allows SFINAE to kick in
+    template<class S = Sender,
+             CUSEND_REQUIRES(detail::is_detected<pack_t,S>::value)
+            >
+    ensure_chaining_sender_t<pack_t<S>>
+      pack() &&
+    {
+      return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::pack(std::move(sender_)));
     }
 
 
@@ -162,6 +176,17 @@ class chaining_sender
       transform(Function&& continuation) &&
     {
       return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::transform(std::move(sender_), std::forward<Function>(continuation)));
+    }
+
+
+    // the use of the defaulted template parameter S allows SFINAE to kick in
+    template<class S = Sender,
+             CUSEND_REQUIRES(detail::is_detected<unpack_t,S>::value)
+            >
+    ensure_chaining_sender_t<unpack_t<S>>
+      unpack() &&
+    {
+      return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::unpack(std::move(sender_)));
     }
 
 
