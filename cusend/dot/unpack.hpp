@@ -42,12 +42,12 @@ namespace dot
 
 
 CUSEND_EXEC_CHECK_DISABLE
-template<class Sender
+template<class Sender,
          CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::unpack_t, Sender&&>::value)
         >
 CUSEND_ANNOTATION
 constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::unpack_t<Sender&&>>
-  unpack()(Sender&& sender)
+  unpack(Sender&& sender)
 {
   return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::unpack(std::forward<Sender>(sender)));
 }

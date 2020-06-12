@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/just.hpp>
-#include <cusend/unpack.hpp>
+#include <cusend/dot/unpack.hpp>
 #include <exception>
 #include <utility>
 
@@ -43,9 +43,9 @@ struct my_sender_with_member_function
 
   __host__ __device__
   auto unpack() &&
-    -> decltype(ns::unpack(ns::just(result)))
+    -> decltype(ns::dot::unpack(ns::just(result)))
   {
-    return ns::unpack(ns::just(result));
+    return ns::dot::unpack(ns::just(result));
   }
 
   template<class R>
@@ -68,10 +68,19 @@ struct my_sender_with_free_function
 template<class Tuple>
 __host__ __device__
 auto unpack(my_sender_with_free_function<Tuple>&& s)
-  -> decltype(ns::unpack(ns::just(s.result)))
+  -> decltype(ns::dot::unpack(ns::just(s.result)))
 {
-  return ns::unpack(ns::just(s.result));
+  return ns::dot::unpack(ns::just(s.result));
 }
+
+
+template<class S>
+__host__ __device__
+constexpr bool is_chaining(const S&) { return false; }
+
+template<class S>
+__host__ __device__
+constexpr bool is_chaining(const ns::chaining_sender<S>&) { return true; }
 
 
 template<class S, class Tuple>
@@ -80,9 +89,10 @@ void test(S tuple_sender, Tuple expected)
 {
   Tuple result;
 
-  auto sender = ns::unpack(std::move(tuple_sender));
+  auto sender = ns::dot::unpack(std::move(tuple_sender));
 
   static_assert(ns::is_typed_sender<decltype(sender)>::value, "Error.");
+  static_assert(is_chaining(sender), "Error.");
 
   std::move(sender).connect(tuple_receiver<Tuple>{result}).start();
 
