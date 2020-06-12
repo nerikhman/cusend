@@ -5,6 +5,10 @@
 #include <exception>
 #include <utility>
 
+
+namespace ns = cusend;
+
+
 #ifndef __CUDACC__
 #define __host__
 #define __device__
@@ -72,23 +76,23 @@ __host__ __device__
 void test_is_typed_sender()
 {
   {
-    auto result = cusend::just();
-    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+    auto result = ns::just();
+    static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = cusend::just(1);
-    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+    auto result = ns::just(1);
+    static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = cusend::just(1,2);
-    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+    auto result = ns::just(1,2);
+    static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = cusend::just(1,2,3);
-    static_assert(cusend::is_typed_sender<decltype(result)>::value, "Error.");
+    auto result = ns::just(1,2,3);
+    static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 }
 
@@ -101,7 +105,7 @@ void test_copyable()
 
   my_receiver r;
 
-  cusend::just(expected).connect(std::move(r)).start();
+  ns::just(expected).connect(std::move(r)).start();
 
   assert(expected == result1);
 }
@@ -115,7 +119,7 @@ void test_move_only()
 
   my_receiver r;
 
-  cusend::just(move_only{expected}).connect(std::move(r)).start();
+  ns::just(move_only{expected}).connect(std::move(r)).start();
 
   assert(expected == result1);
 }
@@ -133,7 +137,7 @@ void test_variadic()
 
     my_receiver r;
 
-    cusend::just().connect(std::move(r)).start();
+    ns::just().connect(std::move(r)).start();
 
     assert(true == result1);
   }
@@ -143,7 +147,7 @@ void test_variadic()
 
     my_receiver r;
 
-    cusend::just(expected1).connect(std::move(r)).start();
+    ns::just(expected1).connect(std::move(r)).start();
 
     assert(expected1 == result1);
   }
@@ -154,7 +158,7 @@ void test_variadic()
 
     my_receiver r;
 
-    cusend::just(expected1, expected2).connect(std::move(r)).start();
+    ns::just(expected1, expected2).connect(std::move(r)).start();
 
     assert(expected1 == result1);
     assert(expected2 == result2);
@@ -167,7 +171,7 @@ void test_variadic()
 
     my_receiver r;
 
-    cusend::just(expected1, expected2, expected3).connect(std::move(r)).start();
+    ns::just(expected1, expected2, expected3).connect(std::move(r)).start();
 
     assert(expected1 == result1);
     assert(expected2 == result2);
