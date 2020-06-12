@@ -26,29 +26,42 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include <type_traits>
-#include "detail/type_traits/conjunction.hpp"
-#include "detail/type_traits/is_detected.hpp"
-#include "detail/type_traits/is_equality_comparable.hpp"
-#include "schedule.hpp"
+#include <utility>
+#include "../chaining_sender.hpp"
+#include "../schedule.hpp"
+#include "../detail/type_traits/is_detected.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
+namespace dot
+{
+
+
+CUSEND_EXEC_CHECK_DISABLE
+template<class S,
+         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::schedule_t, S&&>::value)
+        >
+CUSEND_ANNOTATION
+constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::schedule_t<S&&>>
+  schedule()(S&& scheduler)
+{
+  return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::schedule(std::forward<S>(scheduler)));
+}
+
+
 template<class S>
-using is_scheduler = detail::conjunction<
-  std::is_nothrow_copy_constructible<detail::remove_cvref_t<S>>,
-  std::is_nothrow_destructible<detail::remove_cvref_t<S>>,
-  detail::is_equality_comparable<detail::remove_cvref_t<S>>,
-  detail::is_detected<schedule_t, S>
->;
+using schedule_t = decltype(dot::schedule(std::declval<S>()));
+
+
+} // end dot
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 

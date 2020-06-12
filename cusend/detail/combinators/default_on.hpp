@@ -31,6 +31,7 @@
 #include <type_traits>
 #include <utility>
 #include "../../is_scheduler.hpp"
+#include "../../schedule.hpp"
 #include "../../sender/connect.hpp"
 #include "../../sender/is_sender.hpp"
 #include "../../sender/is_sender_to.hpp"
@@ -40,7 +41,6 @@
 #include "../../sender/set_value.hpp"
 #include "../../sender/submit.hpp"
 #include "../type_traits/remove_cvref.hpp"
-#include "schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -130,11 +130,10 @@ class on_sender : public sender_base
              CUSEND_REQUIRES(is_sender_to<Sender&&,Receiver&&>::value)
             >
     CUSEND_ANNOTATION
-    connect_t<detail::schedule_t<Scheduler>, on_receiver<Sender, remove_cvref_t<Receiver>>>
+    connect_t<schedule_t<Scheduler>, on_receiver<Sender, remove_cvref_t<Receiver>>>
       connect(Receiver&& r) &&
     {
-      // call detail::schedule instead of schedule to avoid circular dependency
-      return CUSEND_NAMESPACE::connect(detail::schedule(scheduler_), detail::make_on_receiver(std::move(sender_), std::forward<Receiver>(r)));
+      return CUSEND_NAMESPACE::connect(schedule(scheduler_), detail::make_on_receiver(std::move(sender_), std::forward<Receiver>(r)));
     }
 
 
