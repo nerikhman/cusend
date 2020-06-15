@@ -26,60 +26,33 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include <exception>
 #include <type_traits>
-#include <utility>
-#include "../../../lazy/sender/set_error.hpp"
-#include "../../../lazy/sender/set_value.hpp"
+#include "../../detail/type_traits/remove_cvref.hpp"
+#include "is_sender.hpp"
+#include "sender_traits.hpp"
+
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-namespace detail
-{
+// XXX WAR nvbug 2980877
+//template<class T>
+//using is_typed_sender = detail::conjunction<
+//  is_sender<T>,
+//  detail::has_sender_types<sender_traits<detail::remove_cvref_t<T>>>::value
+//>;
 
-
-template<class Receiver, class ValuePointer>
-struct inplace_indirect_set_value
-{
-  Receiver r;
-  ValuePointer value_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-#ifdef __CUDA_ARCH__
-    *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-#else
-    try
-    {
-      *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-    }
-    catch(...)
-    {
-      CUSEND_NAMESPACE::set_error(std::move(r), std::current_exception());
-    }
-#endif
-  }
-};
-
-template<class Receiver, class ValuePointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
-        >
-CUSEND_ANNOTATION
-inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_value(Receiver r, ValuePointer value_ptr)
-{
-  return {r, value_ptr};
-}
-
-
-} // end detail
+template<class T>
+using is_typed_sender = std::integral_constant<
+  bool,
+  is_sender<T>::value and
+  detail::has_sender_types<sender_traits<detail::remove_cvref_t<T>>>::value
+>;
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

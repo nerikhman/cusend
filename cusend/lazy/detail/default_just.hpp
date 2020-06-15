@@ -26,13 +26,11 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include <exception>
-#include <type_traits>
-#include <utility>
-#include "../../../lazy/sender/set_error.hpp"
-#include "../../../lazy/sender/set_value.hpp"
+#include "../../execution/executor/inline_executor.hpp"
+#include "../just_on.hpp"
+
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
@@ -41,39 +39,17 @@ namespace detail
 {
 
 
-template<class Receiver, class ValuePointer>
-struct inplace_indirect_set_value
-{
-  Receiver r;
-  ValuePointer value_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-#ifdef __CUDA_ARCH__
-    *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-#else
-    try
-    {
-      *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-    }
-    catch(...)
-    {
-      CUSEND_NAMESPACE::set_error(std::move(r), std::current_exception());
-    }
-#endif
-  }
-};
-
-template<class Receiver, class ValuePointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
-        >
+template<class... Types>
 CUSEND_ANNOTATION
-inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_value(Receiver r, ValuePointer value_ptr)
+auto default_just(Types&&... values)
+  -> decltype(just_on(execution::inline_executor{}, std::forward<Types>(values)...))
 {
-  return {r, value_ptr};
+  return just_on(execution::inline_executor{}, std::forward<Types>(values)...);
 }
+
+
+template<class... Types>
+using default_just_t = decltype(detail::default_just(std::declval<Types>()...));
 
 
 } // end detail
@@ -81,5 +57,5 @@ inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_valu
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

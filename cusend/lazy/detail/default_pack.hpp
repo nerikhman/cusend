@@ -26,13 +26,12 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include <exception>
-#include <type_traits>
 #include <utility>
-#include "../../../lazy/sender/set_error.hpp"
-#include "../../../lazy/sender/set_value.hpp"
+#include "../../detail/tuple.hpp"
+#include "../transform.hpp"
+
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
@@ -41,39 +40,31 @@ namespace detail
 {
 
 
-template<class Receiver, class ValuePointer>
-struct inplace_indirect_set_value
+struct as_tuple
 {
-  Receiver r;
-  ValuePointer value_ptr;
-
+  template<class... Args>
   CUSEND_ANNOTATION
-  void operator()()
+  auto operator()(Args&&... args) const
+    -> decltype(detail::make_tuple(std::forward<Args>(args)...))
   {
-#ifdef __CUDA_ARCH__
-    *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-#else
-    try
-    {
-      *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-    }
-    catch(...)
-    {
-      CUSEND_NAMESPACE::set_error(std::move(r), std::current_exception());
-    }
-#endif
+    return detail::make_tuple(std::forward<Args>(args)...);
   }
 };
 
-template<class Receiver, class ValuePointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
+
+template<class S,
+         CUSEND_REQUIRES(is_sender<S>::value)
         >
 CUSEND_ANNOTATION
-inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_value(Receiver r, ValuePointer value_ptr)
+auto default_pack(S&& predecessor)
+  -> decltype(transform(std::forward<S>(predecessor), as_tuple{}))
 {
-  return {r, value_ptr};
+  return transform(std::forward<S>(predecessor), as_tuple{});
 }
+
+
+template<class S>
+using default_pack_t = decltype(detail::default_pack(std::declval<S>()));
 
 
 } // end detail
@@ -81,5 +72,5 @@ inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_valu
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

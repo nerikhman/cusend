@@ -26,13 +26,12 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include <exception>
-#include <type_traits>
 #include <utility>
-#include "../../../lazy/sender/set_error.hpp"
-#include "../../../lazy/sender/set_value.hpp"
+#include "../../detail/static_const.hpp"
+#include "../../detail/type_traits/is_detected.hpp"
+
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
@@ -41,45 +40,73 @@ namespace detail
 {
 
 
-template<class Receiver, class ValuePointer>
-struct inplace_indirect_set_value
-{
-  Receiver r;
-  ValuePointer value_ptr;
+template<class R>
+using set_done_member_function_t = decltype(std::declval<R>().set_done());
 
+template<class R>
+using has_set_done_member_function = is_detected<set_done_member_function_t, R>;
+
+
+template<class R>
+using set_done_free_function_t = decltype(set_done(std::declval<R>()));
+
+template<class R>
+using has_set_done_free_function = is_detected<set_done_free_function_t, R>;
+
+
+
+// this is the type of set_done
+struct dispatch_set_done
+{
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class R,
+           CUSEND_REQUIRES(has_set_done_member_function<R&&>::value)
+          >
   CUSEND_ANNOTATION
-  void operator()()
+  constexpr auto operator()(R&& r) const ->
+    decltype(std::forward<R>(r).set_done())
   {
-#ifdef __CUDA_ARCH__
-    *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-#else
-    try
-    {
-      *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-    }
-    catch(...)
-    {
-      CUSEND_NAMESPACE::set_error(std::move(r), std::current_exception());
-    }
-#endif
+    return std::forward<R>(r).set_done();
+  }
+
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class R,
+           CUSEND_REQUIRES(!has_set_done_member_function<R&&>::value and
+                          has_set_done_free_function<R&&>::value)
+           >
+  CUSEND_ANNOTATION
+  constexpr auto operator()(R&& r) const ->
+    decltype(set_done(std::forward<R>(r)))
+  {
+    return set_done(std::forward<R>(r));
   }
 };
-
-template<class Receiver, class ValuePointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
-        >
-CUSEND_ANNOTATION
-inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_value(Receiver r, ValuePointer value_ptr)
-{
-  return {r, value_ptr};
-}
 
 
 } // end detail
 
 
+
+namespace
+{
+
+
+// define the set_done customization point object
+#ifndef __CUDA_ARCH__
+constexpr auto const& set_done = detail::static_const<detail::dispatch_set_done>::value;
+#else
+const __device__ detail::dispatch_set_done set_done;
+#endif
+
+
+} // end anonymous namespace
+
+
+template<class T>
+using set_done_t = decltype(CUSEND_NAMESPACE::set_done(std::declval<T>()));
+
+
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

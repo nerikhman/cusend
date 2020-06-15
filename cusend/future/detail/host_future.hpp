@@ -33,11 +33,11 @@
 #include <type_traits>
 #include <utility>
 #include "../../detail/is_stream_executor.hpp"
-#include "../../discard_receiver.hpp"
 #include "../../execution/executor/callback_executor.hpp"
-#include "../../just.hpp"
+#include "../../lazy/discard_receiver.hpp"
+#include "../../lazy/just.hpp"
+#include "../../lazy/transform.hpp"
 #include "../../memory/unique_ptr.hpp"
-#include "../../transform.hpp"
 #include "../future.hpp"
 #include "invocable.hpp"
 #include "invocable_as_receiver.hpp"

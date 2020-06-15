@@ -26,60 +26,42 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include <exception>
-#include <type_traits>
 #include <utility>
-#include "../../../lazy/sender/set_error.hpp"
-#include "../../../lazy/sender/set_value.hpp"
+#include "../../detail/type_traits/is_detected.hpp"
+#include "../chaining_sender.hpp"
+#include "../unpack.hpp"
+
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-namespace detail
+namespace dot
 {
 
 
-template<class Receiver, class ValuePointer>
-struct inplace_indirect_set_value
-{
-  Receiver r;
-  ValuePointer value_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-#ifdef __CUDA_ARCH__
-    *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-#else
-    try
-    {
-      *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-    }
-    catch(...)
-    {
-      CUSEND_NAMESPACE::set_error(std::move(r), std::current_exception());
-    }
-#endif
-  }
-};
-
-template<class Receiver, class ValuePointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
+CUSEND_EXEC_CHECK_DISABLE
+template<class Sender,
+         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::unpack_t, Sender&&>::value)
         >
 CUSEND_ANNOTATION
-inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_value(Receiver r, ValuePointer value_ptr)
+constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::unpack_t<Sender&&>>
+  unpack(Sender&& sender)
 {
-  return {r, value_ptr};
+  return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::unpack(std::forward<Sender>(sender)));
 }
 
 
-} // end detail
+template<class S>
+using unpack_t = decltype(dot::unpack(std::declval<S>()));
+
+
+} // end dot
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../../detail/epilogue.hpp"
+
+#include "../../detail/epilogue.hpp"
 

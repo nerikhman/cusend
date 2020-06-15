@@ -26,13 +26,14 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include <exception>
-#include <type_traits>
 #include <utility>
-#include "../../../lazy/sender/set_error.hpp"
-#include "../../../lazy/sender/set_value.hpp"
+#include "../../detail/type_traits/is_invocable.hpp"
+#include "../is_scheduler.hpp"
+#include "../just_on.hpp"
+#include "../transform.hpp"
+
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
@@ -41,45 +42,27 @@ namespace detail
 {
 
 
-template<class Receiver, class ValuePointer>
-struct inplace_indirect_set_value
-{
-  Receiver r;
-  ValuePointer value_ptr;
-
-  CUSEND_ANNOTATION
-  void operator()()
-  {
-#ifdef __CUDA_ARCH__
-    *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-#else
-    try
-    {
-      *value_ptr = CUSEND_NAMESPACE::set_value(std::move(r), std::move(*value_ptr));
-    }
-    catch(...)
-    {
-      CUSEND_NAMESPACE::set_error(std::move(r), std::current_exception());
-    }
-#endif
-  }
-};
-
-template<class Receiver, class ValuePointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
+template<class Scheduler, class Invocable, class... Args,
+         CUSEND_REQUIRES(is_scheduler<Scheduler>::value),
+         CUSEND_REQUIRES(detail::is_invocable<Invocable,Args...>::value)
         >
 CUSEND_ANNOTATION
-inplace_indirect_set_value<Receiver,ValuePointer> make_inplace_indirect_set_value(Receiver r, ValuePointer value_ptr)
+auto default_invoke_on(const Scheduler& scheduler, Invocable&& f, Args&&... args)
+  -> decltype(transform(just_on(scheduler, std::forward<Args>(args)...), std::forward<Invocable>(f)))
 {
-  return {r, value_ptr};
+  return transform(just_on(scheduler, std::forward<Args>(args)...), std::forward<Invocable>(f));
 }
 
 
-} // end detail
+template<class Scheduler, class Invocable, class... Args>
+using default_invoke_on_t = decltype(detail::default_invoke_on(std::declval<Scheduler>(), std::declval<Invocable>(), std::declval<Args>()...));
+
+
+} // end namespace detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../../detail/epilogue.hpp"
+
+#include "../../detail/epilogue.hpp"
 
