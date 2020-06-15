@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 
 #define VARIANT_NAMESPACE cusend::detail
@@ -46,5 +46,5 @@
 #undef VARIANT_ANNOTATION
 #undef VARIANT_EXEC_CHECK_DISABLE
 
-#include "epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

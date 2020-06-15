@@ -31,7 +31,6 @@
 #include <type_traits>
 #include "../../detail/is_stream_executor.hpp"
 #include "../../detail/type_traits/remove_cvref.hpp"
-#include "../../detail/variant.hpp"
 #include "../../future/future.hpp"
 #include "../../future/host_promise.hpp"
 #include "../pack.hpp"
@@ -39,6 +38,7 @@
 #include "../sender/sender_traits.hpp"
 #include "../start.hpp"
 #include "../unpack.hpp"
+#include "detail/variant.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
