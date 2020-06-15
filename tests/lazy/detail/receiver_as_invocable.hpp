@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cusend/detail/receiver_as_invocable.hpp>
+#include <cusend/lazy/detail/receiver_as_invocable.hpp>
 
 #ifndef __host__
 #define __host__

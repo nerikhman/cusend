@@ -26,17 +26,17 @@
 
 #pragma once
 
-#include "prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <exception>
 #include <utility>
-#include "../lazy/receiver/is_receiver.hpp"
-#include "../lazy/receiver/is_receiver_of.hpp"
-#include "../lazy/receiver/set_done.hpp"
-#include "../lazy/receiver/set_error.hpp"
-#include "../lazy/receiver/set_value.hpp"
-#include "type_traits.hpp"
-#include "utility/move_if_noexcept.hpp"
+#include "../../detail/type_traits.hpp"
+#include "../../detail/utility/move_if_noexcept.hpp"
+#include "../receiver/is_receiver.hpp"
+#include "../receiver/is_receiver_of.hpp"
+#include "../receiver/set_done.hpp"
+#include "../receiver/set_error.hpp"
+#include "../receiver/set_value.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -178,5 +178,5 @@ receiver_as_invocable<R&&> as_invocable(R&& r)
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 
