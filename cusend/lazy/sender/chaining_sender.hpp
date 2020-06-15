@@ -26,20 +26,20 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <type_traits>
 #include <utility>
-#include "get_executor.hpp"
-#include "on.hpp"
-#include "pack.hpp"
-#include "sender/connect.hpp"
-#include "sender/is_sender.hpp"
-#include "sender/sender_traits.hpp"
-#include "sender/submit.hpp"
-#include "transform.hpp"
-#include "unpack.hpp"
-#include "via.hpp"
+#include "../connect.hpp"
+#include "../get_executor.hpp"
+#include "../on.hpp"
+#include "../pack.hpp"
+#include "../submit.hpp"
+#include "../transform.hpp"
+#include "../unpack.hpp"
+#include "../via.hpp"
+#include "is_sender.hpp"
+#include "sender_traits.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -231,5 +231,5 @@ using ensure_chaining_sender_t = decltype(ensure_chaining_sender(std::declval<Se
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

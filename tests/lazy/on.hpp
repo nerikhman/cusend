@@ -2,7 +2,7 @@
 #include <cstring>
 #include <cusend/lazy/just.hpp>
 #include <cusend/lazy/on.hpp>
-#include <cusend/lazy/sender/submit.hpp>
+#include <cusend/lazy/submit.hpp>
 #include <cusend/lazy/transform.hpp>
 
 

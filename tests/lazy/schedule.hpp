@@ -4,7 +4,7 @@
 #include <cusend/lazy/get_executor.hpp>
 #include <cusend/lazy/schedule.hpp>
 #include <cusend/lazy/sender/is_sender.hpp>
-#include <cusend/lazy/sender/submit.hpp>
+#include <cusend/lazy/submit.hpp>
 
 
 #ifndef __host__

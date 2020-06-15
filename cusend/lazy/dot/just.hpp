@@ -29,9 +29,9 @@
 #include "../../detail/prologue.hpp"
 
 #include <utility>
-#include "../chaining_sender.hpp"
-#include "../just.hpp"
 #include "../../detail/type_traits/is_detected.hpp"
+#include "../just.hpp"
+#include "../sender/chaining_sender.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

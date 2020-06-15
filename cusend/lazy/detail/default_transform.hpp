@@ -40,10 +40,10 @@
 #include "../receiver/set_done.hpp"
 #include "../receiver/set_error.hpp"
 #include "../receiver/set_value.hpp"
-#include "../sender/connect.hpp"
-#include "../sender/is_sender_to.hpp"
 #include "../sender/is_typed_sender.hpp"
 #include "../sender/sender_base.hpp"
+#include "../connect.hpp"
+#include "../is_sender_to.hpp"
 #include "detail/type_list.hpp"
 
 

@@ -26,10 +26,10 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <utility>
-#include "../../../detail/type_traits/is_detected.hpp"
+#include "../../detail/type_traits/is_detected.hpp"
 #include "../connect.hpp"
 #include "../start.hpp"
 
@@ -62,5 +62,5 @@ using default_submit_t = decltype(detail::default_submit(std::declval<S>(), std:
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

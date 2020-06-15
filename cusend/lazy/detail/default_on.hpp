@@ -35,12 +35,12 @@
 #include "../receiver/set_done.hpp"
 #include "../receiver/set_error.hpp"
 #include "../receiver/set_value.hpp"
+#include "../connect.hpp"
+#include "../is_sender_to.hpp"
 #include "../schedule.hpp"
-#include "../sender/connect.hpp"
 #include "../sender/is_sender.hpp"
-#include "../sender/is_sender_to.hpp"
 #include "../sender/sender_base.hpp"
-#include "../sender/submit.hpp"
+#include "../submit.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

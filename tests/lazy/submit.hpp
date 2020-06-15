@@ -2,7 +2,7 @@
 #include <cusend/lazy/receiver/set_error.hpp>
 #include <cusend/lazy/receiver/set_done.hpp>
 #include <cusend/lazy/receiver/set_value.hpp>
-#include <cusend/lazy/sender/submit.hpp>
+#include <cusend/lazy/submit.hpp>
 
 
 #ifndef __host__

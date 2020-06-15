@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cusend/lazy/sender/is_typed_sender_to.hpp>
+#include <cusend/lazy/is_typed_sender_to.hpp>
 #include <exception>
 
 

@@ -30,8 +30,8 @@
 
 #include <utility>
 #include "../../detail/type_traits/is_detected.hpp"
-#include "../chaining_sender.hpp"
 #include "../just_on.hpp"
+#include "../sender/chaining_sender.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

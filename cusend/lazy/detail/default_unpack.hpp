@@ -35,11 +35,11 @@
 #include "../../detail/utility/index_sequence.hpp"
 #include "../receiver/discard_receiver.hpp"
 #include "../receiver/is_receiver_of.hpp"
-#include "../sender/connect.hpp"
-#include "../sender/is_sender_to.hpp"
 #include "../sender/is_typed_sender.hpp"
 #include "../sender/sender_base.hpp"
+#include "../connect.hpp"
 #include "detail/type_list.hpp"
+#include "../is_sender_to.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

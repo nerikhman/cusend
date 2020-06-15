@@ -1,6 +1,6 @@
 #include <cusend/execution/executor/stream_executor.hpp>
 #include <cusend/execution/executor/callback_executor.hpp>
-#include <cusend/future/detail/is_stream_executor.hpp>
+#include <cusend/detail/is_stream_executor.hpp>
 
 namespace ns = cusend;
 

@@ -26,42 +26,27 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "detail/prologue.hpp"
 
-#include <utility>
-#include "../../detail/type_traits/is_detected.hpp"
-#include "../invoke_on.hpp"
-#include "../sender/chaining_sender.hpp"
+#include "lazy/connect.hpp"
+#include "lazy/dot.hpp"
+#include "lazy/get_executor.hpp"
+#include "lazy/invoke_on.hpp"
+#include "lazy/is_scheduler.hpp"
+#include "lazy/is_sender_to.hpp"
+#include "lazy/is_typed_sender_to.hpp"
+#include "lazy/just.hpp"
+#include "lazy/just_on.hpp"
+#include "lazy/on.hpp"
+#include "lazy/pack.hpp"
+#include "lazy/receiver.hpp"
+#include "lazy/schedule.hpp"
+#include "lazy/sender.hpp"
+#include "lazy/start.hpp"
+#include "lazy/submit.hpp"
+#include "lazy/transform.hpp"
+#include "lazy/unpack.hpp"
+#include "lazy/via.hpp"
 
-
-CUSEND_NAMESPACE_OPEN_BRACE
-
-
-namespace dot
-{
-
-
-CUSEND_EXEC_CHECK_DISABLE
-template<class S, class F, class... Args,
-         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::invoke_on_t, S&&, F&&, Args&&...>::value)
-        >
-CUSEND_ANNOTATION
-constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::invoke_on_t<S&&, F&&, Args&&...>>
-  invoke_on(S&& scheduler, F&& f, Args&&... args)
-{
-  return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::invoke_on(std::forward<S>(scheduler), std::forward<F>(f), std::forward<Args>(args)...));
-}
-
-
-template<class S, class F, class... Args>
-using invoke_on_t = decltype(dot::invoke_on(std::declval<S>(), std::declval<F>(), std::declval<Args>()...));
-
-
-} // end dot
-
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "../../detail/epilogue.hpp"
+#include "detail/epilogue.hpp"
 

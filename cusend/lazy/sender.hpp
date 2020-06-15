@@ -28,20 +28,11 @@
 
 #include "detail/prologue.hpp"
 
-#include "sender/connect.hpp"
-#include "sender/is_many_receiver_of.hpp"
-#include "sender/is_receiver.hpp"
-#include "sender/is_receiver_of.hpp"
+#include "sender/chaining_sender.hpp"
 #include "sender/is_sender.hpp"
-#include "sender/is_sender_to.hpp"
 #include "sender/is_typed_sender.hpp"
-#include "sender/is_typed_sender_to.hpp"
+#include "sender/sender_base.hpp"
 #include "sender/sender_traits.hpp"
-#include "sender/set_done.hpp"
-#include "sender/set_error.hpp"
-#include "sender/set_value.hpp"
-#include "sender/start.hpp"
-#include "sender/submit.hpp"
 
 #include "detail/epilogue.hpp"
 

@@ -1,6 +1,6 @@
 #include <cassert>
 #include <exception>
-#include <cusend/lazy/sender/is_sender_to.hpp>
+#include <cusend/lazy/is_sender_to.hpp>
 #include <cusend/lazy/sender/sender_base.hpp>
 
 
