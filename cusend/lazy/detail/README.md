@@ -1,18 +1,8 @@
-This directory contains the implementations of customizable sender combinators such as `transform` and others.
+This directory contains the default implementations of customizable sender combinators such as `transform` and others.
 
-For every combinator `foo`, there are two headers, `default_foo.hpp` and `foo.hpp`.
+For every combinator `foo`, there is a headers `default_foo.hpp`.
 
-`foo.hpp` contains a customization point object named `detail::foo` and a type trait:
-
-  * `foo_t` - The type of `foo(arg1, args...)`'s result.
-
-Unless otherwise specified, `detail::foo(arg1, args...)`'s algorithm proceeds as follows:
-
-  1. If `arg1.foo(args...)` is available, return its result.
-  2. Else, if `foo(arg1, args...)` is available, return its result.
-  3. Else, return `detail::default_foo(arg1, args...)`.
-
-`default_foo.hpp` contains the default implementation of `foo`, named `detail::default_foo`.
+`default_foo.hpp` contains a function named `detail::default_foo` and a type trait `detail::default_foo_t` - the type of `default_foo(arg, args...)` result.
 
 # Sender Guidelines
 
