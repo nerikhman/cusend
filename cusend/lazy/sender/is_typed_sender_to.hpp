@@ -26,17 +26,17 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <type_traits>
-#include "../detail/type_traits/conjunction.hpp"
-#include "../detail/type_traits/is_detected.hpp"
+#include "../../detail/type_traits/conjunction.hpp"
+#include "../../detail/type_traits/is_detected.hpp"
+#include "../receiver/set_done.hpp"
+#include "../receiver/set_error.hpp"
+#include "../receiver/set_value.hpp"
 #include "connect.hpp"
 #include "is_sender_to.hpp"
 #include "is_typed_sender.hpp"
-#include "set_done.hpp"
-#include "set_error.hpp"
-#include "set_value.hpp"
 #include "sender_traits.hpp"
 
 
@@ -158,5 +158,5 @@ using is_typed_sender_to = detail::conjunction<
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

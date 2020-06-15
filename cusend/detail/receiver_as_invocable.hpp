@@ -30,11 +30,11 @@
 
 #include <exception>
 #include <utility>
-#include "../lazy/sender/is_receiver.hpp"
-#include "../lazy/sender/is_receiver_of.hpp"
-#include "../lazy/sender/set_done.hpp"
-#include "../lazy/sender/set_error.hpp"
-#include "../lazy/sender/set_value.hpp"
+#include "../lazy/receiver/is_receiver.hpp"
+#include "../lazy/receiver/is_receiver_of.hpp"
+#include "../lazy/receiver/set_done.hpp"
+#include "../lazy/receiver/set_error.hpp"
+#include "../lazy/receiver/set_value.hpp"
 #include "type_traits.hpp"
 #include "utility/move_if_noexcept.hpp"
 

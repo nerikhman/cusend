@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cusend/sender/is_many_receiver_of.hpp>
+#include <cusend/lazy/receiver/is_many_receiver_of.hpp>
 #include <exception>
 
 

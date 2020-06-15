@@ -34,7 +34,7 @@
 #include "../../detail/execute_operation.hpp"
 #include "../../detail/receiver_as_invocable.hpp"
 #include "../../execution/executor/is_executor.hpp"
-#include "../sender/is_receiver_of.hpp"
+#include "../receiver/is_receiver_of.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

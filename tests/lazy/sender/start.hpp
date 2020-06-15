@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cusend/sender/start.hpp>
+#include <cusend/lazy/sender/start.hpp>
 
 
 #ifndef __host__

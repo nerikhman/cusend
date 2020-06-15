@@ -36,10 +36,10 @@
 #include "../is_scheduler.hpp"
 #include "../schedule.hpp"
 #include "../sender/connect.hpp"
-#include "../sender/is_receiver_of.hpp"
-#include "../sender/set_done.hpp"
-#include "../sender/set_error.hpp"
-#include "../sender/set_value.hpp"
+#include "../receiver/is_receiver_of.hpp"
+#include "../receiver/set_done.hpp"
+#include "../receiver/set_error.hpp"
+#include "../receiver/set_value.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

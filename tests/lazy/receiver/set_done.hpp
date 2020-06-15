@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cusend/sender/set_error.hpp>
+#include <cusend/lazy/receiver/set_done.hpp>
 
 
 #ifndef __host__
@@ -8,20 +8,20 @@
 #endif
 
 
-struct has_set_error_member
+struct has_set_done_member
 {
   __host__ __device__
-  bool set_error(int) && noexcept
+  bool set_done() && noexcept
   {
     return true;
   }
 };
 
 
-struct has_set_error_free_function {};
+struct has_set_done_free_function {};
 
 __host__ __device__
-bool set_error(has_set_error_free_function&&, int) noexcept
+bool set_done(has_set_done_free_function&&) noexcept
 {
   return true;
 }
@@ -31,15 +31,15 @@ __host__ __device__
 void test()
 {
   {
-    has_set_error_member r;
+    has_set_done_member r;
 
-    assert(cusend::set_error(std::move(r), 13));
+    assert(cusend::set_done(std::move(r)));
   }
 
   {
-    has_set_error_free_function r;
+    has_set_done_free_function r;
 
-    assert(cusend::set_error(std::move(r), 13));
+    assert(cusend::set_done(std::move(r)));
   }
 }
 
@@ -52,7 +52,7 @@ __global__ void device_invoke(F f)
 #endif
 
 
-void test_set_error()
+void test_set_done()
 {
   test();
 

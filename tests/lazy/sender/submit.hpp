@@ -1,8 +1,8 @@
 #include <cassert>
-#include <cusend/sender/set_error.hpp>
-#include <cusend/sender/set_done.hpp>
-#include <cusend/sender/set_value.hpp>
-#include <cusend/sender/submit.hpp>
+#include <cusend/lazy/receiver/set_error.hpp>
+#include <cusend/lazy/receiver/set_done.hpp>
+#include <cusend/lazy/receiver/set_value.hpp>
+#include <cusend/lazy/sender/submit.hpp>
 
 
 #ifndef __host__

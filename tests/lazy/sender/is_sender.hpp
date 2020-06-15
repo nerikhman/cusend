@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cusend/sender/is_sender.hpp>
+#include <cusend/lazy/sender/is_sender.hpp>
 
 
 struct derived_from_sender_base : cusend::sender_base {};

@@ -33,13 +33,13 @@
 #include <utility>
 #include "../../detail/type_traits/remove_cvref.hpp"
 #include "../just_on.hpp"
+#include "../receiver/set_done.hpp"
+#include "../receiver/set_error.hpp"
+#include "../receiver/set_value.hpp"
 #include "../sender/connect.hpp"
 #include "../sender/is_sender_to.hpp"
 #include "../sender/is_typed_sender.hpp"
 #include "../sender/sender_base.hpp"
-#include "../sender/set_done.hpp"
-#include "../sender/set_error.hpp"
-#include "../sender/set_value.hpp"
 #include "../sender/submit.hpp"
 
 

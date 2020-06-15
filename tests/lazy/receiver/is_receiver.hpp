@@ -1,6 +1,6 @@
 #include <cassert>
 #include <exception>
-#include <cusend/sender/is_receiver.hpp>
+#include <cusend/lazy/receiver/is_receiver.hpp>
 
 
 struct my_receiver

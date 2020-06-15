@@ -31,9 +31,10 @@
 #include <exception>
 #include <type_traits>
 #include <utility>
-#include "../../../lazy/sender/set_error.hpp"
-#include "../../../lazy/sender/set_value.hpp"
+#include "../../../lazy/receiver/set_error.hpp"
+#include "../../../lazy/receiver/set_value.hpp"
 #include "../../../memory/allocator/construct_at.hpp"
+
 
 CUSEND_NAMESPACE_OPEN_BRACE
 

@@ -28,23 +28,37 @@
 
 #include "../../detail/prologue.hpp"
 
-#include <type_traits>
 #include "../../detail/type_traits/conjunction.hpp"
 #include "../../detail/type_traits/is_detected.hpp"
-#include "../receiver/is_receiver.hpp"
-#include "connect.hpp"
-#include "is_sender.hpp"
+#include "../../detail/type_traits/remove_cvref.hpp"
+#include "is_receiver_of.hpp"
+#include "set_value.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-template<class S, class R>
-using is_sender_to = detail::conjunction<
-  is_sender<S>,
+template<class R, class... Args>
+struct is_many_receiver_of : detail::conjunction<
+  // a many_receiver is a receiver...
   is_receiver<R>,
-  detail::is_detected<connect_t, S, R>
->;
+
+  // ...whose set_value method can be called with an lvalue ref (i.e. set_value can be called many times)
+  detail::is_detected<set_value_t, detail::remove_cvref_t<R>&, Args...>
+>
+{};
+
+
+// specialization for receiver of void
+template<class R>
+struct is_many_receiver_of<R,void> : detail::conjunction<
+  // a many_receiver is a receiver...
+  is_receiver<R>,
+
+  // ...whose set_value method can be called with an lvalue ref (i.e. set_value can be called many times)
+  detail::is_detected<set_value_t, detail::remove_cvref_t<R>&>
+>
+{};
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

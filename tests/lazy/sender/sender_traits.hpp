@@ -1,6 +1,6 @@
 #include <cassert>
-#include <cusend/sender/sender_traits.hpp>
-#include <cusend/sender/set_value.hpp>
+#include <cusend/lazy/receiver/set_value.hpp>
+#include <cusend/lazy/sender/sender_traits.hpp>
 
 
 struct my_sender

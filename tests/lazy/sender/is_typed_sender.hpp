@@ -1,6 +1,6 @@
 #include <cassert>
-#include <cusend/sender/is_typed_sender.hpp>
-#include <cusend/sender/set_value.hpp>
+#include <cusend/lazy/receiver/set_value.hpp>
+#include <cusend/lazy/sender/is_typed_sender.hpp>
 
 
 struct not_a_sender {};

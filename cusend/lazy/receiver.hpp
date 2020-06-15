@@ -28,25 +28,13 @@
 
 #include "../detail/prologue.hpp"
 
-CUSEND_NAMESPACE_OPEN_BRACE
-
-
-struct discard_receiver
-{
-  template<class... Args>
-  CUSEND_ANNOTATION
-  void set_value(Args&&...) const noexcept {}
-
-  template<class E>
-  CUSEND_ANNOTATION
-  void set_error(E&&) const noexcept {}
-
-  CUSEND_ANNOTATION
-  void set_done() const noexcept {}
-};
-
-
-CUSEND_NAMESPACE_CLOSE_BRACE
+#include "discard_receiver.hpp"
+#include "is_many_receiver_of.hpp"
+#include "is_receiver.hpp"
+#include "is_receiver_of.hpp"
+#include "set_done.hpp"
+#include "set_error.hpp"
+#include "set_value.hpp"
 
 #include "../detail/epilogue.hpp"
 

@@ -26,42 +26,27 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
-
-#include "../detail/type_traits/conjunction.hpp"
-#include "../detail/type_traits/is_detected.hpp"
-#include "../detail/type_traits/remove_cvref.hpp"
-#include "is_receiver_of.hpp"
-#include "set_value.hpp"
-
+#include "../../detail/prologue.hpp"
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-template<class R, class... Args>
-struct is_many_receiver_of : detail::conjunction<
-  // a many_receiver is a receiver...
-  is_receiver<R>,
+struct discard_receiver
+{
+  template<class... Args>
+  CUSEND_ANNOTATION
+  void set_value(Args&&...) const noexcept {}
 
-  // ...whose set_value method can be called with an lvalue ref (i.e. set_value can be called many times)
-  detail::is_detected<set_value_t, detail::remove_cvref_t<R>&, Args...>
->
-{};
+  template<class E>
+  CUSEND_ANNOTATION
+  void set_error(E&&) const noexcept {}
 
-
-// specialization for receiver of void
-template<class R>
-struct is_many_receiver_of<R,void> : detail::conjunction<
-  // a many_receiver is a receiver...
-  is_receiver<R>,
-
-  // ...whose set_value method can be called with an lvalue ref (i.e. set_value can be called many times)
-  detail::is_detected<set_value_t, detail::remove_cvref_t<R>&>
->
-{};
+  CUSEND_ANNOTATION
+  void set_done() const noexcept {}
+};
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 
