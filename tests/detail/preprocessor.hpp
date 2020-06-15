@@ -1,4 +1,4 @@
-#include <cusend/lazy/sender/chaining_sender.hpp>
+#include <cusend/cusend.hpp>
 
 #ifdef CUSEND_INCLUDE_LEVEL
 #error CUSEND_INCLUDE_LEVEL defined in client code.

@@ -28,13 +28,13 @@
 
 #include "../detail/prologue.hpp"
 
-#include "discard_receiver.hpp"
-#include "is_many_receiver_of.hpp"
-#include "is_receiver.hpp"
-#include "is_receiver_of.hpp"
-#include "set_done.hpp"
-#include "set_error.hpp"
-#include "set_value.hpp"
+#include "receiver/discard_receiver.hpp"
+#include "receiver/is_many_receiver_of.hpp"
+#include "receiver/is_receiver.hpp"
+#include "receiver/is_receiver_of.hpp"
+#include "receiver/set_done.hpp"
+#include "receiver/set_error.hpp"
+#include "receiver/set_value.hpp"
 
 #include "../detail/epilogue.hpp"
 

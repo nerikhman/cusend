@@ -26,16 +26,13 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "detail/prologue.hpp"
 
-#include "dot/just.hpp"
-#include "dot/just_on.hpp"
-#include "dot/on.hpp"
-#include "dot/pack.hpp"
-#include "dot/schedule.hpp"
-#include "dot/transform.hpp"
-#include "dot/unpack.hpp"
-#include "dot/via.hpp"
+#include "execution.hpp"
+#include "future.hpp"
+#include "lazy.hpp"
+#include "memory.hpp"
+#include "property.hpp"
 
-#include "../detail/epilogue.hpp"
+#include "detail/epilogue.hpp"
 

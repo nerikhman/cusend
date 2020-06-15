@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
 #include "sender/chaining_sender.hpp"
 #include "sender/is_sender.hpp"
@@ -34,5 +34,5 @@
 #include "sender/sender_base.hpp"
 #include "sender/sender_traits.hpp"
 
-#include "detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 
