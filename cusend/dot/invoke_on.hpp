@@ -31,7 +31,7 @@
 #include <utility>
 #include "../chaining_sender.hpp"
 #include "../detail/type_traits/is_detected.hpp"
-#include "../just_on.hpp"
+#include "../invoke_on.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -42,19 +42,19 @@ namespace dot
 
 
 CUSEND_EXEC_CHECK_DISABLE
-template<class S, class... Types,
-         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::just_on_t, S&&, Types&&...>::value)
+template<class S, class F, class... Args,
+         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::invoke_on_t, S&&, F&&, Args&&...>::value)
         >
 CUSEND_ANNOTATION
-constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::just_on_t<S&&, Types&&...>>
-  just_on(S&& scheduler, Types&&... values)
+constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::invoke_on_t<S&&, F&&, Args&&...>>
+  invoke_on(S&& scheduler, F&& f, Args&&... args)
 {
-  return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::just_on(std::forward<S>(scheduler), std::forward<Types>(values)...));
+  return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::invoke_on(std::forward<S>(scheduler), std::forward<F>(f), std::forward<Args>(args)...));
 }
 
 
-template<class S, class... Types>
-using just_on_t = decltype(dot::just_on(std::declval<S>(), std::declval<Types>()...));
+template<class S, class F, class... Args>
+using invoke_on_t = decltype(dot::invoke_on(std::declval<S>(), std::declval<F>(), std::declval<Args>()...));
 
 
 } // end dot

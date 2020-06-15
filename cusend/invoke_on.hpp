@@ -29,7 +29,6 @@
 #include "detail/prologue.hpp"
 
 #include <utility>
-#include "chaining_sender.hpp"
 #include "detail/combinators/default_invoke_on.hpp"
 #include "detail/static_const.hpp"
 #include "detail/type_traits/is_detected.hpp"
@@ -64,10 +63,10 @@ struct dispatch_invoke_on
            CUSEND_REQUIRES(has_invoke_on_member_function<S&&,F&&,Args&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<invoke_on_member_function_t<S&&,F&&,Args&&...>>
+  constexpr invoke_on_member_function_t<S&&,F&&,Args&&...>
     operator()(S&& scheduler, F&& f, Args&&... args) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(std::forward<S>(scheduler).invoke_on(std::forward<F>(f), std::forward<Args>(args)...));
+    return std::forward<S>(scheduler).invoke_on(std::forward<F>(f), std::forward<Args>(args)...);
   }
 
   CUSEND_EXEC_CHECK_DISABLE
@@ -76,10 +75,10 @@ struct dispatch_invoke_on
            CUSEND_REQUIRES(has_invoke_on_free_function<S&&,F&&,Args&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<invoke_on_free_function_t<S&&,F&&,Args&&...>>
+  constexpr invoke_on_free_function_t<S&&,F&&,Args&&...>
     operator()(S&& scheduler, F&& f, Args&&... args) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(invoke_on(std::forward<S>(scheduler), std::forward<F>(f), std::forward<Args>(args)...));
+    return invoke_on(std::forward<S>(scheduler), std::forward<F>(f), std::forward<Args>(args)...);
   }
 
   CUSEND_EXEC_CHECK_DISABLE
@@ -89,10 +88,10 @@ struct dispatch_invoke_on
            CUSEND_REQUIRES(is_detected<default_invoke_on_t,S&&,F&&,Args&&...>::value)
           >
   CUSEND_ANNOTATION
-  constexpr ensure_chaining_sender_t<default_invoke_on_t<S&&,F&&,Args&&...>>
+  constexpr default_invoke_on_t<S&&,F&&,Args&&...>
     operator()(S&& scheduler, F&& f, Args&&... args) const
   {
-    return CUSEND_NAMESPACE::ensure_chaining_sender(detail::default_invoke_on(std::forward<S>(scheduler), std::forward<F>(f), std::forward<Args>(args)...));
+    return detail::default_invoke_on(std::forward<S>(scheduler), std::forward<F>(f), std::forward<Args>(args)...);
   }
 };
 
@@ -116,7 +115,7 @@ const __device__ detail::dispatch_invoke_on invoke_on;
 
 
 template<class S, class F, class... Args>
-using invoke_on_t = decltype(CUSEND_NAMESPACE::invoke_on(std::declval<S>(), std::declval<F>(), std::declval<Args>()...));
+using invoke_on_t = decltype(invoke_on(std::declval<S>(), std::declval<F>(), std::declval<Args>()...));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
