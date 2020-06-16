@@ -34,6 +34,7 @@
 #include "../../../lazy/receiver/set_error.hpp"
 #include "../../../lazy/receiver/set_value.hpp"
 
+
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
@@ -41,21 +42,22 @@ namespace detail
 {
 
 
-template<class Receiver>
-struct call_set_value
+template<class ManyReceiver, class ValuePointer>
+struct indirect_set_value_with_index
 {
-  Receiver r;
+  ManyReceiver r;
+  ValuePointer value_ptr;
 
-  template<class... Args>
+  template<class Index>
   CUSEND_ANNOTATION
-  void operator()(Args&&... args)
+  void operator()(Index idx)
   {
 #ifdef __CUDA_ARCH__
-    CUSEND_NAMESPACE::set_value(std::move(r), std::forward<Args>(args)...);
+    CUSEND_NAMESPACE::set_value(r, idx, *value_ptr);
 #else
     try
     {
-      CUSEND_NAMESPACE::set_value(std::move(r), std::forward<Args>(args)...);
+      CUSEND_NAMESPACE::set_value(r, idx, *value_ptr);
     }
     catch(...)
     {
@@ -65,15 +67,14 @@ struct call_set_value
   }
 };
 
-
-template<class Receiver,
-         CUSEND_REQUIRES(is_receiver<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value)
+template<class ManyReceiver, class ValuePointer,
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ManyReceiver>::value),
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
         >
 CUSEND_ANNOTATION
-call_set_value<Receiver> make_call_set_value(Receiver r)
+indirect_set_value_with_index<ManyReceiver,ValuePointer> make_indirect_set_value_with_index(ManyReceiver r, ValuePointer value_ptr)
 {
-  return {r};
+  return {r, value_ptr};
 }
 
 
@@ -83,4 +84,5 @@ call_set_value<Receiver> make_call_set_value(Receiver r)
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 #include "../../../detail/epilogue.hpp"
+
 

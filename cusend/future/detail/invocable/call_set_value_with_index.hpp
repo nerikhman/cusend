@@ -41,21 +41,21 @@ namespace detail
 {
 
 
-template<class Receiver>
-struct call_set_value
+template<class ManyReceiver>
+struct call_set_value_with_index
 {
-  Receiver r;
+  ManyReceiver r;
 
-  template<class... Args>
+  template<class Index>
   CUSEND_ANNOTATION
-  void operator()(Args&&... args)
+  void operator()(Index idx)
   {
 #ifdef __CUDA_ARCH__
-    CUSEND_NAMESPACE::set_value(std::move(r), std::forward<Args>(args)...);
+    CUSEND_NAMESPACE::set_value(r, idx);
 #else
     try
     {
-      CUSEND_NAMESPACE::set_value(std::move(r), std::forward<Args>(args)...);
+      CUSEND_NAMESPACE::set_value(r, idx);
     }
     catch(...)
     {
@@ -66,12 +66,12 @@ struct call_set_value
 };
 
 
-template<class Receiver,
-         CUSEND_REQUIRES(is_receiver<Receiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<Receiver>::value)
+template<class ManyReceiver,
+         CUSEND_REQUIRES(is_receiver<ManyReceiver>::value),
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ManyReceiver>::value)
         >
 CUSEND_ANNOTATION
-call_set_value<Receiver> make_call_set_value(Receiver r)
+call_set_value_with_index<ManyReceiver> make_call_set_value_with_index(ManyReceiver r)
 {
   return {r};
 }

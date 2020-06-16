@@ -29,9 +29,11 @@
 #include "../../detail/prologue.hpp"
 
 #include "invocable/call_set_value.hpp"
+#include "invocable/call_set_value_with_index.hpp"
 #include "invocable/get_and_construct_at.hpp"
 #include "invocable/indirect_set_value.hpp"
 #include "invocable/indirect_set_value_and_construct_at.hpp"
+#include "invocable/indirect_set_value_with_index.hpp"
 #include "invocable/inplace_indirect_set_value.hpp"
 #include "invocable/set_value_and_construct_at.hpp"
 

@@ -36,11 +36,14 @@
 #include "../detail/type_traits/invoke_result.hpp"
 #include "../detail/type_traits/is_invocable.hpp"
 #include "../detail/type_traits/remove_cvref.hpp"
+#include "../execution/executor/bulk_execute.hpp"
+#include "../execution/executor/execute.hpp"
 #include "../execution/executor/stream_executor.hpp"
 #include "../lazy/receiver/set_value.hpp"
 #include "../lazy/receiver/is_receiver.hpp"
 #include "../lazy/receiver/is_receiver_of.hpp"
 #include "../memory/unique_ptr.hpp"
+#include "detail/bulk_future.hpp"
 #include "detail/invocable.hpp"
 #include "detail/invocable_as_receiver.hpp"
 #include "detail/stream_of.hpp"
@@ -258,6 +261,8 @@ class future : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
+      // XXX we should be able to hoist a lot of this common code into future_base::then
+      
       // get the executor's stream
       cudaStream_t stream = detail::stream_of(ex);
 
@@ -355,6 +360,51 @@ class future : private detail::future_base<Executor>
     future<Result,Executor> then(Function f) &&
     {
       return std::move(*this).then(executor(), f);
+    }
+
+
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t,T&>::value)
+            >
+    CUSEND_ANNOTATION
+    future<T,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
+    {
+      // XXX we should be able to hoist a lot of this common code into future_base::bulk_then
+
+      // get the executor's stream
+      cudaStream_t stream = detail::stream_of(ex);
+
+      // make the stream wait for our event
+      detail::stream_wait_for(stream, super_t::event().native_handle());
+
+      // close over receiver and our state
+      auto closure = detail::make_indirect_set_value_with_index(receiver, value_.get());
+
+      // bulk_execute closure on our executor
+      execution::bulk_execute(ex, closure, shape);
+
+      // record our event on the stream
+      super_t::event().record_on(stream);
+
+      // invalidate ourself
+      super_t::invalidate();
+
+      // return a future corresponding to the completion of the closure
+      return detail::make_unready_future(ex, std::move(super_t::event()), std::move(value_));
+    }
+
+
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t,T&>::value)
+            >
+    CUSEND_ANNOTATION
+    future<T,Executor> bulk_then(R receiver, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(executor(), receiver, shape);
     }
 
 
@@ -512,6 +562,51 @@ class future<void,Executor> : private detail::future_base<Executor>
     future<Result,Executor> then(Function f) &&
     {
       return std::move(*this).then(executor(), f);
+    }
+
+
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t>::value)
+            >
+    CUSEND_ANNOTATION
+    future<void,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
+    {
+      // XXX we should be able to hoist a lot of this common code into future_base::bulk_then
+
+      // get the executor's stream
+      cudaStream_t stream = detail::stream_of(ex);
+
+      // make the stream wait for our event
+      detail::stream_wait_for(stream, super_t::event().native_handle());
+
+      // close over receiver
+      auto closure = detail::make_call_set_value_with_index(receiver);
+
+      // bulk_execute closure on our executor
+      execution::bulk_execute(ex, closure, shape);
+
+      // record our event on the stream
+      super_t::event().record_on(stream);
+
+      // invalidate ourself
+      super_t::invalidate();
+
+      // return a future corresponding to the completion of the closure
+      return detail::make_unready_future(ex, std::move(super_t::event()));
+    }
+
+
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t>::value)
+            >
+    CUSEND_ANNOTATION
+    future<void,Executor> bulk_then(R receiver, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(executor(), receiver, shape);
     }
 
 

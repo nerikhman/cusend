@@ -285,8 +285,6 @@ class host_future : public host_future_base<T,Executor>
             >
     auto connect(R receiver) &&
     {
-      static_assert(std::is_trivially_copyable<R>::value, "Error.");
-
       auto sender = transform(just(std::move(*this)), [receiver = std::move(receiver)](host_future&& self) mutable
       {
         std::move(self).then(std::move(receiver));

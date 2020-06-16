@@ -248,14 +248,12 @@ void test_then_int_to_float()
 __managed__ int result;
 
 
-struct receive_at
+struct receive_and_add_one
 {
-  int* address;
-
   __host__ __device__
-  void set_value(int value) && noexcept
+  int set_value(int value) && noexcept
   {
-    *address = value;
+    return value + 1;
   }
 
   template<class E>
@@ -269,12 +267,12 @@ struct receive_at
 
 void test_then_receiver()
 {
-  auto f1 = ns::make_ready_future(7);
+  int expected = 13;
+  auto f1 = ns::make_ready_future(std::move(expected));
 
   try
   {
-    result = -1;
-    auto f2 = std::move(f1).then(receive_at{&result});
+    auto f2 = std::move(f1).then(receive_and_add_one{});
 
 #if !defined(__CUDACC__)
     assert(false);
@@ -285,9 +283,148 @@ void test_then_receiver()
     f2.wait();
 
     assert(f2.is_ready());
+    assert(f2.valid());
 
-    assert(result == 13);
+    assert(expected + 1 == std::move(f2).get());
     assert(!f2.valid());
+  }
+  catch(std::runtime_error)
+  {
+#if defined(__CUDACC__)
+    assert(false);
+#endif
+  }
+}
+
+
+__managed__ bool bulk_result0;
+__managed__ bool bulk_result1;
+
+
+struct many_receiver_of_int
+{
+  int expected;
+
+  __host__ __device__
+  void set_value(int idx, int& value) noexcept
+  {
+    switch(idx)
+    {
+      case 0:
+      {
+        bulk_result0 = (expected == value);
+        break;
+      }
+
+      case 1:
+      {
+        bulk_result1 = (expected == value);
+        break;
+      }
+
+      default:
+      {
+        assert(0);
+        break;
+      }
+    }
+  }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
+};
+
+
+void test_bulk_then_receiver_of_int()
+{
+  int expected = 7;
+  auto f1 = ns::make_ready_future(std::move(expected));
+
+  try
+  {
+    bulk_result0 = false;
+    bulk_result1 = false;
+
+    auto f2 = std::move(f1).bulk_then(many_receiver_of_int{expected}, 2);
+
+    assert(!f1.valid());
+    assert(f2.valid());
+    f2.wait();
+
+    assert(f2.is_ready());
+
+    assert(expected == std::move(f2).get());
+    assert(bulk_result0);
+    assert(bulk_result1);
+  }
+  catch(std::runtime_error)
+  {
+#if defined(__CUDACC__)
+    assert(false);
+#endif
+  }
+}
+
+
+struct many_receiver_of_void
+{
+  __host__ __device__
+  void set_value(int idx) noexcept
+  {
+    switch(idx)
+    {
+      case 0:
+      {
+        bulk_result0 = true;
+        break;
+      }
+
+      case 1:
+      {
+        bulk_result1 = true;
+        break;
+      }
+
+      default:
+      {
+        assert(0);
+        break;
+      }
+    }
+  }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
+};
+
+
+void test_bulk_then_receiver_of_void()
+{
+  auto f1 = ns::make_ready_future();
+
+  try
+  {
+    bulk_result0 = false;
+    bulk_result1 = false;
+
+    auto f2 = std::move(f1).bulk_then(many_receiver_of_void{}, 2);
+
+    assert(!f1.valid());
+    assert(f2.valid());
+    f2.wait();
+
+    assert(f2.is_ready());
+
+    assert(bulk_result0);
+    assert(bulk_result1);
   }
   catch(std::runtime_error)
   {
@@ -318,5 +455,8 @@ void test_future()
   test_then_void_to_int();
   test_then_int_to_int();
   test_then_int_to_float();
+  test_then_receiver();
+  test_bulk_then_receiver_of_int();
+  test_bulk_then_receiver_of_void();
 }
 
