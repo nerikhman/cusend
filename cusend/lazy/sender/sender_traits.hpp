@@ -32,7 +32,7 @@
 #include "../../detail/type_traits/conjunction.hpp"
 #include "../../detail/type_traits/remove_cvref.hpp"
 #include "../../execution/executor/is_executor_of.hpp"
-#include "../detail/receiver_as_invocable.hpp"
+#include "../detail/detail/receiver_as_invocable.hpp"
 #include "sender_base.hpp"
 
 

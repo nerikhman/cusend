@@ -33,8 +33,8 @@
 #include <utility>
 #include "../../execution/executor/is_executor.hpp"
 #include "../receiver/is_receiver_of.hpp"
-#include "execute_operation.hpp"
-#include "receiver_as_invocable.hpp"
+#include "detail/execute_operation.hpp"
+#include "detail/receiver_as_invocable.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

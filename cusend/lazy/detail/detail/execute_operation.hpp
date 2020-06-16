@@ -26,12 +26,12 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <utility>
-#include "../../execution/executor/execute.hpp"
-#include "../../execution/executor/is_executor.hpp"
-#include "../../execution/executor/is_executor_of.hpp"
+#include "../../../execution/executor/execute.hpp"
+#include "../../../execution/executor/is_executor.hpp"
+#include "../../../execution/executor/is_executor_of.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -103,5 +103,5 @@ execute_operation<Executor, typename std::decay<Invocable>::type> make_execute_o
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 
