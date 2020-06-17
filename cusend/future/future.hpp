@@ -122,17 +122,80 @@ class future_base
         event_{std::move(e)}
     {}
 
+    // XXX this probably needn't be protected
     CUSEND_ANNOTATION
     void invalidate()
     {
       valid_ = false;
     }
 
+    // XXX this probably needn't exist
     CUSEND_ANNOTATION
     detail::event& event()
     {
       return event_;
     }
+
+
+    // this version of then returns a copy of our event
+    // the returned event corresponds to the completion of f
+    template<class StreamExecutor,
+             class F,
+             CUSEND_REQUIRES(is_invocable<F>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value)
+            >
+    CUSEND_ANNOTATION
+    detail::event then_and_copy_event(const StreamExecutor& ex, F f) &
+    {
+      // get the executor's stream
+      cudaStream_t stream = detail::stream_of(ex);
+
+      // make the stream wait for our event
+      detail::stream_wait_for(stream, event().native_handle());
+
+      // execute function on the executor
+      execution::execute(ex, f);
+
+      // record our event on the stream
+      event().record_on(stream);
+
+      // invalidate ourself
+      invalidate();
+
+      // return a new event corresponding to the completion of the execution
+      return detail::event{stream};
+    }
+
+
+    // this version of then returns our event via a move
+    // the returned event corresponds to the completion of f
+    template<class StreamExecutor,
+             class F,
+             CUSEND_REQUIRES(is_invocable<F>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value)
+            >
+    CUSEND_ANNOTATION
+    detail::event then_and_move_event(const StreamExecutor& ex, F f) &&
+    {
+      // get the executor's stream
+      cudaStream_t stream = detail::stream_of(ex);
+
+      // make the stream wait for our event
+      detail::stream_wait_for(stream, event().native_handle());
+
+      // execute function on the executor
+      execution::execute(ex, f);
+
+      // record our event on the stream
+      event().record_on(stream);
+
+      // invalidate ourself
+      invalidate();
+
+      // return our event via a move
+      return std::move(event_);
+    }
+
 
   private:
     Executor executor_;
@@ -198,7 +261,7 @@ class future : private detail::future_base<Executor>
       {
         // destroy_after(super_t::event(), std::move(value_));
         printf("future::~future: Blocking in destructor.\n");
-        super_t::event().wait();
+        super_t::wait();
       }
     }
 
@@ -226,26 +289,12 @@ class future : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     CUSEND_NAMESPACE::future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // get the executor's stream
-      cudaStream_t stream = detail::stream_of(ex);
-
-      // make the stream wait for our event
-      detail::stream_wait_for(stream, super_t::event().native_handle());
-
       // close over receiver and our state
       auto closure = detail::make_indirect_set_value(receiver, value_.get());
 
-      // execute closure on the executor
-      execution::execute(ex, closure);
-
-      // record our event on the stream
-      super_t::event().record_on(stream);
-
-      // invalidate ourself
-      super_t::invalidate();
-
       // return a future corresponding to the completion of the closure
-      return detail::make_unready_future(ex, detail::event{stream});
+      // create a new event when we do this
+      return detail::make_unready_future(ex, super_t::then_and_copy_event(ex, closure));
     }
 
 
@@ -261,28 +310,12 @@ class future : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // XXX we should be able to hoist a lot of this common code into future_base::then
-      
-      // get the executor's stream
-      cudaStream_t stream = detail::stream_of(ex);
-
-      // make the stream wait for our event
-      detail::stream_wait_for(stream, super_t::event().native_handle());
-
       // close over receiver and our state
       auto closure = detail::make_inplace_indirect_set_value(receiver, value_.get());
 
-      // execute closure on our executor
-      execution::execute(ex, closure);
-
-      // record our event on the stream
-      super_t::event().record_on(stream);
-
-      // invalidate ourself
-      super_t::invalidate();
-
       // return a future corresponding to the completion of the closure
-      return detail::make_unready_future(ex, std::move(super_t::event()), std::move(value_));
+      // move the base's event when we do this
+      return detail::make_unready_future(ex, std::move(*this).then_and_move_event(ex, closure), std::move(value_));
     }
 
 
@@ -298,30 +331,16 @@ class future : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // get the executor's stream
-      cudaStream_t stream = detail::stream_of(ex);
-
-      // make the executor's stream wait for our event
-      detail::stream_wait_for(stream, super_t::event().native_handle());
-
       // create storage for the result of the receiver
-      // XXX needs to be allocated
+      // XXX this result needs to be allocated via an allocator
       cusend::memory::unique_ptr<Result> result = cusend::memory::make_unique<Result>(cusend::memory::uninitialized);
 
       // close over receiver and state
       auto closure = detail::make_indirect_set_value_and_construct_at(receiver, value_.get(), result.get());
 
-      // execute closure on our executor
-      execution::execute(ex, closure);
-
-      // record our event on the stream
-      super_t::event().record_on(stream);
-
-      // invalidate ourself
-      super_t::invalidate();
-
       // return a future corresponding to the completion of the closure
-      return detail::make_unready_future(ex, detail::event{executor().stream()}, std::move(result));
+      // create a new event when we do this
+      return detail::make_unready_future(ex, super_t::then_and_copy_event(ex, closure), std::move(result));
     }
 
 
@@ -469,23 +488,12 @@ class future<void,Executor> : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // get the executor's stream
-      cudaStream_t stream = detail::stream_of(ex);
+      // close over the receiver
+      auto closure = detail::make_call_set_value(receiver);
 
-      // make the stream wait for our event
-      detail::stream_wait_for(stream, super_t::event().native_handle());
-
-      // call set_value on the executor
-      execution::execute(ex, detail::make_call_set_value(receiver));
-
-      // record our event on the stream
-      super_t::event().record_on(stream);
-
-      // invalidate ourself
-      super_t::invalidate();
-
-      // return a future corresponding to the completion of the receiver
-      return detail::make_unready_future(ex, std::move(super_t::event()));
+      // return a future corresponding to the completion of the closure
+      // move the base's event when we do this
+      return detail::make_unready_future(ex, std::move(*this).then_and_move_event(ex, closure));
     }
 
 
@@ -500,30 +508,16 @@ class future<void,Executor> : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // get the executor's stream
-      cudaStream_t stream = detail::stream_of(ex);
-
-      // make the stream wait for our event
-      detail::stream_wait_for(stream, super_t::event().native_handle());
-
       // create storage for the result of set_value
-      // XXX needs to be allocated
+      // XXX this result needs to be allocated via an allocator
       cusend::memory::unique_ptr<Result> result = cusend::memory::make_unique<Result>(cusend::memory::uninitialized);
 
       // close over receiver and the result
       auto closure = detail::make_set_value_and_construct_at(receiver, result.get());
 
-      // execute the closure on the executor
-      execution::execute(ex, closure);
-
-      // record our event on the stream
-      super_t::event().record_on(stream);
-
-      // invalidate ourself
-      super_t::invalidate();
-
       // return a future corresponding to the result of f
-      return detail::make_unready_future(ex, detail::event{stream}, std::move(result));
+      // create a new event when we do this
+      return detail::make_unready_future(ex, super_t::then_and_copy_event(ex, closure), std::move(result));
     }
 
 
