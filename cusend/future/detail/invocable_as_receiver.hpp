@@ -72,6 +72,26 @@ class invocable_as_receiver
       return detail::invoke(std::move(invocable_), std::forward<Args>(args)...);
     }
 
+    template<class... Args,
+             CUSEND_REQUIRES(is_invocable<Invocable&,Args&&...>::value),
+             class Result = invoke_result_t<Invocable&,Args&&...>
+            >
+    CUSEND_ANNOTATION
+    Result set_value(Args&&... args) &
+    {
+      return detail::invoke(invocable_, std::forward<Args>(args)...);
+    }
+
+    template<class... Args,
+             CUSEND_REQUIRES(is_invocable<const Invocable&,Args&&...>::value),
+             class Result = invoke_result_t<const Invocable&,Args&&...>
+            >
+    CUSEND_ANNOTATION
+    Result set_value(Args&&... args) const &
+    {
+      return detail::invoke(invocable_, std::forward<Args>(args)...);
+    }
+
     template<class E>
     CUSEND_ANNOTATION
     void set_error(E&&) && noexcept
@@ -88,6 +108,7 @@ class invocable_as_receiver
 
 
 template<class Invocable>
+CUSEND_ANNOTATION
 invocable_as_receiver<typename std::decay<Invocable>::type> as_receiver(Invocable&& f)
 {
   return {std::forward<Invocable>(f)};
