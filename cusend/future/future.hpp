@@ -91,6 +91,12 @@ class future_base
     }
 
     CUSEND_ANNOTATION
+    void wait()
+    {
+      event_.wait();
+    }
+
+    CUSEND_ANNOTATION
     const Executor& executor() const
     {
       return executor_;
@@ -108,12 +114,6 @@ class future_base
       return valid() and event_.is_ready();
     }
 
-    CUSEND_ANNOTATION
-    void wait()
-    {
-      event_.wait();
-    }
-
   protected:
     CUSEND_ANNOTATION
     future_base(const Executor& executor, bool valid, event&& e)
@@ -122,20 +122,12 @@ class future_base
         event_{std::move(e)}
     {}
 
-    // XXX this probably needn't be protected
     CUSEND_ANNOTATION
-    void invalidate()
+    void wait_and_invalidate()
     {
-      valid_ = false;
+      wait();
+      invalidate();
     }
-
-    // XXX this probably needn't exist
-    CUSEND_ANNOTATION
-    detail::event& event()
-    {
-      return event_;
-    }
-
 
     // this version of then returns a copy of our event
     // the returned event corresponds to the completion of f
@@ -151,13 +143,13 @@ class future_base
       cudaStream_t stream = detail::stream_of(ex);
 
       // make the stream wait for our event
-      detail::stream_wait_for(stream, event().native_handle());
+      detail::stream_wait_for(stream, event_.native_handle());
 
       // execute function on the executor
       execution::execute(ex, f);
 
       // record our event on the stream
-      event().record_on(stream);
+      event_.record_on(stream);
 
       // invalidate ourself
       invalidate();
@@ -181,13 +173,13 @@ class future_base
       cudaStream_t stream = detail::stream_of(ex);
 
       // make the stream wait for our event
-      detail::stream_wait_for(stream, event().native_handle());
+      detail::stream_wait_for(stream, event_.native_handle());
 
       // execute function on the executor
       execution::execute(ex, f);
 
       // record our event on the stream
-      event().record_on(stream);
+      event_.record_on(stream);
 
       // invalidate ourself
       invalidate();
@@ -227,6 +219,12 @@ class future_base
 
 
   private:
+    CUSEND_ANNOTATION
+    void invalidate()
+    {
+      valid_ = false;
+    }
+
     Executor executor_;
     bool valid_;
     detail::event event_;
@@ -288,9 +286,9 @@ class future : private detail::future_base<Executor>
     {
       if(value_.get())
       {
-        // destroy_after(super_t::event(), std::move(value_));
+        // destroy_after(super_t::event_, std::move(value_));
         printf("future::~future: Blocking in destructor.\n");
-        super_t::wait();
+        wait();
       }
     }
 
@@ -301,8 +299,7 @@ class future : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     T get() &&
     {
-      wait();
-      super_t::invalidate();
+      super_t::wait_and_invalidate();
       return *value_;
     }
 
@@ -486,8 +483,7 @@ class future<void,Executor> : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     void get() &&
     {
-      wait();
-      super_t::invalidate();
+      super_t::wait_and_invalidate();
     }
 
 
