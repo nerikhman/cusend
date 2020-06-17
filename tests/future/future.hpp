@@ -95,6 +95,7 @@ void test_then_void_to_void()
 
   try
   {
+    // use a __host__ __device__ lambda because __device__ lambdas cannot return void safely
     auto f2 = std::move(f1).then([] __host__ __device__ { return; } );
 
 #if !defined(__CUDACC__)
@@ -128,6 +129,7 @@ void test_then_int_to_void()
 
   try
   {
+    // use a __host__ __device__ lambda because __device__ lambdas cannot return void safely
     auto f2 = std::move(f1).then([] __host__ __device__ (int) { return;} );
 
 #if !defined(__CUDACC__)
@@ -159,7 +161,7 @@ void test_then_void_to_int()
 
   try
   {
-    auto f2 = std::move(f1).then([] __host__ __device__ () { return 13; });
+    auto f2 = std::move(f1).then([] __device__ () { return 13; });
 
 #if !defined(__CUDACC__)
     assert(false);
@@ -190,7 +192,7 @@ void test_then_int_to_int()
 
   try
   {
-    auto f2 = std::move(f1).then([] __host__ __device__ (int arg) { return arg + 6; });
+    auto f2 = std::move(f1).then([] __device__ (int arg) { return arg + 6; });
 
 #if !defined(__CUDACC__)
     assert(false);
@@ -221,6 +223,7 @@ void test_then_int_to_float()
 
   try
   {
+    // use a __host__ __device__ lambda because __device__ lambdas cannot return float safely
     auto f2 = std::move(f1).then([] __host__ __device__ (int arg) { return static_cast<float>(arg + 6); });
 
 #if !defined(__CUDACC__)
@@ -245,30 +248,187 @@ void test_then_int_to_float()
 }
 
 
-__managed__ int result;
+__managed__ int single_result;
+
+
+struct receive_void_and_return_void
+{
+  int result;
+
+  __device__
+  void set_value() && noexcept
+  {
+    single_result = result;
+  }
+
+  template<class E>
+  __device__
+  void set_error(E&&) && noexcept {}
+
+  __device__
+  void set_done() && noexcept {}
+};
+
+
+void test_then_receiver_of_void_and_return_void()
+{
+  auto f1 = ns::make_ready_future();
+
+  try
+  {
+    int expected = 13;
+    single_result = -1;
+    auto f2 = std::move(f1).then(receive_void_and_return_void{expected});
+
+#if !defined(__CUDACC__)
+    assert(false);
+#endif
+
+    assert(!f1.valid());
+    assert(f2.valid());
+    f2.wait();
+
+    assert(f2.is_ready());
+    assert(f2.valid());
+
+    std::move(f2).get();
+    assert(!f2.valid());
+    assert(expected == single_result);
+  }
+  catch(std::runtime_error)
+  {
+#if defined(__CUDACC__)
+    assert(false);
+#endif
+  }
+}
+
+
+struct receive_void_and_return_int
+{
+  int result;
+
+  __device__
+  int set_value() && noexcept
+  {
+    return result;
+  }
+
+  template<class E>
+  __device__
+  void set_error(E&&) && noexcept {}
+
+  __device__
+  void set_done() && noexcept {}
+};
+
+
+void test_then_receiver_of_void_and_return_int()
+{
+  auto f1 = ns::make_ready_future();
+
+  try
+  {
+    int expected = 13;
+    auto f2 = std::move(f1).then(receive_void_and_return_int{expected});
+
+#if !defined(__CUDACC__)
+    assert(false);
+#endif
+
+    assert(!f1.valid());
+    assert(f2.valid());
+    f2.wait();
+
+    assert(f2.is_ready());
+    assert(f2.valid());
+
+    assert(expected == std::move(f2).get());
+    assert(!f2.valid());
+  }
+  catch(std::runtime_error)
+  {
+#if defined(__CUDACC__)
+    assert(false);
+#endif
+  }
+}
+
+
+struct receive_int_and_return_void
+{
+  int result;
+
+  __device__
+  void set_value(int) && noexcept
+  {
+    single_result = result;
+  }
+
+  template<class E>
+  __device__
+  void set_error(E&&) && noexcept {}
+
+  __device__
+  void set_done() && noexcept {}
+};
+
+
+void test_then_receiver_of_int_and_return_void()
+{
+  auto f1 = ns::make_ready_future(13);
+
+  try
+  {
+    int expected = 13;
+    single_result = -1;
+    auto f2 = std::move(f1).then(receive_int_and_return_void{expected});
+
+#if !defined(__CUDACC__)
+    assert(false);
+#endif
+
+    assert(!f1.valid());
+    assert(f2.valid());
+    f2.wait();
+
+    assert(f2.is_ready());
+    assert(f2.valid());
+
+    std::move(f2).get();
+    assert(!f2.valid());
+    assert(expected == single_result);
+  }
+  catch(std::runtime_error)
+  {
+#if defined(__CUDACC__)
+    assert(false);
+#endif
+  }
+}
 
 
 struct receive_and_add_one
 {
-  __host__ __device__
+  __device__
   int set_value(int value) && noexcept
   {
     return value + 1;
   }
 
   template<class E>
-  __host__ __device__
+  __device__
   void set_error(E&&) && noexcept {}
 
-  __host__ __device__
+  __device__
   void set_done() && noexcept {}
 };
 
 
-void test_then_receiver()
+void test_then_receiver_of_int_and_return_int()
 {
   int expected = 13;
-  auto f1 = ns::make_ready_future(std::move(expected));
+  auto f1 = ns::make_ready_future(expected - 1);
 
   try
   {
@@ -285,7 +445,7 @@ void test_then_receiver()
     assert(f2.is_ready());
     assert(f2.valid());
 
-    assert(expected + 1 == std::move(f2).get());
+    assert(expected == std::move(f2).get());
     assert(!f2.valid());
   }
   catch(std::runtime_error)
@@ -305,7 +465,7 @@ struct many_receiver_of_int
 {
   int expected;
 
-  __host__ __device__
+  __device__
   void set_value(int idx, int& value) noexcept
   {
     switch(idx)
@@ -331,10 +491,10 @@ struct many_receiver_of_int
   }
 
   template<class E>
-  __host__ __device__
+  __device__
   void set_error(E&&) && noexcept {}
 
-  __host__ __device__
+  __device__
   void set_done() && noexcept {}
 };
 
@@ -372,7 +532,7 @@ void test_bulk_then_receiver_of_int()
 
 struct many_receiver_of_void
 {
-  __host__ __device__
+  __device__
   void set_value(int idx) noexcept
   {
     switch(idx)
@@ -398,10 +558,10 @@ struct many_receiver_of_void
   }
 
   template<class E>
-  __host__ __device__
+  __device__
   void set_error(E&&) && noexcept {}
 
-  __host__ __device__
+  __device__
   void set_done() && noexcept {}
 };
 
@@ -435,6 +595,108 @@ void test_bulk_then_receiver_of_void()
 }
 
 
+void test_bulk_then_void_to_void()
+{
+  auto f1 = ns::make_ready_future();
+
+  try
+  {
+    bulk_result0 = false;
+    bulk_result1 = false;
+
+    auto f2 = std::move(f1).bulk_then([] __device__ (std::size_t idx)
+    {
+      switch(idx)
+      {
+        case 0:
+        {
+          bulk_result0 = true;
+          break;
+        }
+
+        case 1:
+        {
+          bulk_result1 = true;
+          break;
+        }
+
+        default:
+        {
+          assert(false);
+          break;
+        }
+      }
+    }, 2);
+
+    assert(!f1.valid());
+    assert(f2.valid());
+    f2.wait();
+
+    assert(f2.is_ready());
+    assert(bulk_result0);
+    assert(bulk_result1);
+  }
+  catch(std::runtime_error)
+  {
+#if defined(__CUDACC__)
+    assert(false);
+#endif
+  }
+}
+
+
+void test_bulk_then_int_to_int()
+{
+  int expected = 13;
+  auto f1 = ns::make_ready_future(std::move(expected));
+
+  try
+  {
+    bulk_result0 = false;
+    bulk_result1 = false;
+
+    auto f2 = std::move(f1).bulk_then([expected] __device__ (std::size_t idx, int& value)
+    {
+      switch(idx)
+      {
+        case 0:
+        {
+          bulk_result0 = (expected == value);
+          break;
+        }
+
+        case 1:
+        {
+          bulk_result1 = (expected == value);
+          break;
+        }
+
+        default:
+        {
+          assert(false);
+          break;
+        }
+      }
+    }, 2);
+
+    assert(!f1.valid());
+    assert(f2.valid());
+    f2.wait();
+
+    assert(f2.is_ready());
+    assert(expected == std::move(f2).get());
+    assert(bulk_result0);
+    assert(bulk_result1);
+  }
+  catch(std::runtime_error)
+  {
+#if defined(__CUDACC__)
+    assert(false);
+#endif
+  }
+}
+
+
 #ifdef __CUDACC__
 template<class F>
 __global__ void device_invoke(F f)
@@ -450,13 +712,22 @@ void test_future()
   test_move_construction();
   test_move_assignment();
   test_get();
+
   test_then_void_to_void();
   test_then_int_to_void();
   test_then_void_to_int();
   test_then_int_to_int();
   test_then_int_to_float();
-  test_then_receiver();
-  test_bulk_then_receiver_of_int();
+
+  test_then_receiver_of_void_and_return_void();
+  test_then_receiver_of_void_and_return_int();
+  test_then_receiver_of_int_and_return_void();
+  test_then_receiver_of_int_and_return_int();
+
   test_bulk_then_receiver_of_void();
+  test_bulk_then_receiver_of_int();
+
+  test_bulk_then_void_to_void();
+  test_bulk_then_int_to_int();
 }
 

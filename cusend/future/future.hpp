@@ -392,7 +392,7 @@ class future : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<Result,StreamExecutor> then(const StreamExecutor& ex, Function f) &&
     {
-      return std::move(*this).then(ex, detail::as_receiver(std::forward<Function>(f)));
+      return std::move(*this).then(ex, detail::as_receiver(f));
     }
 
 
@@ -434,6 +434,30 @@ class future : private detail::future_base<Executor>
     future<T,Executor> bulk_then(R receiver, std::size_t shape) &&
     {
       return std::move(*this).bulk_then(executor(), receiver, shape);
+    }
+
+
+    template<class StreamExecutor,
+             class F,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
+             CUSEND_REQUIRES(detail::is_invocable<F,std::size_t,T&>::value)
+            >
+    CUSEND_ANNOTATION
+    future<T,StreamExecutor> bulk_then(const StreamExecutor& ex, F f, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
+    }
+
+
+    template<class F,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
+             CUSEND_REQUIRES(detail::is_invocable<F,std::size_t,T&>::value)
+            >
+    CUSEND_ANNOTATION
+    future<T,Executor> bulk_then(F f, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(executor(), f, shape);
     }
 
 
@@ -492,7 +516,7 @@ class future<void,Executor> : private detail::future_base<Executor>
              CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,void>::value),
-             CUSEND_REQUIRES(std::is_same<void, set_value_t<R>>::value)
+             CUSEND_REQUIRES(std::is_void<set_value_t<R>>::value)
             >
     CUSEND_ANNOTATION
     future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
@@ -511,7 +535,7 @@ class future<void,Executor> : private detail::future_base<Executor>
              CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,void>::value),
-             CUSEND_REQUIRES(!std::is_same<void, set_value_t<R>>::value),
+             CUSEND_REQUIRES(!std::is_void<set_value_t<R>>::value),
              class Result = set_value_t<R> 
             >
     CUSEND_ANNOTATION
@@ -533,7 +557,7 @@ class future<void,Executor> : private detail::future_base<Executor>
     template<class R,
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,void>::value),
-             class Result = set_value_t<R,void>
+             class Result = set_value_t<R>
             >
     CUSEND_ANNOTATION
     future<Result,Executor> then(R receiver) &&
@@ -593,6 +617,30 @@ class future<void,Executor> : private detail::future_base<Executor>
     future<void,Executor> bulk_then(R receiver, std::size_t shape) &&
     {
       return std::move(*this).bulk_then(executor(), receiver, shape);
+    }
+
+
+    template<class StreamExecutor,
+             class F,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
+             CUSEND_REQUIRES(detail::is_invocable<F,std::size_t>::value)
+            >
+    CUSEND_ANNOTATION
+    future<void,StreamExecutor> bulk_then(const StreamExecutor& ex, F f, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
+    }
+
+
+    template<class F,
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
+             CUSEND_REQUIRES(detail::is_invocable<F,std::size_t>::value)
+            >
+    CUSEND_ANNOTATION
+    future<void,Executor> bulk_then(F f, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(executor(), f, shape);
     }
 
 
