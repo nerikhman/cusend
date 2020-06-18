@@ -95,6 +95,11 @@ class host_future_base
       return future_.get();
     }
 
+    const Executor& executor() const
+    {
+      return executor_;
+    }
+
   protected:
     host_future_base(const Executor& ex, const execution::callback_executor& waiting_executor, std::future<T>&& future)
       : executor_{ex},
@@ -102,24 +107,20 @@ class host_future_base
         future_(std::move(future))
     {}
 
-    std::future<T> get_future()
-    {
-      return std::move(future_);
-    }
-
     bool valid() const
     {
       return future_.valid();
     }
 
-    const Executor& executor() const
+    template<class Function>
+    detail::event then_on_stream_callback(Function&& f) &&
     {
-      return executor_;
-    }
+      if(!valid())
+      {
+        throw std::future_error(std::future_errc::no_state);
+      }
 
-    const execution::callback_executor& waiting_executor() const
-    {
-      return waiting_executor_;
+      return detail::then_execute(waiting_executor_, std::move(future_), std::forward<Function>(f));
     }
 
   private:
@@ -134,19 +135,17 @@ class host_future : public host_future_base<T,Executor>
 {
   private:
     using super_t = host_future_base<T,Executor>;
-    using super_t::executor;
-    using super_t::get_future;
-    using super_t::waiting_executor;
 
   public:
+    using super_t::executor;
+    using super_t::wait;
+    using super_t::get;
+
     CUSEND_EXEC_CHECK_DISABLE
     host_future(host_future&&) = default;
 
     CUSEND_EXEC_CHECK_DISABLE
     ~host_future() = default;
-
-    using super_t::wait;
-    using super_t::get;
 
     bool valid() const
     {
@@ -164,12 +163,8 @@ class host_future : public host_future_base<T,Executor>
             >
     future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      if(!valid())
-      {
-        throw std::future_error(std::future_errc::no_state);
-      }
-
       // 1. after this future's result is ready, move it into device_state_
+      // XXX consider creating this event in the constructor rather than here in then()
       detail::event event = asynchronously_move_result_to_device();
 
       // 2. then on ex, execute indirect_set_value
@@ -192,12 +187,8 @@ class host_future : public host_future_base<T,Executor>
             >
     future<T,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      if(!valid())
-      {
-        throw std::future_error(std::future_errc::no_state);
-      }
-
       // 1. after this future's result is ready, move it into device_state_
+      // XXX consider creating this event in the constructor rather than here in then()
       detail::event event = asynchronously_move_result_to_device();
 
       // 2. then on ex, call inplace_indirect_set_value
@@ -220,15 +211,11 @@ class host_future : public host_future_base<T,Executor>
             >
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      if(!valid())
-      {
-        throw std::future_error(std::future_errc::no_state);
-      }
-
       // create storage for the receiver's result
       memory::unique_ptr<Result> result_state = memory::make_unique<Result>(memory::uninitialized);
 
       // 1. after this future's result is ready, move it into device_state_
+      // XXX consider creating this event in the constructor rather than here in then()
       detail::event event = asynchronously_move_result_to_device();
 
       // 2. then on ex, execute indirect_set_value_and_construct_at
@@ -297,7 +284,7 @@ class host_future : public host_future_base<T,Executor>
 
     detail::event asynchronously_move_result_to_device()
     {
-      return detail::then_execute(waiting_executor(), get_future(), [ptr = device_state_.get()](T&& value)
+      return std::move(*this).then_on_stream_callback([ptr = device_state_.get()](T&& value)
       {
         memory::construct_at(ptr, std::move(value));
       });
@@ -320,16 +307,14 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
 {
   private:
     using super_t = host_future_base<void,Executor>;
-    using super_t::executor;
-    using super_t::get_future;
-    using super_t::waiting_executor;
 
   public:
-    host_future(host_future&&) = default;
-
+    using super_t::executor;
     using super_t::wait;
     using super_t::get;
     using super_t::valid;
+
+    host_future(host_future&&) = default;
 
     // this is the void-returning case of then(receiver)
     template<class StreamExecutor,
@@ -342,13 +327,9 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
             >
     future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      if(!valid())
-      {
-        throw std::future_error(std::future_errc::no_state);
-      }
-
       // 1. on waiting_executor(), wait on the future
-      detail::event event = detail::then_execute(waiting_executor(), get_future(), []()
+      // XXX consider creating this event in the constructor rather than here in then()
+      detail::event event = std::move(*this).then_on_stream_callback([]()
       {
         // no-op
       });
@@ -371,16 +352,12 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
             >
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      if(!valid())
-      {
-        throw std::future_error(std::future_errc::no_state);
-      }
-
       // create storage for result
       memory::unique_ptr<Result> device_state = memory::make_unique<Result>(memory::uninitialized);
 
       // 1. on waiting_executor(), wait on the future
-      detail::event event = detail::then_execute(waiting_executor(), get_future(), []()
+      // XXX consider creating this event in the constructor rather than here in then()
+      detail::event event = std::move(*this).then_on_stream_callback([]()
       {
         // no-op
       });
