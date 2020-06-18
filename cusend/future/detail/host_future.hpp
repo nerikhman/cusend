@@ -288,6 +288,28 @@ class host_future : public host_future_base<T,Executor>
     }
 
 
+    template<class StreamExecutor,
+             class F,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<F>::value),
+             CUSEND_REQUIRES(is_invocable<F,std::size_t,T&>::value)
+            >
+    future<T,StreamExecutor> bulk_then(const StreamExecutor& ex, F f, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
+    }
+
+
+    template<class F,
+             CUSEND_REQUIRES(std::is_trivially_copyable<F>::value),
+             CUSEND_REQUIRES(is_invocable<F,std::size_t,T&>::value)
+            >
+    future<T,Executor> bulk_then(F f, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(executor(), detail::as_receiver(f), shape);
+    }
+
+
     template<class R,
              CUSEND_REQUIRES(is_receiver_of<R&&,T&&>::value),
              CUSEND_REQUIRES(std::is_trivially_copyable<R>::value)
@@ -462,6 +484,28 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
     future<void,Executor> bulk_then(R receiver, std::size_t shape) &&
     {
       return std::move(*this).bulk_then(executor(), receiver, shape);
+    }
+
+
+    template<class StreamExecutor,
+             class F,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<F>::value),
+             CUSEND_REQUIRES(is_invocable<F,std::size_t>::value)
+            >
+    future<void,StreamExecutor> bulk_then(const StreamExecutor& ex, F f, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
+    }
+
+
+    template<class F,
+             CUSEND_REQUIRES(std::is_trivially_copyable<F>::value),
+             CUSEND_REQUIRES(is_invocable<F,std::size_t>::value)
+            >
+    future<void,Executor> bulk_then(F f, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(executor(), detail::as_receiver(f), shape);
     }
 
 

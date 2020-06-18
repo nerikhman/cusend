@@ -475,6 +475,92 @@ void test_bulk_then_receiver_of_void(Executor ex)
 }
 
 
+template<class Executor>
+void test_bulk_then_void_to_void(Executor ex)
+{
+  auto f1 = make_ready_host_future();
+
+  bulk_result0 = false;
+  bulk_result1 = false;
+
+  auto f2 = std::move(f1).bulk_then(ex, [] __host__ __device__ (std::size_t idx)
+  {
+    switch(idx)
+    {
+      case 0:
+      {
+        bulk_result0 = true;
+        break;
+      }
+
+      case 1:
+      {
+        bulk_result1 = true;
+        break;
+      }
+
+      default:
+      {
+        assert(false);
+        break;
+      }
+    }
+  }, 2);
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+  assert(bulk_result0);
+  assert(bulk_result1);
+}
+
+
+template<class Executor>
+void test_bulk_then_int_to_int(Executor ex)
+{
+  int expected = 13;
+  auto f1 = ns::make_ready_future(std::move(expected));
+
+  bulk_result0 = false;
+  bulk_result1 = false;
+
+  auto f2 = std::move(f1).bulk_then(ex, [] __host__ __device__ (std::size_t idx, int& value)
+  {
+    switch(idx)
+    {
+      case 0:
+      {
+        bulk_result0 = (13 == value);
+        break;
+      }
+
+      case 1:
+      {
+        bulk_result1 = (13 == value);
+        break;
+      }
+
+      default:
+      {
+        assert(false);
+        break;
+      }
+    }
+  }, 2);
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+  assert(expected == std::move(f2).get());
+  assert(bulk_result0);
+  assert(bulk_result1);
+}
+
+
 template<class StreamExecutor>
 void test(StreamExecutor ex)
 {
@@ -495,6 +581,9 @@ void test(StreamExecutor ex)
 
   test_bulk_then_receiver_of_void(ex);
   test_bulk_then_receiver_of_int(ex);
+
+  test_bulk_then_void_to_void(ex);
+  test_bulk_then_int_to_int(ex);
 }
 
 
