@@ -192,18 +192,17 @@ void test_then_int_to_float(StreamExecutor ex)
 }
 
 
-struct my_receiver
+__managed__ int single_result;
+
+
+struct receive_void_and_return_void
 {
-  __host__ __device__
-  bool set_value() && noexcept
-  {
-    return true;
-  }
+  int result;
 
   __host__ __device__
-  int set_value(int value) && noexcept
+  void set_value() && noexcept
   {
-    return value;
+    single_result = result;
   }
 
   template<class E>
@@ -215,37 +214,264 @@ struct my_receiver
 };
 
 
-template<class StreamExecutor>
-void test_then_receiver(StreamExecutor ex)
+template<class Executor>
+void test_then_receiver_of_void_and_return_void(Executor ex)
 {
+  auto f1 = make_ready_host_future();
+
+  int expected = 13;
+  single_result = -1;
+  auto f2 = std::move(f1).then(ex, receive_void_and_return_void{expected});
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+  assert(f2.valid());
+
+  std::move(f2).get();
+  assert(!f2.valid());
+  assert(expected == single_result);
+}
+
+
+struct receive_void_and_return_int
+{
+  int result;
+
+  __host__ __device__
+  int set_value() && noexcept
   {
-    // receive int
-    int expected = 7;
-    auto f1 = make_ready_host_future(expected);
-
-    auto f2 = std::move(f1).then(ex, my_receiver{});
-
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
-
-    assert(f2.is_ready());
-    assert(expected == std::move(f2).get());
+    return result;
   }
 
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
+};
+
+
+template<class Executor>
+void test_then_receiver_of_void_and_return_int(Executor ex)
+{
+  auto f1 = make_ready_host_future();
+
+  int expected = 13;
+  auto f2 = std::move(f1).then(ex, receive_void_and_return_int{expected});
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+  assert(f2.valid());
+
+  assert(expected == std::move(f2).get());
+  assert(!f2.valid());
+}
+
+
+struct receive_int_and_return_void
+{
+  int result;
+
+  __host__ __device__
+  void set_value(int) && noexcept
   {
-    // receive void
-    auto f1 = make_ready_host_future();
-
-    auto f2 = std::move(f1).then(ex, my_receiver{});
-
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
-
-    assert(f2.is_ready());
-    assert(std::move(f2).get());
+    single_result = result;
   }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
+};
+
+
+template<class Executor>
+void test_then_receiver_of_int_and_return_void(Executor ex)
+{
+  auto f1 = make_ready_host_future(13);
+
+  int expected = 13;
+  single_result = -1;
+  auto f2 = std::move(f1).then(ex, receive_int_and_return_void{expected});
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+  assert(f2.valid());
+
+  std::move(f2).get();
+  assert(!f2.valid());
+  assert(expected == single_result);
+}
+
+
+struct receive_and_add_one
+{
+  __host__ __device__
+  int set_value(int value) && noexcept
+  {
+    return value + 1;
+  }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
+};
+
+
+template<class Executor>
+void test_then_receiver_of_int_and_return_int(Executor ex)
+{
+  int expected = 13;
+  auto f1 = make_ready_host_future(expected - 1);
+
+  auto f2 = std::move(f1).then(ex, receive_and_add_one{});
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+  assert(f2.valid());
+
+  assert(expected == std::move(f2).get());
+  assert(!f2.valid());
+}
+
+
+__managed__ bool bulk_result0;
+__managed__ bool bulk_result1;
+
+
+struct many_receiver_of_int
+{
+  int expected;
+
+  __host__ __device__
+  void set_value(int idx, int& value) noexcept
+  {
+    switch(idx)
+    {
+      case 0:
+      {
+        bulk_result0 = (expected == value);
+        break;
+      }
+
+      case 1:
+      {
+        bulk_result1 = (expected == value);
+        break;
+      }
+
+      default:
+      {
+        assert(0);
+        break;
+      }
+    }
+  }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
+};
+
+
+template<class Executor>
+void test_bulk_then_receiver_of_int(Executor ex)
+{
+  int expected = 7;
+  auto f1 = make_ready_host_future(std::move(expected));
+
+  bulk_result0 = false;
+  bulk_result1 = false;
+
+  auto f2 = std::move(f1).bulk_then(ex, many_receiver_of_int{expected}, 2);
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+
+  assert(expected == std::move(f2).get());
+  assert(bulk_result0);
+  assert(bulk_result1);
+}
+
+
+struct many_receiver_of_void
+{
+  __host__ __device__
+  void set_value(int idx) noexcept
+  {
+    switch(idx)
+    {
+      case 0:
+      {
+        bulk_result0 = true;
+        break;
+      }
+
+      case 1:
+      {
+        bulk_result1 = true;
+        break;
+      }
+
+      default:
+      {
+        assert(0);
+        break;
+      }
+    }
+  }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
+};
+
+
+template<class Executor>
+void test_bulk_then_receiver_of_void(Executor ex)
+{
+  auto f1 = make_ready_host_future();
+
+  bulk_result0 = false;
+  bulk_result1 = false;
+
+  auto f2 = std::move(f1).bulk_then(ex, many_receiver_of_void{}, 2);
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+
+  assert(bulk_result0);
+  assert(bulk_result1);
 }
 
 
@@ -262,7 +488,13 @@ void test(StreamExecutor ex)
   test_then_int_to_int(ex);
   test_then_int_to_float(ex);
 
-  test_then_receiver(ex);
+  test_then_receiver_of_void_and_return_void(ex);
+  test_then_receiver_of_void_and_return_int(ex);
+  test_then_receiver_of_int_and_return_void(ex);
+  test_then_receiver_of_int_and_return_int(ex);
+
+  test_bulk_then_receiver_of_void(ex);
+  test_bulk_then_receiver_of_int(ex);
 }
 
 

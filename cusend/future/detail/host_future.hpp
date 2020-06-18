@@ -41,6 +41,7 @@
 #include "../future.hpp"
 #include "invocable.hpp"
 #include "invocable_as_receiver.hpp"
+#include "then_bulk_execute.hpp"
 #include "then_execute.hpp"
 
 
@@ -257,6 +258,36 @@ class host_future : public host_future_base<T,Executor>
     }
 
 
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t,T&>::value)
+            >
+    future<T,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
+    {
+      // 1. after this future's result is ready, move it into device_state_
+      // XXX consider creating this event in the constructor rather than here in bulk_then()
+      detail::event event = asynchronously_move_result_to_device();
+
+      // 2. then on ex, execute indirect_set_value_with_index
+      event = detail::then_bulk_execute(ex, std::move(event), detail::make_indirect_set_value_with_index(receiver, device_state_.get()), shape);
+
+      // return a future corresponding to the event
+      return detail::make_unready_future(ex, std::move(event), std::move(device_state_));
+    }
+
+
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t,T&>::value)
+            >
+    future<T,Executor> bulk_then(R receiver, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(executor(), receiver, shape);
+    }
+
+
     template<class R,
              CUSEND_REQUIRES(is_receiver_of<R&&,T&&>::value),
              CUSEND_REQUIRES(std::is_trivially_copyable<R>::value)
@@ -398,6 +429,39 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
     future<Result,Executor> then(F&& f) &&
     {
       return std::move(*this).then(executor(), std::forward<F>(f));
+    }
+
+
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t>::value)
+            >
+    future<void,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
+    {
+      // 1. on waiting_executor(), wait on the future
+      // XXX consider creating this event in the constructor rather than here in then()
+      detail::event event = std::move(*this).then_on_stream_callback([]()
+      {
+        // no-op
+      });
+
+      // 2. then on ex, execute call_set_value_with_index
+      event = detail::then_bulk_execute(ex, std::move(event), detail::make_call_set_value_with_index(receiver), shape);
+
+      // return a future corresponding to the event
+      return detail::make_unready_future(ex, std::move(event));
+    }
+
+
+    template<class R,
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t>::value)
+            >
+    future<void,Executor> bulk_then(R receiver, std::size_t shape) &&
+    {
+      return std::move(*this).bulk_then(executor(), receiver, shape);
     }
 
 
