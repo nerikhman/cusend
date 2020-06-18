@@ -169,11 +169,8 @@ class host_future : public host_future_base<T,Executor>
         throw std::future_error(std::future_errc::no_state);
       }
 
-      // 1. on waiting_executor(), wait on the future and move the result into device memory
-      detail::event event = detail::then_execute(waiting_executor(), get_future(), [ptr = device_state_.get()](T&& value)
-      {
-        memory::construct_at(ptr, std::move(value));
-      });
+      // 1. after this future's result is ready, move it into device_state_
+      detail::event event = asynchronously_move_result_to_device();
 
       // 2. then on ex, execute indirect_set_value
       event = detail::then_execute(ex, std::move(event), detail::make_indirect_set_value(receiver, device_state_.get()));
@@ -200,11 +197,8 @@ class host_future : public host_future_base<T,Executor>
         throw std::future_error(std::future_errc::no_state);
       }
 
-      // 1. on waiting_executor(), wait on the future and move the result into device memory
-      detail::event event = detail::then_execute(waiting_executor(), get_future(), [ptr = device_state_.get()](T&& value)
-      {
-        memory::construct_at(ptr, std::move(value));
-      });
+      // 1. after this future's result is ready, move it into device_state_
+      detail::event event = asynchronously_move_result_to_device();
 
       // 2. then on ex, call inplace_indirect_set_value
       event = detail::then_execute(ex, std::move(event), detail::make_inplace_indirect_set_value(receiver, device_state_.get()));
@@ -231,14 +225,11 @@ class host_future : public host_future_base<T,Executor>
         throw std::future_error(std::future_errc::no_state);
       }
 
-      // create storage for result
+      // create storage for the receiver's result
       memory::unique_ptr<Result> result_state = memory::make_unique<Result>(memory::uninitialized);
 
-      // 1. on waiting_executor(), wait on the future and move the result into device memory
-      detail::event event = detail::then_execute(waiting_executor(), get_future(), [ptr = device_state_.get()](T&& value)
-      {
-        memory::construct_at(ptr, std::move(value));
-      });
+      // 1. after this future's result is ready, move it into device_state_
+      detail::event event = asynchronously_move_result_to_device();
 
       // 2. then on ex, execute indirect_set_value_and_construct_at
       event = detail::then_execute(ex, std::move(event), detail::make_indirect_set_value_and_construct_at(receiver, device_state_.get(), result_state.get()));
@@ -303,6 +294,14 @@ class host_future : public host_future_base<T,Executor>
         // XXX need to pass an allocator here
         device_state_{memory::make_unique<T>(memory::uninitialized)}
     {}
+
+    detail::event asynchronously_move_result_to_device()
+    {
+      return detail::then_execute(waiting_executor(), get_future(), [ptr = device_state_.get()](T&& value)
+      {
+        memory::construct_at(ptr, std::move(value));
+      });
+    }
 
     memory::unique_ptr<T> device_state_;
 };
