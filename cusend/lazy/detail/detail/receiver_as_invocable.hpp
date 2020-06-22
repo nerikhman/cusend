@@ -52,7 +52,7 @@ class receiver_as_invocable
   private:
     using receiver_type = remove_cvref_t<R>;
 
-    static_assert(is_receiver<receiver_type>::value, "Error.h");
+    static_assert(is_receiver<receiver_type>::value, "receiver_as_invocable<R>: R is not a receiver");
 
     // XXX better to replace these members with a __host__ __device__ optional<receiver_type> type when available
     //     once we do that, we can eliminate the CUSEND_EXEC_CHECK_DISABLE below
