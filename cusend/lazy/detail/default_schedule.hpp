@@ -31,10 +31,10 @@
 #include <exception>
 #include <type_traits>
 #include <utility>
+#include "../../detail/type_traits/remove_cvref.hpp"
 #include "../../execution/executor/is_executor.hpp"
 #include "../receiver/is_receiver_of.hpp"
 #include "detail/execute_operation.hpp"
-#include "detail/receiver_as_invocable.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -74,21 +74,13 @@ class executor_as_sender
     }
 
 
-    // the type of operation returned by connect
-    template<class Receiver>
-    using operation = execute_operation<
-      Executor,
-      receiver_as_invocable<Receiver>
-    >;
-
-
-    template<class Receiver,
-             CUSEND_REQUIRES(is_receiver_of<Receiver,void>::value)
+    template<class R,
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value)
             >
     CUSEND_ANNOTATION
-    operation<Receiver&&> connect(Receiver&& receiver) const
+    execute_operation<Executor,remove_cvref_t<R&&>> connect(R&& receiver) const
     {
-      return detail::make_execute_operation(executor_, detail::as_invocable(std::forward<Receiver>(receiver)));
+      return detail::make_execute_operation(executor_, std::forward<R>(receiver));
     }
 
 

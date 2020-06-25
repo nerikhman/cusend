@@ -8,80 +8,107 @@
 #endif
 
 
-template<class T>
-__host__ __device__
-const T& cref(const T& ref)
-{
-  return ref;
-}
-
-
-struct mutable_invocable
+struct mutable_receiver
 {
   int& result;
   int value;
 
   __host__ __device__
-  void operator()()
+  void set_value()
   {
     result = value;
   }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() && noexcept {}
 };
 
 
-struct const_invocable
+struct const_receiver
 {
   int& result;
   int value;
 
   __host__ __device__
-  void operator()() const
+  void set_value() const
   {
     result = value;
   }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() noexcept {}
 };
 
 
-struct rvalue_invocable
+struct rvalue_receiver
 {
   int& result;
   int value;
 
   __host__ __device__
-  void operator()() &&
+  void set_value() &&
   {
     result = value;
   }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() noexcept {}
 };
 
 
-struct copyable_invocable
+struct copyable_receiver
 {
   int& result;
   int value;
 
-  copyable_invocable(const copyable_invocable&) = default;
+  copyable_receiver(const copyable_receiver&) = default;
 
   __host__ __device__
-  void operator()()
+  void set_value()
   {
     result = value;
   }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() noexcept {}
 };
 
 
-struct move_only_invocable
+struct move_only_receiver
 {
   int& result;
   int value;
 
-  move_only_invocable(move_only_invocable&&) = default;
+  move_only_receiver(move_only_receiver&&) = default;
 
   __host__ __device__
-  void operator()()
+  void set_value()
   {
     result = value;
   }
+
+  template<class E>
+  __host__ __device__
+  void set_error(E&&) && noexcept {}
+
+  __host__ __device__
+  void set_done() noexcept {}
 };
 
 
@@ -97,8 +124,8 @@ void test()
     int result = 0;
     int expected = 13;
 
-    mutable_invocable f{result, expected};
-    auto op = make_execute_operation(ex, f);
+    mutable_receiver r{result, expected};
+    auto op = make_execute_operation(ex, r);
 
     op.start();
 
@@ -109,22 +136,10 @@ void test()
     int result = 0;
     int expected = 13;
 
-    const_invocable f{result, expected};
-    auto op = make_execute_operation(ex, f);
+    const_receiver r{result, expected};
+    auto op = make_execute_operation(ex, r);
 
-    cref(op).start();
-
-    assert(expected == result);
-  }
-
-  {
-    int result = 0;
-    int expected = 13;
-
-    rvalue_invocable f{result, expected};
-    auto op = make_execute_operation(ex, f);
-
-    std::move(op).start();
+    op.start();
 
     assert(expected == result);
   }
@@ -133,8 +148,20 @@ void test()
     int result = 0;
     int expected = 13;
 
-    copyable_invocable f{result, expected};
-    auto op = make_execute_operation(ex, f);
+    rvalue_receiver r{result, expected};
+    auto op = make_execute_operation(ex, r);
+
+    op.start();
+
+    assert(expected == result);
+  }
+
+  {
+    int result = 0;
+    int expected = 13;
+
+    copyable_receiver r{result, expected};
+    auto op = make_execute_operation(ex, r);
 
     auto op_copy = op;
 
@@ -147,8 +174,8 @@ void test()
     int result = 0;
     int expected = 13;
 
-    move_only_invocable f{result, expected};
-    auto op = make_execute_operation(ex, std::move(f));
+    move_only_receiver r{result, expected};
+    auto op = make_execute_operation(ex, std::move(r));
 
     auto op_moved = std::move(op);
 

@@ -28,10 +28,14 @@
 
 #include "../../../detail/prologue.hpp"
 
+#include <type_traits>
 #include <utility>
 #include "../../../execution/executor/execute.hpp"
 #include "../../../execution/executor/is_executor.hpp"
 #include "../../../execution/executor/is_executor_of.hpp"
+#include "../../receiver/is_receiver_of.hpp"
+#include "indirect_receiver_as_invocable.hpp"
+#include "receiver_as_invocable.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -41,59 +45,94 @@ namespace detail
 {
 
 
-template<class Executor, class Invocable>
+template<class Executor, class Receiver>
 class execute_operation
 {
   public:
-    template<class OtherInvocable,
-             CUSEND_REQUIRES(std::is_constructible<Invocable,OtherInvocable&&>::value)
+    CUSEND_EXEC_CHECK_DISABLE
+    template<class OtherReceiver,
+             CUSEND_REQUIRES(std::is_constructible<Receiver,OtherReceiver&&>::value)
             >
     CUSEND_ANNOTATION
-    execute_operation(const Executor& ex, OtherInvocable&& f)
-      : ex_(ex), f_(std::forward<OtherInvocable>(f))
+    execute_operation(const Executor& ex, OtherReceiver&& receiver)
+      : ex_(ex), receiver_(std::forward<OtherReceiver>(receiver))
     {}
 
+    CUSEND_EXEC_CHECK_DISABLE
     execute_operation(const execute_operation&) = default;
 
-    CUSEND_ANNOTATION
-    execute_operation(execute_operation&& other)
-      : ex_(std::move(other.ex_)), f_(std::move(other.f_))
-    {}
+    CUSEND_EXEC_CHECK_DISABLE
+    execute_operation(execute_operation&&) = default;
 
-    template<CUSEND_REQUIRES(execution::is_executor_of<Executor,Invocable&&>::value)>
+#if CUSEND_HAS_EXCEPTIONS
+    // copyable receiver case
+    template<class R = Receiver,
+             CUSEND_REQUIRES(std::is_copy_constructible<R>::value),
+             CUSEND_REQUIRES(execution::is_executor_of<Executor,receiver_as_invocable<R>>::value)
+            >
     CUSEND_ANNOTATION
-    void start() &&
+    void start() const & noexcept
     {
-      CUSEND_NAMESPACE::execution::execute(ex_, std::move(f_));
+      // if the receiver is copyable, copy it when creating the invocable to execute
+      // we do this because the executor's memory may be in a different place than here,
+      // and we'd rather not access the receiver indirectly though memory if we don't need to
+
+      try
+      {
+        execution::execute(ex_, detail::as_invocable(receiver_));
+      }
+      catch(...)
+      {
+        set_error(std::move(receiver_), std::current_exception());
+      }
     }
 
-    template<CUSEND_REQUIRES(execution::is_executor_of<Executor,const Invocable&>::value)>
+    // XXX non-copyable receiver case
+    template<class R = Receiver,
+             CUSEND_REQUIRES(!std::is_copy_constructible<R>::value),
+             CUSEND_REQUIRES(execution::is_executor_of<Executor,indirect_receiver_as_invocable<R>>::value)
+            >
     CUSEND_ANNOTATION
-    void start() const &
+    void start() & noexcept
     {
-      CUSEND_NAMESPACE::execution::execute(ex_, f_);
+      try
+      {
+        execution::execute(ex_, detail::indirectly_as_invocable(&receiver_));
+      }
+      catch(...)
+      {
+        set_error(std::move(receiver_), std::current_exception());
+      }
     }
-
-    template<CUSEND_REQUIRES(execution::is_executor_of<Executor,Invocable&>::value)>
+#else
+    template<class R = Receiver,
+             CUSEND_REQUIRES(execution::is_executor_of<Executor,receiver_as_invocable<R>>::value)
+            >
     CUSEND_ANNOTATION
-    void start() &
+    void start() noexcept
     {
-      CUSEND_NAMESPACE::execution::execute(ex_, f_);
+      execution::execute(ex_, detail::as_invocable(std::move(receiver_)));
     }
+#endif
 
   private:
     Executor ex_;
-    Invocable f_;
+    Receiver receiver_;
 };
 
 
-template<class Executor, class Invocable,
-         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
+template<class Executor, class Receiver,
+         CUSEND_REQUIRES(execution::is_executor<Executor>::value),
+         class R = remove_cvref_t<Receiver>,
+         CUSEND_REQUIRES(is_receiver_of<R&&,void>::value or
+                         is_receiver_of<R&,void>::value or
+                         is_receiver_of<const R&,void>::value
+         )
         >
 CUSEND_ANNOTATION
-execute_operation<Executor, typename std::decay<Invocable>::type> make_execute_operation(const Executor& ex, Invocable&& f)
+execute_operation<Executor, remove_cvref_t<Receiver>> make_execute_operation(const Executor& ex, Receiver&& r)
 {
-  return {ex, std::forward<Invocable>(f)};
+  return {ex, std::forward<Receiver>(r)};
 }
 
 
