@@ -75,10 +75,7 @@ class receiver_as_invocable
 
 
     CUSEND_EXEC_CHECK_DISABLE
-    CUSEND_ANNOTATION
-    receiver_as_invocable(const receiver_as_invocable& other) noexcept
-      : r_{other.r_}, valid_{other.valid_}
-    {}
+    receiver_as_invocable(const receiver_as_invocable&) = default;
 
 
     CUSEND_EXEC_CHECK_DISABLE
