@@ -43,12 +43,16 @@ namespace detail
 
 template<class S, class R,
          CUSEND_REQUIRES(is_detected<connect_t, S&&, R&&>::value),
-         CUSEND_REQUIRES(is_detected<start_t, connect_t<S&&,R&&>>::value)
+         class O = connect_t<S&&,R&&>,
+
+         // XXX this should instead require is_operation_state<O>
+         CUSEND_REQUIRES(is_detected<start_t, O&>::value)
         >
 CUSEND_ANNOTATION
 void default_submit(S&& sender, R&& receiver)
 {
-  CUSEND_NAMESPACE::start(CUSEND_NAMESPACE::connect(std::forward<S>(sender), std::forward<R>(receiver)));
+  auto op = connect(std::forward<S>(sender), std::forward<R>(receiver));
+  start(op);
 }
 
 
