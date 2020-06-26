@@ -71,7 +71,7 @@ class execute_operation
              CUSEND_REQUIRES(execution::is_executor_of<Executor,receiver_as_invocable<R>>::value)
             >
     CUSEND_ANNOTATION
-    void start() const & noexcept
+    void start() noexcept
     {
       // if the receiver is copyable, copy it when creating the invocable to execute
       // we do this because the executor's memory may be in a different place than here,
@@ -79,7 +79,7 @@ class execute_operation
 
       try
       {
-        execution::execute(ex_, detail::as_invocable(receiver_));
+        execution::execute(ex_, detail::copy_as_invocable(receiver_));
       }
       catch(...)
       {
@@ -87,13 +87,13 @@ class execute_operation
       }
     }
 
-    // XXX non-copyable receiver case
+    // non-copyable receiver case
     template<class R = Receiver,
              CUSEND_REQUIRES(!std::is_copy_constructible<R>::value),
              CUSEND_REQUIRES(execution::is_executor_of<Executor,indirect_receiver_as_invocable<R>>::value)
             >
     CUSEND_ANNOTATION
-    void start() & noexcept
+    void start() noexcept
     {
       try
       {
@@ -111,7 +111,7 @@ class execute_operation
     CUSEND_ANNOTATION
     void start() noexcept
     {
-      execution::execute(ex_, detail::as_invocable(std::move(receiver_)));
+      execution::execute(ex_, detail::move_as_invocable(receiver_));
     }
 #endif
 
@@ -123,11 +123,7 @@ class execute_operation
 
 template<class Executor, class Receiver,
          CUSEND_REQUIRES(execution::is_executor<Executor>::value),
-         class R = remove_cvref_t<Receiver>,
-         CUSEND_REQUIRES(is_receiver_of<R&&,void>::value or
-                         is_receiver_of<R&,void>::value or
-                         is_receiver_of<const R&,void>::value
-         )
+         CUSEND_REQUIRES(is_receiver_of<Receiver,void>::value)
         >
 CUSEND_ANNOTATION
 execute_operation<Executor, remove_cvref_t<Receiver>> make_execute_operation(const Executor& ex, Receiver&& r)

@@ -54,7 +54,7 @@ void test()
 
     my_move_only_receiver r{result};
 
-    auto f = as_invocable(std::move(r));
+    auto f = move_as_invocable(r);
 
     // test move ctor
     auto g = std::move(f);
@@ -71,7 +71,7 @@ void test()
 
     my_copyable_receiver r{result};
 
-    auto f = as_invocable(r);
+    auto f = copy_as_invocable(r);
 
     // test copy ctor
     auto g = f;

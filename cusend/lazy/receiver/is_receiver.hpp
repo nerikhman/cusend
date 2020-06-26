@@ -33,7 +33,6 @@
 #include <utility>
 #include "../../detail/type_traits/conjunction.hpp"
 #include "../../detail/type_traits/is_detected.hpp"
-#include "../../detail/type_traits/is_nothrow_move_or_copy_constructible.hpp"
 #include "../../detail/type_traits/remove_cvref.hpp"
 #include "set_done.hpp"
 #include "set_error.hpp"
@@ -45,9 +44,9 @@ CUSEND_NAMESPACE_OPEN_BRACE
 template<class R, class E = std::exception_ptr>
 using is_receiver = detail::conjunction<
   std::is_move_constructible<detail::remove_cvref_t<R>>,
-  detail::is_nothrow_move_or_copy_constructible<detail::remove_cvref_t<R>>,
-  detail::is_detected<set_done_t, R>,
-  detail::is_detected<set_error_t, R, E>
+  std::is_constructible<detail::remove_cvref_t<R>,R>,
+  detail::is_detected<set_done_t, detail::remove_cvref_t<R>&&>,
+  detail::is_detected<set_error_t, detail::remove_cvref_t<R>&&, E>
 >;
 
 

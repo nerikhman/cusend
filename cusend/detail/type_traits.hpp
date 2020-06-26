@@ -36,7 +36,6 @@
 #include "type_traits/is_equality_comparable.hpp"
 #include "type_traits/is_invocable.hpp"
 #include "type_traits/is_nothrow_invocable.hpp"
-#include "type_traits/is_nothrow_move_or_copy_constructible.hpp"
 #include "type_traits/is_nothrow_receiver_of.hpp"
 #include "type_traits/remove_cvref.hpp"
 

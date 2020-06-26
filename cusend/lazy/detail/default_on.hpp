@@ -81,7 +81,7 @@ class on_receiver
     template<class E>
     void set_error(E&& e) && noexcept
     {
-      CUSEND_NAMESPACE::set_error(std::forward<E>(e));
+      CUSEND_NAMESPACE::set_error(std::move(receiver_), std::forward<E>(e));
     }
 
 

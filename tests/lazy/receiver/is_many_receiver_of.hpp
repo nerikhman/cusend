@@ -63,7 +63,7 @@ void test_is_many_receiver_of()
 
   {
     // test a reference to a many receiver of void with void
-    static_assert(!is_many_receiver_of<my_many_receiver_of_void&, void>::value, "Expected false.");
+    static_assert(is_many_receiver_of<my_many_receiver_of_void&, void>::value, "Expected true.");
   }
 
   {
@@ -83,7 +83,7 @@ void test_is_many_receiver_of()
 
   {
     // test a reference to a many receiver of int with int
-    static_assert(!is_many_receiver_of<my_many_receiver_of_int&, int>::value, "Expected false.");
+    static_assert(is_many_receiver_of<my_many_receiver_of_int&, int>::value, "Expected true.");
   }
 
   {
@@ -103,7 +103,7 @@ void test_is_many_receiver_of()
 
   {
     // test a reference to a many receiver of either with void
-    static_assert(!is_many_receiver_of<my_many_receiver_of_either&, void>::value, "Expected false.");
+    static_assert(is_many_receiver_of<my_many_receiver_of_either&, void>::value, "Expected true.");
   }
 
   {
@@ -118,7 +118,7 @@ void test_is_many_receiver_of()
 
   {
     // test a reference to a many receiver of either with int
-    static_assert(!is_many_receiver_of<my_many_receiver_of_either&, int>::value, "Expected false.");
+    static_assert(is_many_receiver_of<my_many_receiver_of_either&, int>::value, "Expected true.");
   }
 
   {
