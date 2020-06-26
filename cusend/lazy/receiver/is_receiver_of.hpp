@@ -31,6 +31,7 @@
 #include <type_traits>
 #include "../../detail/type_traits/conjunction.hpp"
 #include "../../detail/type_traits/is_detected.hpp"
+#include "../../detail/type_traits/remove_cvref.hpp"
 #include "is_receiver.hpp"
 #include "set_value.hpp"
 
@@ -41,7 +42,7 @@ CUSEND_NAMESPACE_OPEN_BRACE
 template<class R, class... Args>
 struct is_receiver_of : detail::conjunction<
   is_receiver<R>,
-  detail::is_detected<set_value_t, R, Args...>
+  detail::is_detected<set_value_t, detail::remove_cvref_t<R>&&, Args...>
 >
 {};
 
@@ -50,7 +51,7 @@ struct is_receiver_of : detail::conjunction<
 template<class R>
 struct is_receiver_of<R,void> : detail::conjunction<
   is_receiver<R>,
-  detail::is_detected<set_value_t, R>
+  detail::is_detected<set_value_t, detail::remove_cvref_t<R>&&>
 >
 {};
 
