@@ -6,12 +6,12 @@
 
 #  if defined(__CUDACC__)
 #    if !defined(__CUDA_ARCH__)
-#      define HAS_EXCEPTIONS __cpp_exceptions
+#      define CUSEND_HAS_EXCEPTIONS __cpp_exceptions
 #    else
-#      define HAS_EXCEPTIONS 0
+#      define CUSEND_HAS_EXCEPTIONS 0
 #    endif
 #  else
-#    define HAS_EXCEPTIONS __cpp_exceptions
+#    define CUSEND_HAS_EXCEPTIONS __cpp_exceptions
 #  endif
 
 #elif defined(CUSEND_HAS_EXCEPTIONS)
