@@ -36,18 +36,17 @@
 #include "../detail/type_traits/invoke_result.hpp"
 #include "../detail/type_traits/is_invocable.hpp"
 #include "../detail/type_traits/remove_cvref.hpp"
-#include "../execution/executor/bulk_execute.hpp"
-#include "../execution/executor/execute.hpp"
 #include "../execution/executor/stream_executor.hpp"
-#include "../lazy/receiver/set_value.hpp"
-#include "../lazy/receiver/is_receiver.hpp"
 #include "../lazy/receiver/is_receiver_of.hpp"
+#include "../lazy/submit.hpp"
 #include "../memory/unique_ptr.hpp"
 #include "detail/bulk_future.hpp"
-#include "detail/invocable.hpp"
 #include "detail/invocable_as_receiver.hpp"
+#include "detail/receiver.hpp"
 #include "detail/stream_of.hpp"
 #include "detail/stream_wait_for.hpp"
+#include "detail/uncancelable_bulk_schedule.hpp"
+#include "detail/uncancelable_schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -72,7 +71,7 @@ class future_base
     {}
 
     CUSEND_ANNOTATION
-    future_base(future_base&& other)
+    future_base(future_base&& other) noexcept
       : executor_{std::move(other.executor_)},
         valid_{other.valid_},
         event_{std::move(other.event_)}
@@ -129,15 +128,17 @@ class future_base
       invalidate();
     }
 
+
     // this version of then returns a copy of our event
-    // the returned event corresponds to the completion of f
+    // the returned event corresponds to the completion
+    // of set_value called on the given receiver
     template<class StreamExecutor,
-             class F,
-             CUSEND_REQUIRES(is_invocable<F>::value),
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value)
+             class R,
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value)
             >
     CUSEND_ANNOTATION
-    detail::event then_and_copy_event(const StreamExecutor& ex, F f) &
+    detail::event then_set_value_and_copy_event(const StreamExecutor& ex, R r) &
     {
       // get the executor's stream
       cudaStream_t stream = detail::stream_of(ex);
@@ -145,8 +146,14 @@ class future_base
       // make the stream wait for our event
       detail::stream_wait_for(stream, event_.native_handle());
 
-      // execute function on the executor
-      execution::execute(ex, f);
+      // submit the receiver on the executor
+      // XXX ideally, uncancelable_schedule would be unnecessary
+      //     its purpose is to avoid creating a non-trivially copyable invocable
+      //     eventually given to ex
+      //
+      //     what we should do instead is that all CUDA schedulers should provide
+      //     a customization of schedule() that does the same thing
+      submit(uncancelable_schedule(ex), r);
 
       // record our event on the stream
       event_.record_on(stream);
@@ -160,14 +167,15 @@ class future_base
 
 
     // this version of then returns our event via a move
-    // the returned event corresponds to the completion of f
+    // the returned event corresponds to the completion
+    // of set_value called on the given receiver
     template<class StreamExecutor,
-             class F,
-             CUSEND_REQUIRES(is_invocable<F>::value),
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value)
+             class R,
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value)
             >
     CUSEND_ANNOTATION
-    detail::event then_and_move_event(const StreamExecutor& ex, F f) &&
+    detail::event then_set_value_and_move_event(const StreamExecutor& ex, R r) &&
     {
       // get the executor's stream
       cudaStream_t stream = detail::stream_of(ex);
@@ -175,8 +183,14 @@ class future_base
       // make the stream wait for our event
       detail::stream_wait_for(stream, event_.native_handle());
 
-      // execute function on the executor
-      execution::execute(ex, f);
+      // submit the receiver on the executor
+      // XXX ideally, uncancelable_schedule would be unnecessary
+      //     its purpose is to avoid creating a non-trivially copyable invocable
+      //     eventually given to ex
+      //
+      //     what we should do instead is that all CUDA schedulers should provide
+      //     a customization of schedule() that does the same thing
+      submit(detail::uncancelable_schedule(ex), r);
 
       // record our event on the stream
       event_.record_on(stream);
@@ -189,14 +203,13 @@ class future_base
     }
 
 
-    // the returned event corresponds to the completion of f
     template<class StreamExecutor,
-             class F,
-             CUSEND_REQUIRES(is_invocable<F,std::size_t>::value),
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value)
+             class R,
+             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value)
             >
     CUSEND_ANNOTATION
-    detail::event bulk_then_and_move_event(const StreamExecutor& ex, F f, std::size_t shape) &&
+    detail::event bulk_then_set_value_and_move_event(const StreamExecutor& ex, R receiver, std::size_t shape) &&
     {
       // get the executor's stream
       cudaStream_t stream = detail::stream_of(ex);
@@ -204,8 +217,14 @@ class future_base
       // make the stream wait for our event
       detail::stream_wait_for(stream, event_.native_handle());
 
-      // bulk_execute f on the executor
-      execution::bulk_execute(ex, f, shape);
+      // submit the receiver on the executor
+      // XXX ideally, uncancellable_bulk_schedule would be unnecessary
+      //     its purpose is to avoid creating a non-trivially copyable invocable
+      //     eventually given to ex
+      //
+      //     what we should do instead is that all CUDA schedulers should provide
+      //     a customization of bulk_schedule() that does the same thing
+      submit(detail::uncancelable_bulk_schedule(ex, shape), receiver);
 
       // record our event on the stream
       event_.record_on(stream);
@@ -213,7 +232,7 @@ class future_base
       // invalidate ourself
       invalidate();
 
-      // return our event via a move
+      // return our even via a move
       return std::move(event_);
     }
 
@@ -286,6 +305,9 @@ class future : private detail::future_base<Executor>
     {
       if(value_.get())
       {
+        // XXX it's only safe to destroy the state after event_ is complete
+        //     for now, block until that happens
+        //     printf to remind us we need to implement this
         // destroy_after(super_t::event_, std::move(value_));
         printf("future::~future: Blocking in destructor.\n");
         wait();
@@ -316,11 +338,11 @@ class future : private detail::future_base<Executor>
     CUSEND_NAMESPACE::future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       // close over receiver and our state
-      auto closure = detail::make_indirect_set_value(receiver, value_.get());
+      auto wrapped_receiver = detail::make_receive_indirectly(receiver, value_.get());
 
-      // return a future corresponding to the completion of the closure
+      // return a future corresponding to the completion of the receiver
       // create a new event when we do this
-      return detail::make_unready_future(ex, super_t::then_and_copy_event(ex, closure));
+      return detail::make_unready_future(ex, super_t::then_set_value_and_copy_event(ex, wrapped_receiver));
     }
 
 
@@ -337,11 +359,11 @@ class future : private detail::future_base<Executor>
     future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
       // close over receiver and our state
-      auto closure = detail::make_inplace_indirect_set_value(receiver, value_.get());
+      auto wrapped_receiver = detail::make_receive_indirectly_inplace(receiver, value_.get());
 
-      // return a future corresponding to the completion of the closure
+      // return a future corresponding to the completion of the receiver
       // move the base's event when we do this
-      return detail::make_unready_future(ex, std::move(*this).then_and_move_event(ex, closure), std::move(value_));
+      return detail::make_unready_future(ex, std::move(*this).then_set_value_and_move_event(ex, wrapped_receiver), std::move(value_));
     }
 
 
@@ -362,11 +384,11 @@ class future : private detail::future_base<Executor>
       cusend::memory::unique_ptr<Result> result = cusend::memory::make_unique<Result>(cusend::memory::uninitialized);
 
       // close over receiver and state
-      auto closure = detail::make_indirect_set_value_and_construct_at(receiver, value_.get(), result.get());
+      auto wrapped_receiver = detail::make_receive_indirectly_and_construct_at(receiver, value_.get(), result.get());
 
       // return a future corresponding to the completion of the closure
       // create a new event when we do this
-      return detail::make_unready_future(ex, super_t::then_and_copy_event(ex, closure), std::move(result));
+      return detail::make_unready_future(ex, super_t::then_set_value_and_copy_event(ex, wrapped_receiver), std::move(result));
     }
 
 
@@ -418,11 +440,11 @@ class future : private detail::future_base<Executor>
     future<T,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
     {
       // close over receiver and our state
-      auto closure = detail::make_indirect_set_value_with_index(receiver, value_.get());
+      auto wrapped_receiver = detail::make_receive_indirectly_with_index(receiver, value_.get());
 
-      // return a future corresponding to the completion of the closure
+      // return a future corresponding to the completion of the receiver
       // move the base's event when we do this
-      return detail::make_unready_future(ex, std::move(*this).bulk_then_and_move_event(ex, closure, shape), std::move(value_));
+      return detail::make_unready_future(ex, std::move(*this).bulk_then_set_value_and_move_event(ex, wrapped_receiver, shape), std::move(value_));
     }
 
 
@@ -458,6 +480,21 @@ class future : private detail::future_base<Executor>
     future<T,Executor> bulk_then(F f, std::size_t shape) &&
     {
       return std::move(*this).bulk_then(executor(), f, shape);
+    }
+
+
+    template<class StreamExecutor,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+            >
+    detail::bulk_future<future, StreamExecutor> bulk(const StreamExecutor& ex, std::size_t shape) &&
+    {
+      return {std::move(*this), ex, shape};
+    }
+
+
+    detail::bulk_future<future, Executor> bulk(std::size_t shape) &&
+    {
+      return std::move(*this).bulk(executor(), shape);
     }
 
 
@@ -521,12 +558,9 @@ class future<void,Executor> : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // close over the receiver
-      auto closure = detail::make_call_set_value(receiver);
-
-      // return a future corresponding to the completion of the closure
+      // return a future corresponding to the completion of the receiver
       // move the base's event when we do this
-      return detail::make_unready_future(ex, std::move(*this).then_and_move_event(ex, closure));
+      return detail::make_unready_future(ex, std::move(*this).then_set_value_and_move_event(ex, receiver));
     }
 
 
@@ -546,11 +580,11 @@ class future<void,Executor> : private detail::future_base<Executor>
       cusend::memory::unique_ptr<Result> result = cusend::memory::make_unique<Result>(cusend::memory::uninitialized);
 
       // close over receiver and the result
-      auto closure = detail::make_set_value_and_construct_at(receiver, result.get());
+      auto wrapped_receiver = detail::make_receive_and_construct_at(receiver, result.get());
 
-      // return a future corresponding to the result of f
+      // return a future corresponding to the result of the receiver
       // create a new event when we do this
-      return detail::make_unready_future(ex, super_t::then_and_copy_event(ex, closure), std::move(result));
+      return detail::make_unready_future(ex, super_t::then_set_value_and_copy_event(ex, wrapped_receiver), std::move(result));
     }
 
 
@@ -601,11 +635,8 @@ class future<void,Executor> : private detail::future_base<Executor>
     CUSEND_ANNOTATION
     future<void,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
     {
-      // close over receiver
-      auto closure = detail::make_call_set_value_with_index(receiver);
-
-      // return a future corresponding to the completion of the closure
-      return detail::make_unready_future(ex, std::move(*this).bulk_then_and_move_event(ex, closure, shape));
+      // return a future corresponding to the completion of the receiver
+      return detail::make_unready_future(ex, std::move(*this).bulk_then_set_value_and_move_event(ex, receiver, shape));
     }
 
 
@@ -641,6 +672,21 @@ class future<void,Executor> : private detail::future_base<Executor>
     future<void,Executor> bulk_then(F f, std::size_t shape) &&
     {
       return std::move(*this).bulk_then(executor(), f, shape);
+    }
+
+
+    template<class StreamExecutor,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+            >
+    detail::bulk_future<future, StreamExecutor> bulk(const StreamExecutor& ex, std::size_t shape) &&
+    {
+      return {std::move(*this), ex, shape};
+    }
+
+
+    detail::bulk_future<future, Executor> bulk(std::size_t shape) &&
+    {
+      return std::move(*this).bulk(executor(), shape);
     }
 
 

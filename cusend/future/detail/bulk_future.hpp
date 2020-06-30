@@ -33,11 +33,8 @@
 #include <utility>
 #include "../../execution/executor/inline_executor.hpp"
 #include "../../lazy/connect.hpp"
-#include "../../lazy/just.hpp"
-#include "../../lazy/receiver/discard_receiver.hpp"
 #include "../../lazy/receiver/is_many_receiver_of.hpp"
 #include "../../lazy/schedule.hpp"
-#include "../../lazy/transform.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -92,7 +89,7 @@ class bulk_future
     StreamExecutor executor_;
     std::size_t shape_;
 
-    using value_type = typename Future::value_type;
+    using value_type = decltype(std::declval<Future>().get());
 
   public:
     bulk_future(Future&& future, const StreamExecutor& executor, std::size_t shape)
@@ -103,9 +100,29 @@ class bulk_future
 
     bulk_future(bulk_future&&) = default;
 
+
+    // XXX needs to be generalized from size_t to executor_index_t
+    // XXX the only reason there are two overloads for connect() is to avoid using is_many_receiver_of with void&, which is illegal
+    template<class ManyReceiver,
+             class T = value_type,
+             CUSEND_REQUIRES(std::is_void<T>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver, std::size_t>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<ManyReceiver>::value)
+            >
+    auto connect(ManyReceiver receiver) &&
+    {
+      // wrap everything together into a bulk_future_receiver
+      bulk_future_receiver<Future,StreamExecutor,ManyReceiver> wrapped_r{std::move(future_), executor_, shape_, receiver};
+
+      return CUSEND_NAMESPACE::connect(schedule(execution::inline_executor{}), std::move(wrapped_r));
+    }
+
+
     // XXX needs to be generalized from size_t to executor_index_t
     template<class ManyReceiver,
-             CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver, std::size_t, value_type&>::value),
+             class T = value_type,
+             CUSEND_REQUIRES(!std::is_void<T>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver, std::size_t, T&>::value),
              CUSEND_REQUIRES(std::is_trivially_copyable<ManyReceiver>::value)
             >
     auto connect(ManyReceiver receiver) &&
@@ -119,7 +136,7 @@ class bulk_future
     template<class OtherStreamExecutor,
              CUSEND_REQUIRES(is_stream_executor<OtherStreamExecutor>::value)
             >
-    bulk_future<Future,OtherStreamExecutor> on(const OtherStreamExecutor& ex) &&
+    bulk_future<Future,OtherStreamExecutor> via(const OtherStreamExecutor& ex) &&
     {
       return {std::move(future_), ex, shape_};
     }

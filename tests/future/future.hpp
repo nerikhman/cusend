@@ -1,6 +1,7 @@
 #include <cassert>
 #include <utility>
 #include <cusend/future.hpp>
+#include <cusend/lazy/submit.hpp>
 
 namespace ns = cusend;
 
@@ -93,30 +94,35 @@ void test_then_void_to_void()
   auto f1 = ns::make_ready_future();
   assert(f1.valid());
 
-  try
-  {
-    // use a __host__ __device__ lambda because __device__ lambdas cannot return void safely
-    auto f2 = std::move(f1).then([] __host__ __device__ { return; } );
+  // use a __host__ __device__ lambda because __device__ lambdas cannot return void safely
+  auto f2 = std::move(f1).then([] __host__ __device__ { return; } );
 
-#if !defined(__CUDACC__)
-    assert(false);
-#endif
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(f2.is_ready());
 
-    assert(f2.is_ready());
+  std::move(f2).get();
+  assert(!f2.valid());
+}
 
-    std::move(f2).get();
-    assert(!f2.valid());
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+
+void test_then_void_to_int()
+{
+  // then void -> int
+  auto f1 = ns::make_ready_future();
+
+  auto f2 = std::move(f1).then([] __device__ () { return 13; });
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+
+  assert(std::move(f2).get() == 13);
+  assert(!f2.valid());
 }
 
 
@@ -127,61 +133,17 @@ void test_then_int_to_void()
   assert(f1.valid());
   assert(f1.is_ready());
 
-  try
-  {
-    // use a __host__ __device__ lambda because __device__ lambdas cannot return void safely
-    auto f2 = std::move(f1).then([] __host__ __device__ (int) { return;} );
+  // use a __host__ __device__ lambda because __device__ lambdas cannot return void safely
+  auto f2 = std::move(f1).then([] __host__ __device__ (int) { return;} );
 
-#if !defined(__CUDACC__)
-    assert(false);
-#endif
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(f2.is_ready());
 
-    assert(f2.is_ready());
-
-    std::move(f2).get();
-    assert(!f2.valid());
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
-}
-
-
-void test_then_void_to_int()
-{
-  // then void -> int
-  auto f1 = ns::make_ready_future();
-
-  try
-  {
-    auto f2 = std::move(f1).then([] __device__ () { return 13; });
-
-#if !defined(__CUDACC__)
-    assert(false);
-#endif
-
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
-
-    assert(f2.is_ready());
-
-    assert(std::move(f2).get() == 13);
-    assert(!f2.valid());
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+  std::move(f2).get();
+  assert(!f2.valid());
 }
 
 
@@ -190,29 +152,16 @@ void test_then_int_to_int()
   // then int -> int
   auto f1 = ns::make_ready_future(7);
 
-  try
-  {
-    auto f2 = std::move(f1).then([] __device__ (int arg) { return arg + 6; });
+  auto f2 = std::move(f1).then([] __device__ (int arg) { return arg + 6; });
 
-#if !defined(__CUDACC__)
-    assert(false);
-#endif
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(f2.is_ready());
 
-    assert(f2.is_ready());
-
-    assert(std::move(f2).get() == 13);
-    assert(!f2.valid());
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+  assert(std::move(f2).get() == 13);
+  assert(!f2.valid());
 }
 
 
@@ -221,30 +170,17 @@ void test_then_int_to_float()
   // then int -> float
   auto f1 = ns::make_ready_future(7);
 
-  try
-  {
-    // use a __host__ __device__ lambda because __device__ lambdas cannot return float safely
-    auto f2 = std::move(f1).then([] __host__ __device__ (int arg) { return static_cast<float>(arg + 6); });
+  // use a __host__ __device__ lambda because __device__ lambdas cannot return float safely
+  auto f2 = std::move(f1).then([] __host__ __device__ (int arg) { return static_cast<float>(arg + 6); });
 
-#if !defined(__CUDACC__)
-    assert(false);
-#endif
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(f2.is_ready());
 
-    assert(f2.is_ready());
-
-    assert(std::move(f2).get() == 13.f);
-    assert(!f2.valid());
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+  assert(std::move(f2).get() == 13.f);
+  assert(!f2.valid());
 }
 
 
@@ -274,33 +210,20 @@ void test_then_receiver_of_void_and_return_void()
 {
   auto f1 = ns::make_ready_future();
 
-  try
-  {
-    int expected = 13;
-    single_result = -1;
-    auto f2 = std::move(f1).then(receive_void_and_return_void{expected});
+  int expected = 13;
+  single_result = -1;
+  auto f2 = std::move(f1).then(receive_void_and_return_void{expected});
 
-#if !defined(__CUDACC__)
-    assert(false);
-#endif
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(f2.is_ready());
+  assert(f2.valid());
 
-    assert(f2.is_ready());
-    assert(f2.valid());
-
-    std::move(f2).get();
-    assert(!f2.valid());
-    assert(expected == single_result);
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+  std::move(f2).get();
+  assert(!f2.valid());
+  assert(expected == single_result);
 }
 
 
@@ -327,31 +250,18 @@ void test_then_receiver_of_void_and_return_int()
 {
   auto f1 = ns::make_ready_future();
 
-  try
-  {
-    int expected = 13;
-    auto f2 = std::move(f1).then(receive_void_and_return_int{expected});
+  int expected = 13;
+  auto f2 = std::move(f1).then(receive_void_and_return_int{expected});
 
-#if !defined(__CUDACC__)
-    assert(false);
-#endif
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(f2.is_ready());
+  assert(f2.valid());
 
-    assert(f2.is_ready());
-    assert(f2.valid());
-
-    assert(expected == std::move(f2).get());
-    assert(!f2.valid());
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+  assert(expected == std::move(f2).get());
+  assert(!f2.valid());
 }
 
 
@@ -378,33 +288,20 @@ void test_then_receiver_of_int_and_return_void()
 {
   auto f1 = ns::make_ready_future(13);
 
-  try
-  {
-    int expected = 13;
-    single_result = -1;
-    auto f2 = std::move(f1).then(receive_int_and_return_void{expected});
+  int expected = 13;
+  single_result = -1;
+  auto f2 = std::move(f1).then(receive_int_and_return_void{expected});
 
-#if !defined(__CUDACC__)
-    assert(false);
-#endif
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(f2.is_ready());
+  assert(f2.valid());
 
-    assert(f2.is_ready());
-    assert(f2.valid());
-
-    std::move(f2).get();
-    assert(!f2.valid());
-    assert(expected == single_result);
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+  std::move(f2).get();
+  assert(!f2.valid());
+  assert(expected == single_result);
 }
 
 
@@ -430,30 +327,17 @@ void test_then_receiver_of_int_and_return_int()
   int expected = 13;
   auto f1 = ns::make_ready_future(expected - 1);
 
-  try
-  {
-    auto f2 = std::move(f1).then(receive_and_add_one{});
+  auto f2 = std::move(f1).then(receive_and_add_one{});
 
-#if !defined(__CUDACC__)
-    assert(false);
-#endif
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(f2.is_ready());
+  assert(f2.valid());
 
-    assert(f2.is_ready());
-    assert(f2.valid());
-
-    assert(expected == std::move(f2).get());
-    assert(!f2.valid());
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+  assert(expected == std::move(f2).get());
+  assert(!f2.valid());
 }
 
 
@@ -504,29 +388,20 @@ void test_bulk_then_receiver_of_int()
   int expected = 7;
   auto f1 = ns::make_ready_future(std::move(expected));
 
-  try
-  {
-    bulk_result0 = false;
-    bulk_result1 = false;
+  bulk_result0 = false;
+  bulk_result1 = false;
 
-    auto f2 = std::move(f1).bulk_then(many_receiver_of_int{expected}, 2);
+  auto f2 = std::move(f1).bulk_then(many_receiver_of_int{expected}, 2);
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(f2.is_ready());
+  assert(f2.is_ready());
 
-    assert(expected == std::move(f2).get());
-    assert(bulk_result0);
-    assert(bulk_result1);
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+  assert(expected == std::move(f2).get());
+  assert(bulk_result0);
+  assert(bulk_result1);
 }
 
 
@@ -570,28 +445,19 @@ void test_bulk_then_receiver_of_void()
 {
   auto f1 = ns::make_ready_future();
 
-  try
-  {
-    bulk_result0 = false;
-    bulk_result1 = false;
+  bulk_result0 = false;
+  bulk_result1 = false;
 
-    auto f2 = std::move(f1).bulk_then(many_receiver_of_void{}, 2);
+  auto f2 = std::move(f1).bulk_then(many_receiver_of_void{}, 2);
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
 
-    assert(f2.is_ready());
+  assert(f2.is_ready());
 
-    assert(bulk_result0);
-    assert(bulk_result1);
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+  assert(bulk_result0);
+  assert(bulk_result1);
 }
 
 
@@ -599,49 +465,40 @@ void test_bulk_then_void_to_void()
 {
   auto f1 = ns::make_ready_future();
 
-  try
-  {
-    bulk_result0 = false;
-    bulk_result1 = false;
+  bulk_result0 = false;
+  bulk_result1 = false;
 
-    auto f2 = std::move(f1).bulk_then([] __device__ (std::size_t idx)
+  auto f2 = std::move(f1).bulk_then([] __device__ (std::size_t idx)
+  {
+    switch(idx)
     {
-      switch(idx)
+      case 0:
       {
-        case 0:
-        {
-          bulk_result0 = true;
-          break;
-        }
-
-        case 1:
-        {
-          bulk_result1 = true;
-          break;
-        }
-
-        default:
-        {
-          assert(false);
-          break;
-        }
+        bulk_result0 = true;
+        break;
       }
-    }, 2);
 
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
+      case 1:
+      {
+        bulk_result1 = true;
+        break;
+      }
 
-    assert(f2.is_ready());
-    assert(bulk_result0);
-    assert(bulk_result1);
-  }
-  catch(std::runtime_error)
-  {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
-  }
+      default:
+      {
+        assert(false);
+        break;
+      }
+    }
+  }, 2);
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+  assert(bulk_result0);
+  assert(bulk_result1);
 }
 
 
@@ -650,49 +507,70 @@ void test_bulk_then_int_to_int()
   int expected = 13;
   auto f1 = ns::make_ready_future(std::move(expected));
 
-  try
+  bulk_result0 = false;
+  bulk_result1 = false;
+
+  auto f2 = std::move(f1).bulk_then([expected] __device__ (std::size_t idx, int& value)
   {
+    switch(idx)
+    {
+      case 0:
+      {
+        bulk_result0 = (expected == value);
+        break;
+      }
+
+      case 1:
+      {
+        bulk_result1 = (expected == value);
+        break;
+      }
+
+      default:
+      {
+        assert(false);
+        break;
+      }
+    }
+  }, 2);
+
+  assert(!f1.valid());
+  assert(f2.valid());
+  f2.wait();
+
+  assert(f2.is_ready());
+  assert(expected == std::move(f2).get());
+  assert(bulk_result0);
+  assert(bulk_result1);
+}
+
+
+void test_bulk()
+{
+  {
+    // test void future
+
     bulk_result0 = false;
     bulk_result1 = false;
 
-    auto f2 = std::move(f1).bulk_then([expected] __device__ (std::size_t idx, int& value)
-    {
-      switch(idx)
-      {
-        case 0:
-        {
-          bulk_result0 = (expected == value);
-          break;
-        }
+    ns::submit(ns::make_ready_future().bulk(2), many_receiver_of_void{});
+    assert(cudaSuccess == cudaDeviceSynchronize());
 
-        case 1:
-        {
-          bulk_result1 = (expected == value);
-          break;
-        }
-
-        default:
-        {
-          assert(false);
-          break;
-        }
-      }
-    }, 2);
-
-    assert(!f1.valid());
-    assert(f2.valid());
-    f2.wait();
-
-    assert(f2.is_ready());
-    assert(expected == std::move(f2).get());
     assert(bulk_result0);
     assert(bulk_result1);
   }
-  catch(std::runtime_error)
+
   {
-#if defined(__CUDACC__)
-    assert(false);
-#endif
+    // test int future
+
+    bulk_result0 = false;
+    bulk_result1 = false;
+
+    ns::submit(ns::make_ready_future(13).bulk(2), many_receiver_of_int{13});
+    assert(cudaSuccess == cudaDeviceSynchronize());
+
+    assert(bulk_result0);
+    assert(bulk_result1);
   }
 }
 
@@ -713,9 +591,11 @@ void test_future()
   test_move_assignment();
   test_get();
 
+#ifdef __CUDACC__
+  // these tests require CUDA C++
   test_then_void_to_void();
-  test_then_int_to_void();
   test_then_void_to_int();
+  test_then_int_to_void();
   test_then_int_to_int();
   test_then_int_to_float();
 
@@ -729,5 +609,8 @@ void test_future()
 
   test_bulk_then_void_to_void();
   test_bulk_then_int_to_int();
+
+  test_bulk();
+#endif
 }
 
