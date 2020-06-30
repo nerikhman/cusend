@@ -33,7 +33,9 @@
 #include "../../detail/event.hpp"
 #include "../../detail/is_stream_executor.hpp"
 #include "../../lazy/receiver/is_many_receiver_of.hpp"
+#include "../../lazy/submit.hpp"
 #include "stream_of.hpp"
+#include "stream_wait_for.hpp"
 #include "uncancelable_bulk_schedule.hpp"
 
 
@@ -49,6 +51,7 @@ template<class StreamExecutor,
          CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
          CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver,std::size_t>::value)
         >
+CUSEND_ANNOTATION
 event then_bulk_execute(const StreamExecutor& ex, event&& e, ManyReceiver receiver, std::size_t shape)
 {
   // get ex's stream

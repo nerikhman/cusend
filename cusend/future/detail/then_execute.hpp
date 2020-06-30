@@ -36,9 +36,10 @@
 #include "../../execution/executor/callback_executor.hpp"
 #include "../../execution/executor/execute.hpp"
 #include "../../lazy/receiver/is_receiver_of.hpp"
-#include "../../lazy/schedule.hpp"
 #include "../../lazy/submit.hpp"
 #include "stream_of.hpp"
+#include "stream_wait_for.hpp"
+#include "uncancelable_schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -87,6 +88,7 @@ template<class StreamExecutor,
          CUSEND_REQUIRES(is_receiver_of<Receiver,void>::value),
          CUSEND_REQUIRES(std::is_trivially_copyable<Receiver>::value)
         >
+CUSEND_ANNOTATION
 event then_execute(const StreamExecutor& ex, event&& e, Receiver receiver)
 {
   // get ex's stream
@@ -102,7 +104,7 @@ event then_execute(const StreamExecutor& ex, event&& e, Receiver receiver)
   //
   //     what we should do instead is that all CUDA schedulers should provide
   //     a customization of schedule() that does the same thing
-  submit(uncancelable_schedule(ex), receiver);
+  submit(detail::uncancelable_schedule(ex), receiver);
 
   // re-record the event on the stream
   e.record_on(stream);

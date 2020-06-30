@@ -38,15 +38,13 @@
 #include "../detail/type_traits/remove_cvref.hpp"
 #include "../execution/executor/stream_executor.hpp"
 #include "../lazy/receiver/is_receiver_of.hpp"
-#include "../lazy/submit.hpp"
 #include "../memory/unique_ptr.hpp"
 #include "detail/bulk_future.hpp"
 #include "detail/invocable_as_receiver.hpp"
 #include "detail/receiver.hpp"
 #include "detail/stream_of.hpp"
-#include "detail/stream_wait_for.hpp"
-#include "detail/uncancelable_bulk_schedule.hpp"
-#include "detail/uncancelable_schedule.hpp"
+#include "detail/then_bulk_execute.hpp"
+#include "detail/then_execute.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -129,6 +127,25 @@ class future_base
     }
 
 
+    // this version of then returns our event via a move
+    // the returned event corresponds to the completion
+    // of set_value called on the given receiver
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value),
+             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value)
+            >
+    CUSEND_ANNOTATION
+    detail::event then_set_value_and_move_event(const StreamExecutor& ex, R receiver) &&
+    {
+      // invalidate ourself
+      invalidate();
+
+      // execute the receiver on ex
+      return detail::then_execute(ex, std::move(event_), receiver);
+    }
+
+
     // this version of then returns a copy of our event
     // the returned event corresponds to the completion
     // of set_value called on the given receiver
@@ -140,68 +157,11 @@ class future_base
     CUSEND_ANNOTATION
     detail::event then_set_value_and_copy_event(const StreamExecutor& ex, R r) &
     {
-      // XXX this should call then_execute()
-
-      // get the executor's stream
-      cudaStream_t stream = detail::stream_of(ex);
-
-      // make the stream wait for our event
-      detail::stream_wait_for(stream, event_.native_handle());
-
-      // submit the receiver on the executor
-      // XXX ideally, uncancelable_schedule would be unnecessary
-      //     its purpose is to avoid creating a non-trivially copyable invocable
-      //     eventually given to ex
-      //
-      //     what we should do instead is that all CUDA schedulers should provide
-      //     a customization of schedule() that does the same thing
-      submit(uncancelable_schedule(ex), r);
-
-      // record our event on the stream
-      event_.record_on(stream);
-
-      // invalidate ourself
-      invalidate();
+      // execute the receiver on ex
+      event_ = std::move(*this).then_set_value_and_move_event(ex, r);
 
       // return a new event corresponding to the completion of the execution
-      return detail::event{stream};
-    }
-
-
-    // this version of then returns our event via a move
-    // the returned event corresponds to the completion
-    // of set_value called on the given receiver
-    template<class StreamExecutor,
-             class R,
-             CUSEND_REQUIRES(is_receiver_of<R,void>::value),
-             CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value)
-            >
-    CUSEND_ANNOTATION
-    detail::event then_set_value_and_move_event(const StreamExecutor& ex, R r) &&
-    {
-      // get the executor's stream
-      cudaStream_t stream = detail::stream_of(ex);
-
-      // make the stream wait for our event
-      detail::stream_wait_for(stream, event_.native_handle());
-
-      // submit the receiver on the executor
-      // XXX ideally, uncancelable_schedule would be unnecessary
-      //     its purpose is to avoid creating a non-trivially copyable invocable
-      //     eventually given to ex
-      //
-      //     what we should do instead is that all CUDA schedulers should provide
-      //     a customization of schedule() that does the same thing
-      submit(detail::uncancelable_schedule(ex), r);
-
-      // record our event on the stream
-      event_.record_on(stream);
-
-      // invalidate ourself
-      invalidate();
-
-      // return our event via a move
-      return std::move(event_);
+      return detail::event{detail::stream_of(ex)};
     }
 
 
@@ -213,29 +173,11 @@ class future_base
     CUSEND_ANNOTATION
     detail::event bulk_then_set_value_and_move_event(const StreamExecutor& ex, R receiver, std::size_t shape) &&
     {
-      // get the executor's stream
-      cudaStream_t stream = detail::stream_of(ex);
-
-      // make the stream wait for our event
-      detail::stream_wait_for(stream, event_.native_handle());
-
-      // submit the receiver on the executor
-      // XXX ideally, uncancellable_bulk_schedule would be unnecessary
-      //     its purpose is to avoid creating a non-trivially copyable invocable
-      //     eventually given to ex
-      //
-      //     what we should do instead is that all CUDA schedulers should provide
-      //     a customization of bulk_schedule() that does the same thing
-      submit(detail::uncancelable_bulk_schedule(ex, shape), receiver);
-
-      // record our event on the stream
-      event_.record_on(stream);
-
       // invalidate ourself
       invalidate();
 
-      // return our even via a move
-      return std::move(event_);
+      // execute the receiver on ex
+      return detail::then_bulk_execute(ex, std::move(event_), receiver, shape);
     }
 
 
