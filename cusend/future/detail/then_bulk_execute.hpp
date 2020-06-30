@@ -32,9 +32,9 @@
 #include <type_traits>
 #include "../../detail/event.hpp"
 #include "../../detail/is_stream_executor.hpp"
-#include "../../detail/type_traits/is_invocable.hpp"
-#include "../../execution/executor/bulk_execute.hpp"
+#include "../../lazy/receiver/is_many_receiver_of.hpp"
 #include "stream_of.hpp"
+#include "uncancelable_bulk_schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -45,12 +45,11 @@ namespace detail
 
 
 template<class StreamExecutor,
-         class Function,
+         class ManyReceiver,
          CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
-         CUSEND_REQUIRES(is_invocable<Function,std::size_t>::value),
-         CUSEND_REQUIRES(std::is_void<invoke_result_t<Function,std::size_t>>::value)
+         CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver,std::size_t>::value)
         >
-event then_bulk_execute(const StreamExecutor& ex, event&& e, Function f, std::size_t shape)
+event then_bulk_execute(const StreamExecutor& ex, event&& e, ManyReceiver receiver, std::size_t shape)
 {
   // get ex's stream
   cudaStream_t stream = detail::stream_of(ex);
@@ -58,8 +57,14 @@ event then_bulk_execute(const StreamExecutor& ex, event&& e, Function f, std::si
   // make stream wait on the predecessor event
   detail::stream_wait_for(stream, e.native_handle());
 
-  // bulk_execute f
-  execution::bulk_execute(ex, f, shape);
+  // submit the receiver on the executor
+  // XXX ideally, uncancellable_bulk_schedule would be unnecessary
+  //     its purpose is to avoid creating a non-trivially copyable invocable
+  //     eventually given to ex
+  //
+  //     what we should do instead is that all CUDA schedulers should provide
+  //     a customization of bulk_schedule() that does the same thing
+  submit(detail::uncancelable_bulk_schedule(ex, shape), receiver);
 
   // re-record the event on the stream
   e.record_on(stream);

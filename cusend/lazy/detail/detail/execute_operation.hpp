@@ -64,6 +64,9 @@ class execute_operation
     CUSEND_EXEC_CHECK_DISABLE
     execute_operation(execute_operation&&) = default;
 
+    CUSEND_EXEC_CHECK_DISABLE
+    ~execute_operation() = default;
+
 #if CUSEND_HAS_EXCEPTIONS
     // copyable receiver case
     template<class R = Receiver,

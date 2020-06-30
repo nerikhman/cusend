@@ -35,6 +35,9 @@
 #include "../../detail/type_traits/is_invocable.hpp"
 #include "../../execution/executor/callback_executor.hpp"
 #include "../../execution/executor/execute.hpp"
+#include "../../lazy/receiver/is_receiver_of.hpp"
+#include "../../lazy/schedule.hpp"
+#include "../../lazy/submit.hpp"
 #include "stream_of.hpp"
 
 
@@ -79,12 +82,12 @@ detail::event then_execute(const execution::callback_executor& ex, std::future<v
 
 
 template<class StreamExecutor,
-         class Function,
+         class Receiver,
          CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
-         CUSEND_REQUIRES(is_invocable<Function>::value),
-         CUSEND_REQUIRES(std::is_void<invoke_result_t<Function>>::value)
+         CUSEND_REQUIRES(is_receiver_of<Receiver,void>::value),
+         CUSEND_REQUIRES(std::is_trivially_copyable<Receiver>::value)
         >
-event then_execute(const StreamExecutor& ex, event&& e, Function f)
+event then_execute(const StreamExecutor& ex, event&& e, Receiver receiver)
 {
   // get ex's stream
   cudaStream_t stream = detail::stream_of(ex);
@@ -92,8 +95,14 @@ event then_execute(const StreamExecutor& ex, event&& e, Function f)
   // make stream wait on the predecessor event
   detail::stream_wait_for(stream, e.native_handle());
 
-  // execute f
-  execution::execute(ex, f);
+  // submit the receiver on the executor
+  // XXX ideally, uncancelable_schedule would be unnecessary
+  //     its purpose is to avoid creating a non-trivially copyable invocable
+  //     eventually given to ex
+  //
+  //     what we should do instead is that all CUDA schedulers should provide
+  //     a customization of schedule() that does the same thing
+  submit(uncancelable_schedule(ex), receiver);
 
   // re-record the event on the stream
   e.record_on(stream);

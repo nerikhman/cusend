@@ -39,7 +39,7 @@
 #include "../../lazy/transform.hpp"
 #include "../../memory/unique_ptr.hpp"
 #include "../future.hpp"
-#include "invocable.hpp"
+#include "bulk_future.hpp"
 #include "invocable_as_receiver.hpp"
 #include "then_bulk_execute.hpp"
 #include "then_execute.hpp"
@@ -164,15 +164,14 @@ class host_future : public host_future_base<T,Executor>
             >
     future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // 1. after this future's result is ready, move it into device_state_
-      // XXX consider creating this event in the constructor rather than here in then()
-      detail::event event = asynchronously_move_result_to_device();
+      // adapt the receiver
+      auto adapted_receiver = detail::make_receive_indirectly(receiver, device_state_.get());
 
-      // 2. then on ex, execute indirect_set_value
-      event = detail::then_execute(ex, std::move(event), detail::make_indirect_set_value(receiver, device_state_.get()));
+      // get an event corresponding to receiver's completion
+      event e = std::move(*this).then_set_value(ex, adapted_receiver);
 
-      // return a future corresponding to the event
-      return detail::make_unready_future(ex, std::move(event));
+      // return a future
+      return detail::make_unready_future(ex, std::move(e));
     }
 
 
@@ -188,15 +187,14 @@ class host_future : public host_future_base<T,Executor>
             >
     future<T,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // 1. after this future's result is ready, move it into device_state_
-      // XXX consider creating this event in the constructor rather than here in then()
-      detail::event event = asynchronously_move_result_to_device();
+      // adapt the receiver
+      auto adapted_receiver = detail::make_receive_indirectly_inplace(receiver, device_state_.get());
 
-      // 2. then on ex, call inplace_indirect_set_value
-      event = detail::then_execute(ex, std::move(event), detail::make_inplace_indirect_set_value(receiver, device_state_.get()));
+      // get an event corresponding to receiver's completion
+      event e = std::move(*this).then_set_value(ex, adapted_receiver);
 
-      // return a future corresponding to the event
-      return detail::make_unready_future(ex, std::move(event), std::move(device_state_));
+      // return a future
+      return detail::make_unready_future(ex, std::move(e), std::move(device_state_));
     }
 
 
@@ -215,14 +213,14 @@ class host_future : public host_future_base<T,Executor>
       // create storage for the receiver's result
       memory::unique_ptr<Result> result_state = memory::make_unique<Result>(memory::uninitialized);
 
-      // 1. after this future's result is ready, move it into device_state_
-      // XXX consider creating this event in the constructor rather than here in then()
-      detail::event event = asynchronously_move_result_to_device();
+      // adapt the receiver
+      auto adapted_receiver = detail::make_receive_indirectly_and_construct_at(receiver, device_state_.get(), result_state.get());
 
-      // 2. then on ex, execute indirect_set_value_and_construct_at
-      event = detail::then_execute(ex, std::move(event), detail::make_indirect_set_value_and_construct_at(receiver, device_state_.get(), result_state.get()));
+      // get an event corresponding to receiver's completion
+      event e = std::move(*this).then_set_value(ex, adapted_receiver);
 
-      return detail::make_unready_future(ex, std::move(event), std::move(result_state));
+      // return a future
+      return detail::make_unready_future(ex, std::move(e), std::move(result_state));
     }
 
 
@@ -266,12 +264,11 @@ class host_future : public host_future_base<T,Executor>
             >
     future<T,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
     {
-      // 1. after this future's result is ready, move it into device_state_
-      // XXX consider creating this event in the constructor rather than here in bulk_then()
+      // after this future's result is ready, move it into device_state_
       detail::event event = asynchronously_move_result_to_device();
 
-      // 2. then on ex, execute indirect_set_value_with_index
-      event = detail::then_bulk_execute(ex, std::move(event), detail::make_indirect_set_value_with_index(receiver, device_state_.get()), shape);
+      // then execute the receiver on ex
+      event = detail::then_bulk_execute(ex, std::move(event), detail::make_receive_indirectly_with_index(receiver, device_state_.get()), shape);
 
       // return a future corresponding to the event
       return detail::make_unready_future(ex, std::move(event), std::move(device_state_));
@@ -324,6 +321,22 @@ class host_future : public host_future_base<T,Executor>
       return CUSEND_NAMESPACE::connect(std::move(sender), discard_receiver{});
     }
 
+
+    template<class StreamExecutor,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+            >
+    detail::bulk_future<host_future, StreamExecutor> bulk(const StreamExecutor& ex, std::size_t shape) &&
+    {
+      return {std::move(*this), ex, shape};
+    }
+
+
+    detail::bulk_future<host_future, Executor> bulk(std::size_t shape) &&
+    {
+      return std::move(*this).bulk(executor(), shape);
+    }
+
+
   private:
     // give friends access to private constructor
     template<class U, class E>
@@ -335,12 +348,29 @@ class host_future : public host_future_base<T,Executor>
         device_state_{memory::make_unique<T>(memory::uninitialized)}
     {}
 
+
     detail::event asynchronously_move_result_to_device()
     {
       return std::move(*this).then_on_stream_callback([ptr = device_state_.get()](T&& value)
       {
         memory::construct_at(ptr, std::move(value));
       });
+    }
+
+
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value)
+            >
+    event then_set_value(const StreamExecutor& ex, R receiver) &&
+    {
+      // asynchronously move the std::future's result to device
+      detail::event event = asynchronously_move_result_to_device();
+
+      // then, execute receiver on ex
+      return detail::then_execute(ex, std::move(event), receiver);
     }
 
     memory::unique_ptr<T> device_state_;
@@ -380,17 +410,11 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
             >
     future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
     {
-      // 1. on waiting_executor(), wait on the future
-      // XXX consider creating this event in the constructor rather than here in then()
-      detail::event event = std::move(*this).then_on_stream_callback([]()
-      {
-        // no-op
-      });
+      // execute the receiver on ex
+      event e = std::move(*this).then_set_value(ex, receiver);
 
-      // 2. then on ex, execute call_set_value
-      event = detail::then_execute(ex, std::move(event), detail::make_call_set_value(receiver));
-
-      return detail::make_unready_future(ex, std::move(event));
+      // return a future
+      return detail::make_unready_future(ex, std::move(e));
     }
 
 
@@ -408,17 +432,14 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
       // create storage for result
       memory::unique_ptr<Result> device_state = memory::make_unique<Result>(memory::uninitialized);
 
-      // 1. on waiting_executor(), wait on the future
-      // XXX consider creating this event in the constructor rather than here in then()
-      detail::event event = std::move(*this).then_on_stream_callback([]()
-      {
-        // no-op
-      });
+      // adapt the receiver
+      auto adapted_receiver = detail::make_receive_and_construct_at(receiver, device_state.get());
 
-      // 2. then on ex, execute set_value_and_construct_at
-      event = detail::then_execute(ex, std::move(event), detail::make_set_value_and_construct_at(receiver, device_state.get()));
+      // execute the receiver on ex
+      event e = std::move(*this).then_set_value(ex, adapted_receiver);
 
-      return detail::make_unready_future(ex, std::move(event), std::move(device_state));
+      // return a future
+      return detail::make_unready_future(ex, std::move(e), std::move(device_state));
     }
 
 
@@ -444,6 +465,7 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
       return std::move(*this).then(ex, detail::as_receiver(std::forward<F>(f)));
     }
 
+
     template<class F,
              CUSEND_REQUIRES(is_invocable<F>::value),
              class Result = invoke_result_t<F>
@@ -462,15 +484,14 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
             >
     future<void,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
     {
-      // 1. on waiting_executor(), wait on the future
-      // XXX consider creating this event in the constructor rather than here in then()
+      // on a stream callback, wait for the future to complete
       detail::event event = std::move(*this).then_on_stream_callback([]()
       {
         // no-op
       });
 
-      // 2. then on ex, execute call_set_value_with_index
-      event = detail::then_bulk_execute(ex, std::move(event), detail::make_call_set_value_with_index(receiver), shape);
+      // then execute the receiver on ex
+      event = detail::then_bulk_execute(ex, std::move(event), receiver, shape);
 
       // return a future corresponding to the event
       return detail::make_unready_future(ex, std::move(event));
@@ -522,6 +543,21 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
       return CUSEND_NAMESPACE::connect(std::move(sender), discard_receiver{});
     }
 
+
+    template<class StreamExecutor,
+             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+            >
+    detail::bulk_future<host_future, StreamExecutor> bulk(const StreamExecutor& ex, std::size_t shape) &&
+    {
+      return {std::move(*this), ex, shape};
+    }
+
+
+    detail::bulk_future<host_future, Executor> bulk(std::size_t shape) &&
+    {
+      return std::move(*this).bulk(executor(), shape);
+    }
+
   private:
     // give friends access to private constructor
     template<class E>
@@ -530,6 +566,25 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
     host_future(const Executor& ex, execution::callback_executor waiting_executor, std::future<void>&& future)
       : super_t{ex, waiting_executor, std::move(future)}
     {}
+
+
+    template<class StreamExecutor,
+             class R,
+             CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value),
+             CUSEND_REQUIRES(std::is_trivially_copyable<R>::value)
+            >
+    event then_set_value(const StreamExecutor& ex, R receiver) &&
+    {
+      // on a stream callback, wait for the future to complete
+      detail::event event = std::move(*this).then_on_stream_callback([]()
+      {
+        // no-op
+      });
+
+      // then execute the receiver on ex
+      return detail::then_execute(ex, std::move(event), receiver);
+    }
 };
 
 

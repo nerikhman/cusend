@@ -61,7 +61,16 @@ class bulk_future_receiver
         receiver_{receiver}
     {}
 
-    bulk_future_receiver(bulk_future_receiver&&) = default;
+    // explicitly define this ctor to avoid viral __host__ __device__ infection of defaulted functions
+    bulk_future_receiver(bulk_future_receiver&& other) noexcept
+      : future_{std::move(other.future_)},
+        executor_{std::move(other.executor_)},
+        shape_{std::move(other.shape_)},
+        receiver_{std::move(other.receiver_)}
+    {}
+
+    // explicitly define this dtor to avoid viral __host__ __device__ infection of defaulted functions
+    ~bulk_future_receiver() {}
 
     void set_value() &&
     {

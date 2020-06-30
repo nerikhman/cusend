@@ -41,6 +41,7 @@ namespace detail
 {
 
 
+CUSEND_EXEC_CHECK_DISABLE
 template<class S, class R,
          CUSEND_REQUIRES(is_detected<connect_t, S&&, R&&>::value),
          class O = connect_t<S&&,R&&>,

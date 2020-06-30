@@ -140,6 +140,8 @@ class future_base
     CUSEND_ANNOTATION
     detail::event then_set_value_and_copy_event(const StreamExecutor& ex, R r) &
     {
+      // XXX this should call then_execute()
+
       // get the executor's stream
       cudaStream_t stream = detail::stream_of(ex);
 
