@@ -28,6 +28,7 @@
 
 #include "detail/prologue.hpp"
 
+#include "lazy/bulk_schedule.hpp"
 #include "lazy/connect.hpp"
 #include "lazy/dot.hpp"
 #include "lazy/get_executor.hpp"
