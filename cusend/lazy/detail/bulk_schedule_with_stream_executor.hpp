@@ -1,0 +1,175 @@
+// Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+//  * Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+//  * Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//  * Neither the name of NVIDIA CORPORATION nor the names of its
+//    contributors may be used to endorse or promote products derived
+//    from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#pragma once
+
+#include "../../detail/prologue.hpp"
+
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+#include "../../detail/is_stream_executor.hpp"
+#include "../../detail/type_traits/remove_cvref.hpp"
+#include "../../future/host_promise.hpp"
+#include "../pack.hpp"
+#include "../sender/sender_traits.hpp"
+#include "../start.hpp"
+#include "detail/unpack_second_receiver.hpp"
+#include "detail/variant.hpp"
+
+
+CUSEND_NAMESPACE_OPEN_BRACE
+
+
+namespace detail
+{
+
+
+template<class TypedSender, class StreamExecutor>
+class bulk_schedule_with_stream_executor_sender
+{
+  private:
+    static_assert(is_typed_sender<TypedSender>::value, "TypedSender must be a typed sender.");
+    static_assert(is_stream_executor<StreamExecutor>::value, "StreamExecutor must be a stream executor.");
+
+    // XXX generalize this to executor_shape_t<StreamExecutor>
+    using index_type = std::size_t;
+
+    // XXX generalize this to executor_index_t<StreamExecutor>
+    using shape_type = std::size_t;
+
+    TypedSender prologue_;
+    StreamExecutor ex_;
+    shape_type shape_;
+
+    template<template<class...> class Tuple, template<class...> class Variant>
+    using predecessor_value_types = typename sender_traits<TypedSender>::template value_types<Tuple, Variant>;
+
+    template<template<class...> class Tuple, template<class...> class Variant>
+    struct value_types_impl
+    {
+      // this template is passed to sender_traits::value_types below
+      template<class... Types>
+      using index_and_values_tuple = Tuple<index_type, Types...>;
+
+      // the value_types this sender sends is the predecessor sender's value_types,
+      // with the executor's index_type prepended into each tuple of value types
+      using type = predecessor_value_types<index_and_values_tuple, Variant>;
+    };
+
+
+  public:
+    // this sender prepends the executor index into each set of values sent from the predecessor sender
+    template<template<class...> class Tuple, template<class...> class Variant>
+    using value_types = typename value_types_impl<Tuple,Variant>::type;
+
+    template<template<class...> class Variant>
+    using error_types = typename sender_traits<TypedSender>::template error_types<Variant>;
+
+    constexpr static bool sends_done = sender_traits<TypedSender>::sends_done;
+
+
+    template<class OtherSender>
+    bulk_schedule_with_stream_executor_sender(OtherSender&& prologue, const StreamExecutor& ex, std::size_t shape)
+      : prologue_{std::forward<OtherSender>(prologue)},
+        ex_{ex},
+        shape_{shape}
+    {}
+
+
+  private:
+    static_assert(variant_size<value_types<tuple, variant>>::value == 1, "Predecessor sender must send exactly one tuple of values.");
+
+    // XXX figure out what to do about the other variant alternatives
+    using predecessor_value_type = variant_alternative_t<0, predecessor_value_types<tuple, variant>>;
+
+    // the operation type returned by connect() is a composite of two separate operations
+    template<class Operation1, class Operation2>
+    class operation
+    {
+      public:
+        CUSEND_EXEC_CHECK_DISABLE
+        CUSEND_ANNOTATION
+        operation(Operation1&& op1, Operation2&& op2)
+          : op1_{std::move(op1)},
+            op2_{std::move(op2)}
+        {}
+
+        // start() just start()s the two operations
+        void start() &
+        {
+          CUSEND_NAMESPACE::start(op1_);
+          CUSEND_NAMESPACE::start(op2_);
+        }
+
+      private:
+        Operation1 op1_;
+        Operation2 op2_;
+    };
+
+    template<class Operation1, class Operation2>
+    static operation<remove_cvref_t<Operation1>, remove_cvref_t<Operation2>> make_operation(Operation1&& op1, Operation2&& op2)
+    {
+      return {std::forward<Operation1>(op1), std::forward<Operation2>(op2)};
+    }
+
+
+  public:
+    template<class ManyReceiver>
+    auto connect(ManyReceiver&& r) &&
+    {
+      host_promise<predecessor_value_type> promise;
+
+      auto future = promise.get_future(ex_);
+
+      // create two operations
+      return make_operation(
+        // pack the prologue operation's result values into a tuple...
+        CUSEND_NAMESPACE::connect(cusend::pack(std::move(prologue_)), std::move(promise)),
+
+        // ...unpacked by the epilogue
+        // note that we use an unpack_second_receiver because future.bulk() sends (index, tuple<predecessor_values...>)
+        CUSEND_NAMESPACE::connect(std::move(future).bulk(shape_), detail::make_unpack_second_receiver(std::move(r)))
+      );
+    }
+};
+
+
+template<class TypedSender, class StreamExecutor>
+bulk_schedule_with_stream_executor_sender<remove_cvref_t<TypedSender>,StreamExecutor> bulk_schedule_with_stream_executor(TypedSender&& sender, const StreamExecutor& ex, std::size_t shape)
+{
+  return {std::forward<TypedSender>(sender), ex, shape};
+}
+
+
+} // end detail
+
+
+CUSEND_NAMESPACE_CLOSE_BRACE
+
+
+#include "../../detail/epilogue.hpp"
+
