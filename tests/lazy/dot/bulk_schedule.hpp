@@ -1,8 +1,8 @@
 #include <cassert>
 #include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/execution/executor/stream_executor.hpp>
-#include <cusend/lazy/bulk_schedule.hpp>
-#include <cusend/lazy/just.hpp>
+#include <cusend/lazy/dot/bulk_schedule.hpp>
+#include <cusend/lazy/dot/just.hpp>
 
 
 namespace ns = cusend;
@@ -117,10 +117,7 @@ void test(Executor ex)
     result0 = false;
     result1 = false;
 
-    auto s0 = ns::just();
-    auto s1 = ns::bulk_schedule(ex, 2, std::move(s0));
-
-    ns::submit(std::move(s1), my_receiver{13,7});
+    ns::dot::just().bulk_schedule(ex, 2).submit(my_receiver{13,7});
 
     cudaStreamSynchronize(0);
     assert(result0);
@@ -131,10 +128,7 @@ void test(Executor ex)
     result0 = false;
     result1 = false;
 
-    auto s0 = ns::just(13);
-    auto s1 = ns::bulk_schedule(ex, 2, std::move(s0));
-
-    ns::submit(std::move(s1), my_receiver{13,7});
+    ns::dot::just(13).bulk_schedule(ex, 2).submit(my_receiver{13,7});
 
     cudaStreamSynchronize(0);
     assert(result0);
@@ -145,10 +139,7 @@ void test(Executor ex)
     result0 = false;
     result1 = false;
 
-    auto s0 = ns::just(13,7);
-    auto s1 = ns::bulk_schedule(ex, 2, std::move(s0));
-
-    ns::submit(std::move(s1), my_receiver{13,7});
+    ns::dot::just(13,7).bulk_schedule(ex, 2).submit(my_receiver{13,7});
 
     cudaStreamSynchronize(0);
     assert(result0);

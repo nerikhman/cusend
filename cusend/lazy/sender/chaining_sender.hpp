@@ -30,6 +30,8 @@
 
 #include <type_traits>
 #include <utility>
+#include "../bulk_schedule.hpp"
+#include "../connect.hpp"
 #include "../connect.hpp"
 #include "../get_executor.hpp"
 #include "../on.hpp"
@@ -112,6 +114,17 @@ class chaining_sender
     CUSEND_EXEC_CHECK_DISABLE
     CUSEND_ANNOTATION
     ~chaining_sender() {}
+
+
+    template<class Executor,
+             class Shape,
+             CUSEND_REQUIRES(detail::is_detected<bulk_schedule_t, const Executor&, const Shape&, Sender&&>::value)
+            >
+    ensure_chaining_sender_t<bulk_schedule_t<const Executor&,const Shape&,Sender&&>>
+      bulk_schedule(const Executor& ex, const Shape& shape) &&
+    {
+      return CUSEND_NAMESPACE::bulk_schedule(ex, shape, std::move(sender_));
+    }
 
 
     template<class Receiver,
