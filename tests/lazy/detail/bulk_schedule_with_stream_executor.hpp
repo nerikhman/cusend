@@ -118,7 +118,7 @@ void test_bulk_schedule_with_stream_executor()
     result1 = false;
 
     auto s0 = cusend::just();
-    auto s1 = cusend::detail::bulk_schedule_with_stream_executor(std::move(s0), cusend::execution::stream_executor{}, 2);
+    auto s1 = cusend::detail::bulk_schedule_with_stream_executor(cusend::execution::stream_executor{}, 2, std::move(s0));
 
     cusend::submit(std::move(s1), my_receiver{13,7});
 
@@ -132,7 +132,7 @@ void test_bulk_schedule_with_stream_executor()
     result1 = false;
 
     auto s0 = cusend::just(13);
-    auto s1 = cusend::detail::bulk_schedule_with_stream_executor(std::move(s0), cusend::execution::stream_executor{}, 2);
+    auto s1 = cusend::detail::bulk_schedule_with_stream_executor(cusend::execution::stream_executor{}, 2, std::move(s0));
 
     cusend::submit(std::move(s1), my_receiver{13,7});
 
@@ -146,7 +146,7 @@ void test_bulk_schedule_with_stream_executor()
     result1 = false;
 
     auto s0 = cusend::just(13,7);
-    auto s1 = cusend::detail::bulk_schedule_with_stream_executor(std::move(s0), cusend::execution::stream_executor{}, 2);
+    auto s1 = cusend::detail::bulk_schedule_with_stream_executor(cusend::execution::stream_executor{}, 2, std::move(s0));
 
     cusend::submit(std::move(s1), my_receiver{13,7});
 

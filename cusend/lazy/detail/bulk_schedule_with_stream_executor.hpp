@@ -35,6 +35,7 @@
 #include "../../detail/type_traits/remove_cvref.hpp"
 #include "../../future/host_promise.hpp"
 #include "../pack.hpp"
+#include "../sender/is_typed_sender.hpp"
 #include "../sender/sender_traits.hpp"
 #include "../start.hpp"
 #include "detail/unpack_second_receiver.hpp"
@@ -146,7 +147,7 @@ class bulk_schedule_with_stream_executor_sender
       auto future = promise.get_future(ex_);
 
       // create two operations
-      return make_operation(
+      return this->make_operation(
         // pack the prologue operation's result values into a tuple...
         CUSEND_NAMESPACE::connect(cusend::pack(std::move(prologue_)), std::move(promise)),
 
@@ -158,11 +159,18 @@ class bulk_schedule_with_stream_executor_sender
 };
 
 
-template<class TypedSender, class StreamExecutor>
-bulk_schedule_with_stream_executor_sender<remove_cvref_t<TypedSender>,StreamExecutor> bulk_schedule_with_stream_executor(TypedSender&& sender, const StreamExecutor& ex, std::size_t shape)
+template<class StreamExecutor, class TypedSender,
+         CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+         CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
+        >
+bulk_schedule_with_stream_executor_sender<remove_cvref_t<TypedSender>,StreamExecutor> bulk_schedule_with_stream_executor(const StreamExecutor& ex, std::size_t shape, TypedSender&& sender)
 {
   return {std::forward<TypedSender>(sender), ex, shape};
 }
+
+
+template<class StreamExecutor, class Shape, class TypedSender>
+using bulk_schedule_with_stream_executor_t = decltype(detail::bulk_schedule_with_stream_executor(std::declval<StreamExecutor>(), std::declval<Shape>(), std::declval<TypedSender>()));
 
 
 } // end detail
