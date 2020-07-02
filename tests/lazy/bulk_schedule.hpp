@@ -69,8 +69,6 @@ struct my_receiver
         break;
       }
     }
-
-    printf("my_receiver::set_value: idx %d received %d\n", (int)idx, value);
   }
 
 
@@ -97,8 +95,6 @@ struct my_receiver
         break;
       }
     }
-
-    printf("my_receiver::set_value: idx %d received (%d, %d)\n", (int)idx, value0, value1);
   }
 
 
@@ -165,6 +161,6 @@ void test_bulk_schedule()
   test(cusend::execution::stream_executor{});
 #endif
 
-  //test(cusend::execution::inline_executor{});
+  test(cusend::execution::inline_executor{});
 }
 

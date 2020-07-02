@@ -32,7 +32,7 @@
 #include "../detail/static_const.hpp"
 #include "../detail/type_traits/is_detected.hpp"
 #include "detail/bulk_schedule_with_stream_executor.hpp"
-//#include "detail/default_bulk_schedule.hpp"
+#include "detail/default_bulk_schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -97,18 +97,19 @@ struct dispatch_bulk_schedule
   }
 
 
-  //CUSEND_EXEC_CHECK_DISABLE
-  //template<class Executor, class Shape, class Sender,
-  //         CUSEND_REQUIRES(!has_bulk_schedule_member_function<Executor&&,Shape&&,Sender&&>::value),
-  //         CUSEND_REQUIRES(!has_bulk_schedule_free_function<Executor&&,Shape&&,Sender&&>::value)
-  //         CUSEND_REQUIRES(!is_detected<bulk_schedule_with_stream_executor_t,Executor&&,Shape&&,Sender&&>::value)
-  //        >
-  //CUSEND_ANNOTATION
-  //constexpr default_bulk_schedule_t<Executor&&,Shape&&,Sender&&>
-  //  operator()(Executor&& executor, Shape&& shape, Sender&& sender) const
-  //{
-  //  return detail::default_bulk_schedule(std::forward<Executor>(executor), std::forward<Shape>(shape), std::forward<Sender>(sender));
-  //}
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class Executor, class Shape, class Sender,
+           CUSEND_REQUIRES(!has_bulk_schedule_member_function<Executor&&,Shape&&,Sender&&>::value),
+           CUSEND_REQUIRES(!has_bulk_schedule_free_function<Executor&&,Shape&&,Sender&&>::value),
+           CUSEND_REQUIRES(!is_detected<bulk_schedule_with_stream_executor_t,Executor&&,Shape&&,Sender&&>::value),
+           CUSEND_REQUIRES(is_detected<default_bulk_schedule_t,Executor&&,Shape&&,Sender&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_bulk_schedule_t<Executor&&,Shape&&,Sender&&>
+    operator()(Executor&& executor, Shape&& shape, Sender&& sender) const
+  {
+    return detail::default_bulk_schedule(std::forward<Executor>(executor), std::forward<Shape>(shape), std::forward<Sender>(sender));
+  }
 };
 
 
