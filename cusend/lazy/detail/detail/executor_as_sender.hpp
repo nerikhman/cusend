@@ -26,11 +26,14 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
+#include <exception>
 #include <utility>
-#include "../../execution/executor/is_executor.hpp"
-#include "../as_scheduler.hpp"
+#include "../../../detail/type_traits/remove_cvref.hpp"
+#include "../../../execution/executor/is_executor.hpp"
+#include "../../receiver/is_receiver_of.hpp"
+#include "execute_operation.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -40,23 +43,59 @@ namespace detail
 {
 
 
-template<class Executor,
-         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
-        >
-CUSEND_ANNOTATION
-auto default_schedule(const Executor& ex)
-  -> decltype(as_scheduler(ex).schedule())
+template<class Executor>
+class executor_as_sender
 {
-  // XXX ideally, we'd call CUSEND_NAMESPACE::schedule(ex) instead
-  //     of using the member function .schedule()
-  //     unfortunately, doing so would create a circular dependency
-  //     between CUSEND_NAMESPACE::schedule and default_schedule
-  return as_scheduler(ex).schedule();
-}
+  public:
+    template<template<class...> class Tuple, template<class...> class Variant>
+    using value_types = Variant<Tuple<>>;
+
+    template<template<class...> class Variant>
+    using error_types = Variant<std::exception_ptr>;
+
+    constexpr static bool sends_done = true;
 
 
-template<class E>
-using default_schedule_t = decltype(detail::default_schedule(std::declval<E>()));
+    CUSEND_EXEC_CHECK_DISABLE
+    CUSEND_ANNOTATION
+    executor_as_sender(const Executor& executor)
+      : executor_{executor}
+    {}
+
+    CUSEND_EXEC_CHECK_DISABLE
+    executor_as_sender(const executor_as_sender&) = default;
+
+
+    CUSEND_ANNOTATION
+    const Executor& executor() const
+    {
+      return executor_;
+    }
+
+
+    template<class R,
+             CUSEND_REQUIRES(is_receiver_of<R,void>::value)
+            >
+    CUSEND_ANNOTATION
+    execute_operation<Executor,remove_cvref_t<R&&>> connect(R&& receiver) const
+    {
+      return detail::make_execute_operation(executor_, std::forward<R>(receiver));
+    }
+
+
+    template<class OtherExecutor,
+             CUSEND_REQUIRES(execution::is_executor<OtherExecutor>::value)
+            >
+    CUSEND_ANNOTATION
+    executor_as_sender<OtherExecutor> on(const OtherExecutor& ex) const
+    {
+      return {ex};
+    }
+
+
+  private:
+    Executor executor_;
+};
 
 
 } // end detail
@@ -65,5 +104,5 @@ using default_schedule_t = decltype(detail::default_schedule(std::declval<E>()))
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

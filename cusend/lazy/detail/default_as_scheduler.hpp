@@ -30,7 +30,7 @@
 
 #include <utility>
 #include "../../execution/executor/is_executor.hpp"
-#include "../as_scheduler.hpp"
+#include "detail/executor_as_sender.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -40,23 +40,68 @@ namespace detail
 {
 
 
+template<class Executor>
+class executor_as_scheduler
+{
+  public:
+    CUSEND_EXEC_CHECK_DISABLE
+    CUSEND_ANNOTATION
+    executor_as_scheduler(const Executor& executor)
+      : executor_{executor}
+    {}
+
+
+    CUSEND_EXEC_CHECK_DISABLE
+    executor_as_scheduler(const executor_as_scheduler&) = default;
+
+
+    CUSEND_ANNOTATION
+    const Executor& executor() const
+    {
+      return executor_;
+    }
+
+
+    CUSEND_ANNOTATION
+    executor_as_sender<Executor> schedule() const
+    {
+      return {executor()};
+    }
+
+
+  private:
+    CUSEND_EXEC_CHECK_DISABLE
+    CUSEND_ANNOTATION
+    friend bool operator==(const executor_as_scheduler& lhs, const executor_as_scheduler& rhs)
+    {
+      return lhs.executor_ == rhs.executor_;
+    }
+
+
+    CUSEND_EXEC_CHECK_DISABLE
+    CUSEND_ANNOTATION
+    friend bool operator!=(const executor_as_scheduler& lhs, const executor_as_scheduler& rhs)
+    {
+      return lhs.executor_ != rhs.executor_;
+    }
+
+
+    Executor executor_;
+};
+
+
 template<class Executor,
          CUSEND_REQUIRES(execution::is_executor<Executor>::value)
         >
 CUSEND_ANNOTATION
-auto default_schedule(const Executor& ex)
-  -> decltype(as_scheduler(ex).schedule())
+executor_as_scheduler<Executor> default_as_scheduler(const Executor& ex)
 {
-  // XXX ideally, we'd call CUSEND_NAMESPACE::schedule(ex) instead
-  //     of using the member function .schedule()
-  //     unfortunately, doing so would create a circular dependency
-  //     between CUSEND_NAMESPACE::schedule and default_schedule
-  return as_scheduler(ex).schedule();
+  return {ex};
 }
 
 
 template<class E>
-using default_schedule_t = decltype(detail::default_schedule(std::declval<E>()));
+using default_as_scheduler_t = decltype(detail::default_as_scheduler(std::declval<E>()));
 
 
 } // end detail
