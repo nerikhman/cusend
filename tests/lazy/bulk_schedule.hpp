@@ -3,6 +3,7 @@
 #include <cusend/execution/executor/stream_executor.hpp>
 #include <cusend/lazy/bulk_schedule.hpp>
 #include <cusend/lazy/just.hpp>
+#include <cusend/lazy/submit.hpp>
 
 
 namespace ns = cusend;
