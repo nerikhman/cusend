@@ -315,9 +315,11 @@ class host_future : public host_future_base<T,Executor>
     {
       auto sender = transform(just(std::move(*this)), [receiver = std::move(receiver)](host_future&& self) mutable
       {
-        std::move(self).then(std::move(receiver));
+        std::move(self).then(receiver);
       });
 
+      // XXX instead of the awkward composition above, a better idea would be to call .then()
+      //     within a then_receiver or something wrapping receiver
       return CUSEND_NAMESPACE::connect(std::move(sender), discard_receiver{});
     }
 
