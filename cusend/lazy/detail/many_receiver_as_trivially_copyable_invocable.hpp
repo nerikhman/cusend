@@ -28,15 +28,13 @@
 
 #include "../../detail/prologue.hpp"
 
-#include <future>
+#include <exception>
 #include <type_traits>
-#include "../../detail/event.hpp"
-#include "../../detail/is_stream_executor.hpp"
+#include <utility>
 #include "../../execution/executor/bulk_execute.hpp"
-#include "../../lazy/detail/many_receiver_as_trivially_copyable_invocable.hpp"
 #include "../../lazy/receiver/is_many_receiver_of.hpp"
-#include "stream_of.hpp"
-#include "stream_wait_for.hpp"
+#include "../../lazy/receiver/set_error.hpp"
+#include "../../lazy/receiver/set_value.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -46,37 +44,27 @@ namespace detail
 {
 
 
-template<class StreamExecutor,
-         class ManyReceiver,
-         CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
-         CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver,std::size_t>::value)
-        >
-CUSEND_ANNOTATION
-event then_bulk_execute(const StreamExecutor& ex, event&& e, ManyReceiver receiver, std::size_t shape)
+template<class R>
+struct many_receiver_as_trivially_copyable_invocable
 {
-  // get ex's stream
-  cudaStream_t stream = detail::stream_of(ex);
+  R r_;
 
-  // make stream wait on the predecessor event
-  detail::stream_wait_for(stream, e.native_handle());
-
-  // adapt the receiver into an invocable
-  many_receiver_as_trivially_copyable_invocable<ManyReceiver> invocable{receiver};
-
-  // bulk_execute on the executor
-  execution::bulk_execute(ex, invocable, shape);
-
-  // re-record the event on the stream
-  e.record_on(stream);
-
-  return std::move(e);
-}
+  template<class... Args,
+           CUSEND_REQUIRES(is_many_receiver_of<R, Args&&...>::value)
+          >
+  CUSEND_ANNOTATION
+  void operator()(Args&&... args) noexcept
+  {
+    set_value(r_, std::forward<Args>(args)...);
+  }
+};
 
 
 } // end detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
+
 
 #include "../../detail/epilogue.hpp"
 
