@@ -35,11 +35,10 @@
 #include "../../detail/type_traits/is_invocable.hpp"
 #include "../../execution/executor/callback_executor.hpp"
 #include "../../execution/executor/execute.hpp"
+#include "../../lazy/detail/receiver_as_trivially_copyable_invocable.hpp"
 #include "../../lazy/receiver/is_receiver_of.hpp"
-#include "../../lazy/submit.hpp"
 #include "stream_of.hpp"
 #include "stream_wait_for.hpp"
-#include "uncancelable_schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -97,14 +96,8 @@ event then_execute(const StreamExecutor& ex, event&& e, Receiver receiver)
   // make stream wait on the predecessor event
   detail::stream_wait_for(stream, e.native_handle());
 
-  // submit the receiver on the executor
-  // XXX ideally, uncancelable_schedule would be unnecessary
-  //     its purpose is to avoid creating a non-trivially copyable invocable
-  //     eventually given to ex
-  //
-  //     what we should do instead is that all CUDA schedulers should provide
-  //     a customization of schedule() that does the same thing
-  submit(detail::uncancelable_schedule(ex), receiver);
+  // execute the receiver on the executor
+  execution::execute(ex, detail::as_trivially_copyable_invocable(receiver));
 
   // re-record the event on the stream
   e.record_on(stream);
