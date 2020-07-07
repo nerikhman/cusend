@@ -103,6 +103,46 @@ constexpr bool is_detected_convertible_v = is_detected_convertible<To, Op, Args.
 #endif
 
 
+namespace is_detected_detail
+{
+
+
+template<template<class> class Predicate, template<class...> class Op, class... Args>
+struct is_detected_and_impl
+{
+  template<int,
+           CUSEND_REQUIRES(is_detected<Op,Args...>::value)
+          >
+  constexpr static bool test(int)
+  {
+    return Predicate<Op<Args...>>::value;
+  }
+
+  template<int>
+  constexpr static bool test(...)
+  {
+    return false;
+  }
+
+  using type = std::integral_constant<bool, test<0>(0)>;
+};
+
+
+} // end is_detected_detail
+
+
+template<template<class> class Predicate, template<class...> class Op, class... Args>
+using is_detected_and = typename is_detected_detail::is_detected_and_impl<Predicate, Op, Args...>::type;
+
+
+#if defined(__cpp_variable_templates)
+
+template<template<class> class Predicate, template<class...> class Op, class... Args>
+constexpr bool is_detected_and_v = is_detected_and<Predicate, Op, Args...>::value;
+
+#endif
+
+
 } // end detail
 
 
