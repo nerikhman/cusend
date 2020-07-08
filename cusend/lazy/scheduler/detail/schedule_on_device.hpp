@@ -31,8 +31,11 @@
 #include <exception>
 #include <type_traits>
 #include <utility>
+#include "../../../detail/is_stream_executor.hpp"
 #include "../../../execution/executor/execute.hpp"
 #include "../../detail/receiver_as_trivially_copyable_invocable.hpp"
+#include "../get_executor.hpp"
+#include "../is_device_scheduler.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -45,21 +48,28 @@ namespace detail
 // this sender never calls set_done() (in a destructor, for example)
 // thus, the invocable executed inside of start() is trivially copyable
 // trivially copyable invocables are required by device executors
-template<class Executor>
-class uncancelable_sender
+template<class DeviceScheduler>
+class schedule_on_device_sender
 {
+  private:
+    static_assert(is_device_scheduler<DeviceScheduler>::value, "DeviceScheduler must be a device scheduler.");
+
+    DeviceScheduler scheduler_;
+
+    using executor_type = get_executor_t<DeviceScheduler>;
+
   private:
     template<class R>
     class operation
     {
       private:
-        Executor ex_;
+        executor_type ex_;
         R receiver_;
 
       public:
         CUSEND_EXEC_CHECK_DISABLE
         CUSEND_ANNOTATION
-        operation(const Executor& ex, R receiver)
+        operation(const executor_type& ex, R receiver)
           : ex_{ex},
             receiver_{receiver}
         {}
@@ -98,18 +108,18 @@ class uncancelable_sender
 
     CUSEND_EXEC_CHECK_DISABLE
     CUSEND_ANNOTATION
-    uncancelable_sender(const Executor& executor)
-      : executor_{executor}
+    schedule_on_device_sender(const DeviceScheduler& scheduler)
+      : scheduler_{scheduler}
     {}
 
     CUSEND_EXEC_CHECK_DISABLE
-    uncancelable_sender(const uncancelable_sender&) = default;
+    schedule_on_device_sender(const schedule_on_device_sender&) = default;
 
 
     CUSEND_ANNOTATION
-    const Executor& executor() const
+    executor_type executor() const
     {
-      return executor_;
+      return get_executor(scheduler_);
     }
 
 
@@ -120,20 +130,42 @@ class uncancelable_sender
     CUSEND_ANNOTATION
     operation<R> connect(R receiver) const
     {
-      return {executor_, std::forward<R>(receiver)};
+      return {executor(), std::forward<R>(receiver)};
     }
 
 
-    CUSEND_ANNOTATION
-    uncancelable_sender on(const Executor& ex) const
+    template<class OtherDeviceScheduler,
+             CUSEND_REQUIRES(is_device_scheduler<OtherDeviceScheduler>::value)
+            >
+    schedule_on_device_sender<OtherDeviceScheduler> via(const OtherDeviceScheduler& scheduler) const
     {
-      return {ex};
+      return {scheduler};
     }
 
 
-  private:
-    Executor executor_;
+    template<class DeviceExecutor,
+             CUSEND_REQUIRES(is_stream_executor<DeviceExecutor>::value)
+            >
+    schedule_on_device_sender<as_scheduler_t<DeviceExecutor>>
+      on(const DeviceExecutor& executor) const
+    {
+      return {as_scheduler(executor)};
+    }
 };
+
+
+// this function does not constrain DeviceScheduler with is_device_scheduler
+// because that would create a circular dependency between is_device_scheduler and device_scheduler::schedule
+template<class DeviceScheduler>
+schedule_on_device_sender<DeviceScheduler>
+  schedule_on_device(const DeviceScheduler& scheduler)
+{
+  return {scheduler};
+}
+
+
+template<class DeviceScheduler>
+using schedule_on_device_t = decltype(detail::schedule_on_device(std::declval<DeviceScheduler>()));
 
 
 } // end detail

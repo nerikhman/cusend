@@ -5,6 +5,7 @@
 #include <cusend/lazy/scheduler/device_scheduler.hpp>
 #include <cusend/lazy/scheduler/get_executor.hpp>
 #include <cusend/lazy/scheduler/is_device_scheduler.hpp>
+#include <cusend/lazy/scheduler/is_scheduler.hpp>
 #include <cusend/lazy/scheduler/schedule.hpp>
 #include <cusend/lazy/sender/is_sender.hpp>
 #include <cusend/lazy/submit.hpp>
@@ -53,6 +54,13 @@ struct my_receiver
 };
 
 static_assert(ns::is_receiver_of<my_receiver,int&&>::value, "Error.");
+
+
+template<class Executor>
+void test_is_scheduler(Executor)
+{
+  static_assert(ns::is_scheduler<ns::device_scheduler<Executor>>::value, "Error.");
+}
 
 
 template<class Executor>
@@ -315,6 +323,7 @@ void device_invoke(F f)
 template<class Executor>
 void test(Executor ex)
 {
+  test_is_scheduler(ex);
   test_is_device_scheduler(ex);
   test_schedule(ex);
   test_via(ex);

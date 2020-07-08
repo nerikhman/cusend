@@ -31,9 +31,9 @@
 #include <utility>
 // XXX this trait ought to be named is_device_executor, and cudex ought to provide it
 #include "../../detail/is_stream_executor.hpp"
-#include "detail/uncancelable_sender.hpp"
-#include "detail/via_device_scheduler_sender.hpp"
 #include "detail/bulk_schedule_on_device.hpp"
+#include "detail/schedule_on_device.hpp"
+#include "detail/via_device_scheduler_sender.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -45,6 +45,9 @@ template<class DeviceExecutor>
 class device_scheduler
 {
   public:
+    static_assert(detail::is_stream_executor<DeviceExecutor>::value, "DeviceExecutor must be a stream executor.");
+
+
     explicit device_scheduler(const DeviceExecutor& executor)
       : executor_{executor}
     {}
@@ -61,9 +64,9 @@ class device_scheduler
     }
 
 
-    detail::uncancelable_sender<DeviceExecutor> schedule() const
+    detail::schedule_on_device_t<device_scheduler> schedule() const
     {
-      return detail::uncancelable_sender<DeviceExecutor>{executor()};
+      return detail::schedule_on_device(*this);
     }
 
 
