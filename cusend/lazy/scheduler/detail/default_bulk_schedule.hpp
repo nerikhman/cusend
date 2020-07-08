@@ -35,7 +35,7 @@
 #include "../../sender/is_typed_sender.hpp"
 #include "../get_executor.hpp"
 #include "../is_scheduler.hpp"
-#include "fan_out_receiver.hpp"
+#include "detail/fan_out_receiver.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

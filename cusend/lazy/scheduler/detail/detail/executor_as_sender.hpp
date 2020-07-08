@@ -26,13 +26,13 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../../../detail/prologue.hpp"
 
 #include <exception>
 #include <utility>
-#include "../../../detail/type_traits/remove_cvref.hpp"
-#include "../../../execution/executor/is_executor.hpp"
-#include "../../receiver/is_receiver_of.hpp"
+#include "../../../../detail/type_traits/remove_cvref.hpp"
+#include "../../../../execution/executor/is_executor.hpp"
+#include "../../../receiver/is_receiver_of.hpp"
 #include "execute_operation.hpp"
 
 
@@ -104,5 +104,5 @@ class executor_as_sender
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../../detail/epilogue.hpp"
+#include "../../../../detail/epilogue.hpp"
 

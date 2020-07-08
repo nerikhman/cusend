@@ -26,20 +26,20 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../../../detail/prologue.hpp"
 
 #include <cstdint>
 #include <utility>
-#include "../../../detail/tuple.hpp"
-#include "../../../detail/type_traits/conjunction.hpp"
-#include "../../../detail/type_traits/is_detected.hpp"
-#include "../../../detail/utility/index_sequence.hpp"
-#include "../../../execution/executor/bulk_execute.hpp"
-#include "../../receiver/is_many_receiver_of.hpp"
-#include "../../receiver/set_done.hpp"
-#include "../../receiver/set_error.hpp"
-#include "../../receiver/set_value.hpp"
-#include "../../sender/sender_traits.hpp"
+#include "../../../../detail/tuple.hpp"
+#include "../../../../detail/type_traits/conjunction.hpp"
+#include "../../../../detail/type_traits/is_detected.hpp"
+#include "../../../../detail/utility/index_sequence.hpp"
+#include "../../../../execution/executor/bulk_execute.hpp"
+#include "../../../receiver/is_many_receiver_of.hpp"
+#include "../../../receiver/set_done.hpp"
+#include "../../../receiver/set_error.hpp"
+#include "../../../receiver/set_value.hpp"
+#include "../../../sender/sender_traits.hpp"
 #include "optional.hpp"
 #include "variant.hpp"
 
@@ -251,5 +251,5 @@ using can_make_fan_out_receiver = is_detected<make_fan_out_receiver_t, Sender&&,
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../../detail/epilogue.hpp"
+#include "../../../../detail/epilogue.hpp"
 

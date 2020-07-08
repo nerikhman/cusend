@@ -30,7 +30,7 @@
 
 #include <utility>
 #include "../../../execution/executor/is_executor.hpp"
-#include "executor_as_sender.hpp"
+#include "detail/executor_as_sender.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

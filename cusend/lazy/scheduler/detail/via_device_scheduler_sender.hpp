@@ -39,7 +39,7 @@
 #include "../../unpack.hpp"
 #include "../get_executor.hpp"
 #include "../is_device_scheduler.hpp"
-#include "variant.hpp"
+#include "detail/variant.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

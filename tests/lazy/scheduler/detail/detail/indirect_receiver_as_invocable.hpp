@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cusend/lazy/scheduler/detail/indirect_receiver_as_invocable.hpp>
+#include <cusend/lazy/scheduler/detail/detail/indirect_receiver_as_invocable.hpp>
 
 
 namespace ns = cusend;
