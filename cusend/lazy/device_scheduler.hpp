@@ -49,6 +49,11 @@ class device_scheduler
     {}
 
 
+    device_scheduler()
+      : device_scheduler{DeviceExecutor{}}
+    {}
+
+
     DeviceExecutor executor() const
     {
       return executor_;

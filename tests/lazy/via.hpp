@@ -1,8 +1,11 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/lazy/as_scheduler.hpp>
+#include <cusend/lazy/device_scheduler.hpp>
 #include <cusend/lazy/just.hpp>
 #include <cusend/lazy/via.hpp>
+#include <cusend/lazy/schedule.hpp>
 #include <cusend/lazy/transform.hpp>
 
 
@@ -59,43 +62,61 @@ void device_invoke(F f)
 
 __managed__ int num_calls_to_customizations = 0;
 
-struct my_executor
+struct my_scheduler
 {
   __host__ __device__
-  bool operator==(const my_executor&) const { return true; }
+  bool operator==(const my_scheduler&) const { return true; }
 
   __host__ __device__
-  bool operator!=(const my_executor&) const { return false; }
+  bool operator!=(const my_scheduler&) const { return false; }
 
-  template<class Function>
   __host__ __device__
-  void execute(Function&& f) const noexcept
+  ns::just_t<> schedule() const noexcept
   {
-    std::forward<Function>(f)();
     ++num_calls_to_customizations;
+    return ns::just();
   }
 };
 
 
-struct my_gpu_executor
+struct my_gpu_scheduler
 {
   __host__ __device__
-  bool operator==(const my_gpu_executor&) const { return true; }
+  bool operator==(const my_gpu_scheduler&) const { return true; }
+
 
   __host__ __device__
-  bool operator!=(const my_gpu_executor&) const { return false; }
+  bool operator!=(const my_gpu_scheduler&) const { return false; }
 
-  template<class Function>
-  __host__ __device__
-  void execute(Function f) const noexcept
+
+  struct executor
   {
-    device_invoke(f);
+    __host__ __device__
+    bool operator==(const executor&) const { return true; }
+
+    __host__ __device__
+    bool operator!=(const executor&) const { return false; }
+
+    template<class Function>
+    __host__ __device__
+    void execute(Function f) const noexcept
+    {
+      device_invoke(f);
+    }
+  };
+
+
+  __host__ __device__
+  auto schedule() const
+    -> decltype(ns::schedule(ns::as_scheduler(executor{})))
+  {
     ++num_calls_to_customizations;
+    return ns::schedule(ns::as_scheduler(executor{}));
   }
 };
 
 
-struct my_scheduler_with_via_free_function : my_executor
+struct my_scheduler_with_via_free_function
 {
   __host__ __device__
   ns::just_t<> schedule() const
@@ -108,10 +129,11 @@ struct my_scheduler_with_via_free_function : my_executor
 
   template<class Sender>
   __host__ __device__
-  friend ns::via_t<Sender,ns::execution::inline_executor> via(Sender&& sender, const my_scheduler_with_via_free_function&)
+  friend auto via(Sender&& sender, const my_scheduler_with_via_free_function&)
+    -> decltype(ns::via(std::forward<Sender>(sender), ns::as_scheduler(ns::execution::inline_executor{})))
   {
     ++num_calls_to_customizations;
-    return ns::via(std::forward<Sender>(sender), ns::execution::inline_executor{});
+    return ns::via(std::forward<Sender>(sender), ns::as_scheduler(ns::execution::inline_executor{}));
   }
 };
 
@@ -150,9 +172,9 @@ struct my_receiver
 };
 
 
-template<class Executor>
+template<class Scheduler>
 __host__ __device__
-void test(Executor ex)
+void test(Scheduler scheduler)
 {
   int arg1 = 13;
   int arg2 = 7;
@@ -161,7 +183,7 @@ void test(Executor ex)
   result1 = 0;
   num_calls_to_customizations = 0;
 
-  auto sender = ns::transform(ns::via(ns::just(arg1), ex), [=] __host__ __device__ (int arg1)
+  auto sender = ns::transform(ns::via(ns::just(arg1), scheduler), [=] __host__ __device__ (int arg1)
   {
     return arg1 + arg2;
   });
@@ -173,15 +195,15 @@ void test(Executor ex)
 }
 
 
-void test_via_stream_executor()
+void test_via_device_scheduler()
 {
-  // via() has a customization for stream_executors
+  // device_scheduler has a customization for via()
 
   {
     result1 = false;
 
-    // just().via(ex)
-    auto sender = cusend::via(cusend::just(), cusend::execution::stream_executor{});
+    // just().via(scheduler)
+    auto sender = ns::via(cusend::just(), ns::device_scheduler<ns::execution::stream_executor>{});
 
     std::move(sender).connect(my_receiver{}).start();
 
@@ -192,9 +214,9 @@ void test_via_stream_executor()
   {
     result1 = -1;
 
-    // just(13).via(ex)
+    // just(13).via(scheduler)
     int expected1 = 13;
-    auto sender = cusend::via(cusend::just(expected1), cusend::execution::stream_executor{});
+    auto sender = ns::via(ns::just(expected1), ns::device_scheduler<ns::execution::stream_executor>{});
 
     std::move(sender).connect(my_receiver{}).start();
 
@@ -206,10 +228,10 @@ void test_via_stream_executor()
     result1 = -1;
     result2 = -1;
 
-    // just(13,7).via(ex)
+    // just(13,7).via(scheduler)
     int expected1 = 13;
     int expected2 = 7;
-    auto sender = cusend::via(cusend::just(expected1,expected2), cusend::execution::stream_executor{});
+    auto sender = ns::via(ns::just(expected1,expected2), ns::device_scheduler<ns::execution::stream_executor>{});
 
     std::move(sender).connect(my_receiver{}).start();
 
@@ -222,18 +244,18 @@ void test_via_stream_executor()
 
 void test_via()
 {
-  test(my_executor{});
+  test(my_scheduler{});
   test(my_scheduler_with_via_free_function{});
 
 #if __CUDACC__
-  test(my_gpu_executor{});
-  test_via_stream_executor();
+  test(my_gpu_scheduler{});
+  test_via_device_scheduler();
 
   device_invoke([] __device__ ()
   {
-    test(my_executor{});
+    test(my_scheduler{});
     test(my_scheduler_with_via_free_function{});
-    test(my_gpu_executor{});
+    test(my_gpu_scheduler{});
   });
 #endif
 }
