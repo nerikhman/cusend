@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cusend/lazy/detail/bulk_schedule_with_stream_executor.hpp>
 #include <cusend/lazy/just.hpp>
+#include <cusend/lazy/submit.hpp>
 
 
 #ifndef __host__
