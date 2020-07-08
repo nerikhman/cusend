@@ -31,9 +31,11 @@
 #include <utility>
 // XXX this trait ought to be named is_device_executor, and cudex ought to provide it
 #include "../../detail/is_stream_executor.hpp"
+#include "../sender/is_typed_sender.hpp"
 #include "detail/bulk_schedule_on_device.hpp"
 #include "detail/schedule_on_device.hpp"
-#include "detail/via_device_scheduler_sender.hpp"
+#include "detail/via_device.hpp"
+#include "is_device_scheduler.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -82,11 +84,13 @@ class device_scheduler
 
 
   private:
-    template<class Sender>
-    friend detail::via_device_scheduler_sender<detail::remove_cvref_t<Sender>, device_scheduler>
-      via(Sender&& predecessor, const device_scheduler& scheduler)
+    template<class TypedSender,
+             CUSEND_REQUIRES(is_typed_sender<TypedSender>::value)
+            >
+    friend detail::via_device_t<TypedSender&&, device_scheduler>
+      via(TypedSender&& predecessor, const device_scheduler& scheduler)
     {
-      return {std::forward<Sender>(predecessor), scheduler};
+      return detail::via_device(std::forward<TypedSender>(predecessor), scheduler);
     }
     
 

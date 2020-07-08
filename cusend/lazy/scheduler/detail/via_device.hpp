@@ -34,6 +34,7 @@
 #include "../../../future/host_promise.hpp"
 #include "../../pack.hpp"
 #include "../../receiver/is_receiver_of.hpp"
+#include "../../sender/is_typed_sender.hpp"
 #include "../../sender/sender_traits.hpp"
 #include "../../start.hpp"
 #include "../../unpack.hpp"
@@ -50,7 +51,7 @@ namespace detail
 
 
 template<class TypedSender, class DeviceScheduler>
-class via_device_scheduler_sender
+class via_device_sender
 {
   private:
     static_assert(is_typed_sender<TypedSender>::value, "TypedSender must be a typed sender.");
@@ -69,7 +70,7 @@ class via_device_scheduler_sender
     constexpr static bool sends_done = sender_traits<TypedSender>::sends_done;
 
     template<class OtherSender>
-    via_device_scheduler_sender(OtherSender&& prologue, const DeviceScheduler& scheduler)
+    via_device_sender(OtherSender&& prologue, const DeviceScheduler& scheduler)
       : prologue_{std::move(prologue)},
         scheduler_{scheduler}
     {}
@@ -136,7 +137,7 @@ class via_device_scheduler_sender
     template<class OtherDeviceScheduler,
              CUSEND_REQUIRES(is_device_scheduler<OtherDeviceScheduler>::value)
             >
-    via_device_scheduler_sender<TypedSender,OtherDeviceScheduler> via(const OtherDeviceScheduler& scheduler) &&
+    via_device_sender<TypedSender,OtherDeviceScheduler> via(const OtherDeviceScheduler& scheduler) &&
     {
       return {std::move(prologue_), scheduler};
     }
@@ -145,7 +146,7 @@ class via_device_scheduler_sender
              CUSEND_REQUIRES(is_device_scheduler<OtherDeviceScheduler>::value),
              CUSEND_REQUIRES(std::is_copy_constructible<TypedSender>::value)
             >
-    via_device_scheduler_sender<TypedSender,OtherDeviceScheduler> via(const OtherDeviceScheduler& scheduler) const &
+    via_device_sender<TypedSender,OtherDeviceScheduler> via(const OtherDeviceScheduler& scheduler) const &
     {
       return {prologue_, scheduler};
     }
@@ -155,6 +156,21 @@ class via_device_scheduler_sender
       return get_executor(scheduler_);
     }
 };
+
+
+template<class TypedSender, class DeviceScheduler,
+         CUSEND_REQUIRES(is_typed_sender<TypedSender>::value),
+         CUSEND_REQUIRES(is_device_scheduler<DeviceScheduler>::value)
+        >
+via_device_sender<remove_cvref_t<TypedSender>, DeviceScheduler>
+  via_device(TypedSender&& sender, const DeviceScheduler& scheduler)
+{
+  return {std::forward<TypedSender>(sender), scheduler};
+}
+
+
+template<class Sender, class DeviceScheduler>
+using via_device_t = decltype(detail::via_device(std::declval<Sender>(), std::declval<DeviceScheduler>()));
 
 
 } // end detail
