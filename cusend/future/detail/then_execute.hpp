@@ -28,6 +28,7 @@
 
 #include "../../detail/prologue.hpp"
 
+#include <exception>
 #include <future>
 #include <type_traits>
 #include "../../detail/event.hpp"
@@ -37,6 +38,7 @@
 #include "../../execution/executor/execute.hpp"
 #include "../../lazy/detail/receiver_as_trivially_copyable_invocable.hpp"
 #include "../../lazy/receiver/is_receiver_of.hpp"
+#include "../../lazy/receiver/set_error.hpp"
 #include "stream_of.hpp"
 #include "stream_wait_for.hpp"
 
@@ -96,8 +98,20 @@ event then_execute(const StreamExecutor& ex, event&& e, Receiver receiver)
   // make stream wait on the predecessor event
   detail::stream_wait_for(stream, e.native_handle());
 
+#if CUSEND_HAS_EXCEPTIONS
+  try
+  {
+    // execute the receiver on the executor
+    execution::execute(ex, detail::as_trivially_copyable_invocable(receiver));
+  }
+  catch(...)
+  {
+    set_error(std::move(receiver), std::current_exception());
+  }
+#else
   // execute the receiver on the executor
   execution::execute(ex, detail::as_trivially_copyable_invocable(receiver));
+#endif
 
   // re-record the event on the stream
   e.record_on(stream);
