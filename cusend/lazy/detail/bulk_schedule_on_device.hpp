@@ -34,6 +34,8 @@
 #include "../../detail/is_stream_executor.hpp"
 #include "../../detail/type_traits/remove_cvref.hpp"
 #include "../../future/host_promise.hpp"
+#include "../get_executor.hpp"
+#include "../is_device_scheduler.hpp"
 #include "../pack.hpp"
 #include "../sender/is_typed_sender.hpp"
 #include "../sender/sender_traits.hpp"
@@ -49,21 +51,21 @@ namespace detail
 {
 
 
-template<class TypedSender, class StreamExecutor>
-class bulk_schedule_with_stream_executor_sender
+template<class TypedSender, class DeviceScheduler>
+class bulk_schedule_on_device_sender
 {
   private:
     static_assert(is_typed_sender<TypedSender>::value, "TypedSender must be a typed sender.");
-    static_assert(is_stream_executor<StreamExecutor>::value, "StreamExecutor must be a stream executor.");
+    static_assert(is_device_scheduler<DeviceScheduler>::value, "DeviceScheduler must be a device scheduler.");
 
-    // XXX generalize this to executor_shape_t<StreamExecutor>
+    // XXX generalize this to executor_shape_t
     using index_type = std::size_t;
 
-    // XXX generalize this to executor_index_t<StreamExecutor>
+    // XXX generalize this to executor_index_t
     using shape_type = std::size_t;
 
     TypedSender prologue_;
-    StreamExecutor ex_;
+    DeviceScheduler scheduler_;
     shape_type shape_;
 
     template<template<class...> class Tuple, template<class...> class Variant>
@@ -94,9 +96,9 @@ class bulk_schedule_with_stream_executor_sender
 
 
     template<class OtherSender>
-    bulk_schedule_with_stream_executor_sender(OtherSender&& prologue, const StreamExecutor& ex, std::size_t shape)
+    bulk_schedule_on_device_sender(OtherSender&& prologue, const DeviceScheduler& scheduler, std::size_t shape)
       : prologue_{std::forward<OtherSender>(prologue)},
-        ex_{ex},
+        scheduler_{scheduler},
         shape_{shape}
     {}
 
@@ -139,12 +141,13 @@ class bulk_schedule_with_stream_executor_sender
 
 
   public:
+    // XXX this needs to constrain ManyReceiver
     template<class ManyReceiver>
     auto connect(ManyReceiver&& r) &&
     {
       host_promise<predecessor_value_type> promise;
 
-      auto future = promise.get_future(ex_);
+      auto future = promise.get_future(executor());
 
       // create two operations
       return this->make_operation(
@@ -156,21 +159,47 @@ class bulk_schedule_with_stream_executor_sender
         CUSEND_NAMESPACE::connect(std::move(future).bulk(shape_), detail::make_unpack_second_receiver(std::move(r)))
       );
     }
+
+
+    template<class OtherDeviceScheduler,
+             CUSEND_REQUIRES(is_device_scheduler<OtherDeviceScheduler>::value)
+            >
+    bulk_schedule_on_device_sender<TypedSender,OtherDeviceScheduler> via(const OtherDeviceScheduler& scheduler) &&
+    {
+      return {std::move(prologue_), scheduler, shape_};
+    }
+
+
+    template<class OtherDeviceScheduler,
+             CUSEND_REQUIRES(is_device_scheduler<OtherDeviceScheduler>::value),
+             CUSEND_REQUIRES(std::is_copy_constructible<TypedSender>::value)
+            >
+    bulk_schedule_on_device_sender<TypedSender,OtherDeviceScheduler> via(const OtherDeviceScheduler& scheduler) const &
+    {
+      return {prologue_, scheduler, shape_};
+    }
+
+
+    get_executor_t<DeviceScheduler> executor() const
+    {
+      return get_executor(scheduler_);
+    }
 };
 
 
-template<class StreamExecutor, class TypedSender,
-         CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+template<class DeviceScheduler, class TypedSender,
+         CUSEND_REQUIRES(is_device_scheduler<DeviceScheduler>::value),
          CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
         >
-bulk_schedule_with_stream_executor_sender<remove_cvref_t<TypedSender>,StreamExecutor> bulk_schedule_with_stream_executor(const StreamExecutor& ex, std::size_t shape, TypedSender&& sender)
+bulk_schedule_on_device_sender<remove_cvref_t<TypedSender>,DeviceScheduler>
+  bulk_schedule_on_device(const DeviceScheduler& scheduler, std::size_t shape, TypedSender&& sender)
 {
-  return {std::forward<TypedSender>(sender), ex, shape};
+  return {std::forward<TypedSender>(sender), scheduler, shape};
 }
 
 
-template<class StreamExecutor, class Shape, class TypedSender>
-using bulk_schedule_with_stream_executor_t = decltype(detail::bulk_schedule_with_stream_executor(std::declval<StreamExecutor>(), std::declval<Shape>(), std::declval<TypedSender>()));
+template<class DeviceScheduler, class Shape, class TypedSender>
+using bulk_schedule_on_device_t = decltype(detail::bulk_schedule_on_device(std::declval<DeviceScheduler>(), std::declval<Shape>(), std::declval<TypedSender>()));
 
 
 } // end detail

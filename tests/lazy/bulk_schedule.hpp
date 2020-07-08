@@ -1,7 +1,9 @@
 #include <cassert>
 #include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/lazy/as_scheduler.hpp>
 #include <cusend/lazy/bulk_schedule.hpp>
+#include <cusend/lazy/device_scheduler.hpp>
 #include <cusend/lazy/just.hpp>
 #include <cusend/lazy/submit.hpp>
 
@@ -111,15 +113,15 @@ struct my_receiver
 };
 
 
-template<class Executor>
-void test(Executor ex)
+template<class Scheduler>
+void test(Scheduler scheduler)
 {
   {
     result0 = false;
     result1 = false;
 
     auto s0 = ns::just();
-    auto s1 = ns::bulk_schedule(ex, 2, std::move(s0));
+    auto s1 = ns::bulk_schedule(scheduler, 2, std::move(s0));
 
     ns::submit(std::move(s1), my_receiver{13,7});
 
@@ -133,7 +135,7 @@ void test(Executor ex)
     result1 = false;
 
     auto s0 = ns::just(13);
-    auto s1 = ns::bulk_schedule(ex, 2, std::move(s0));
+    auto s1 = ns::bulk_schedule(scheduler, 2, std::move(s0));
 
     ns::submit(std::move(s1), my_receiver{13,7});
 
@@ -147,7 +149,7 @@ void test(Executor ex)
     result1 = false;
 
     auto s0 = ns::just(13,7);
-    auto s1 = ns::bulk_schedule(ex, 2, std::move(s0));
+    auto s1 = ns::bulk_schedule(scheduler, 2, std::move(s0));
 
     ns::submit(std::move(s1), my_receiver{13,7});
 
@@ -161,10 +163,10 @@ void test(Executor ex)
 void test_bulk_schedule()
 {
 #ifdef __CUDACC__
-  // stream_executor requires CUDA C++
-  test(ns::execution::stream_executor{});
+  // device_scheduler requires CUDA C++
+  test(ns::device_scheduler<ns::execution::stream_executor>());
 #endif
 
-  test(ns::execution::inline_executor{});
+  test(ns::as_scheduler(ns::execution::inline_executor{}));
 }
 

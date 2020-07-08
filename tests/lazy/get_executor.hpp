@@ -5,6 +5,10 @@
 #include <exception>
 #include <utility>
 
+
+namespace ns = cusend;
+
+
 #ifndef __host__
 #define __host__
 #define __device__
@@ -16,7 +20,7 @@
 struct has_executor_member_function
 {
   __host__ __device__
-  cusend::execution::inline_executor executor() const
+  ns::execution::inline_executor executor() const
   {
     return {};
   }
@@ -26,7 +30,7 @@ struct has_executor_member_function
 struct has_get_executor_free_function {};
 
 __host__ __device__
-cusend::execution::inline_executor get_executor(has_get_executor_free_function)
+ns::execution::inline_executor get_executor(has_get_executor_free_function)
 {
   return {};
 }
@@ -76,7 +80,7 @@ template<class T>
 __host__ __device__
 void test(T&& arg)
 {
-  auto ex = cusend::get_executor(std::forward<T>(arg));
+  auto ex = ns::get_executor(std::forward<T>(arg));
 
   // assert that the thing we got acts like an executor
   int expected = 13;
@@ -93,12 +97,14 @@ void test(T&& arg)
 
 void test_get_executor()
 {
+  test(ns::execution::inline_executor{});
   test(has_get_executor_free_function{});
   test(has_executor_member_function{});
 
 #ifdef __CUDACC__
   device_invoke([] __device__ ()
   {
+    test(ns::execution::inline_executor{});
     test(has_get_executor_free_function{});
     test(has_executor_member_function{});
   });

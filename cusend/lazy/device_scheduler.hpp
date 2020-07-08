@@ -33,6 +33,7 @@
 #include "../detail/is_stream_executor.hpp"
 #include "detail/uncancelable_sender.hpp"
 #include "detail/via_device_scheduler_sender.hpp"
+#include "detail/bulk_schedule_on_device.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -63,6 +64,17 @@ class device_scheduler
     detail::uncancelable_sender<DeviceExecutor> schedule() const
     {
       return detail::uncancelable_sender<DeviceExecutor>{executor()};
+    }
+
+
+    // XXX generalize shape to executor_shape_t
+    template<class TypedSender,
+             CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
+            >
+    detail::bulk_schedule_on_device_t<device_scheduler, std::size_t, TypedSender&&>
+      bulk_schedule(std::size_t shape, TypedSender&& prologue) const
+    {
+      return detail::bulk_schedule_on_device(*this, shape, std::forward<TypedSender>(prologue));
     }
 
 

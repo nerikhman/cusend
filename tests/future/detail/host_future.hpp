@@ -1,6 +1,7 @@
 #include <cassert>
 #include <utility>
 #include <cusend/future/host_promise.hpp>
+#include <cusend/lazy/submit.hpp>
 
 namespace ns = cusend;
 

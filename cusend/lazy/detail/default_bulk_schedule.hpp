@@ -28,10 +28,12 @@
 
 #include "../../detail/prologue.hpp"
 
+#include <type_traits>
 #include <utility>
-#include "../../detail/type_traits/is_detected.hpp"
 #include "../../detail/type_traits/remove_cvref.hpp"
-#include "../../execution/executor/is_executor.hpp"
+#include "../connect.hpp"
+#include "../get_executor.hpp"
+#include "../is_scheduler.hpp"
 #include "../sender/is_typed_sender.hpp"
 #include "detail/fan_out_receiver.hpp"
 
@@ -43,13 +45,16 @@ namespace detail
 {
 
 
-template<class Executor, class TypedSender>
+template<class Scheduler, class TypedSender>
 class bulk_sender
 {
   private:
-    Executor ex_;
+    Scheduler scheduler_;
+    // XXX generalize to executor_shape_t
     std::size_t shape_;
     TypedSender predecessor_;
+
+    using executor_type = get_executor_t<Scheduler>;
 
   public:
     template<template<class...> class Tuple, template<class...> class Variant>
@@ -64,38 +69,66 @@ class bulk_sender
     CUSEND_EXEC_CHECK_DISABLE
     template<class Sender>
     CUSEND_ANNOTATION
-    bulk_sender(const Executor& ex, std::size_t shape, Sender&& predecessor)
-      : ex_{ex},
+    bulk_sender(const Scheduler& scheduler, std::size_t shape, Sender&& predecessor)
+      : scheduler_{scheduler},
         shape_{shape},
         predecessor_{std::forward<Sender>(predecessor)}
     {}
 
 
+    CUSEND_ANNOTATION
+    executor_type executor() const
+    {
+      return get_executor(scheduler_);
+    }
+
+
     template<class ManyReceiver,
-             CUSEND_REQUIRES(can_make_fan_out_receiver<TypedSender,Executor,std::size_t,ManyReceiver&&>::value)
+             CUSEND_REQUIRES(can_make_fan_out_receiver<TypedSender,executor_type,std::size_t,ManyReceiver&&>::value)
             >
     CUSEND_ANNOTATION
     auto connect(ManyReceiver&& r) &&
-      -> decltype(CUSEND_NAMESPACE::connect(std::move(predecessor_), detail::make_fan_out_receiver<TypedSender>(ex_, shape_, std::forward<ManyReceiver>(r))))
+      -> decltype(CUSEND_NAMESPACE::connect(std::move(predecessor_), detail::make_fan_out_receiver<TypedSender>(executor(), shape_, std::forward<ManyReceiver>(r))))
     {
-      return CUSEND_NAMESPACE::connect(std::move(predecessor_), detail::make_fan_out_receiver<TypedSender>(ex_, shape_, std::forward<ManyReceiver>(r)));
+      return CUSEND_NAMESPACE::connect(std::move(predecessor_), detail::make_fan_out_receiver<TypedSender>(executor(), shape_, std::forward<ManyReceiver>(r)));
+    }
+
+
+    template<class OtherScheduler,
+             CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value)
+            >
+    CUSEND_ANNOTATION
+    bulk_sender<OtherScheduler,TypedSender> via(const OtherScheduler& scheduler) &&
+    {
+      return {scheduler, shape_, std::move(predecessor_)};
+    }
+
+
+    template<class OtherScheduler,
+             CUSEND_REQUIRES(is_scheduler<OtherScheduler>::value),
+             CUSEND_REQUIRES(std::is_copy_constructible<TypedSender>::value)
+            >
+    CUSEND_ANNOTATION
+    bulk_sender<OtherScheduler,TypedSender> via(const OtherScheduler& scheduler) const
+    {
+      return {scheduler, shape_, predecessor_};
     }
 };
 
 
-template<class Executor, class TypedSender,
-         CUSEND_REQUIRES(execution::is_executor<Executor>::value),
+template<class Scheduler, class TypedSender,
+         CUSEND_REQUIRES(is_scheduler<Scheduler>::value),
          CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
         >
 CUSEND_ANNOTATION
-bulk_sender<Executor, remove_cvref_t<TypedSender>> default_bulk_schedule(const Executor& ex, std::size_t shape, TypedSender&& sender)
+bulk_sender<Scheduler, remove_cvref_t<TypedSender>> default_bulk_schedule(const Scheduler& scheduler, std::size_t shape, TypedSender&& sender)
 {
-  return {ex, shape, std::forward<TypedSender>(sender)};
+  return {scheduler, shape, std::forward<TypedSender>(sender)};
 }
 
 
-template<class Executor, class Shape, class Sender>
-using default_bulk_schedule_t = decltype(detail::default_bulk_schedule(std::declval<Executor>(), std::declval<Shape>(), std::declval<Sender>()));
+template<class Scheduler, class Shape, class Sender>
+using default_bulk_schedule_t = decltype(detail::default_bulk_schedule(std::declval<Scheduler>(), std::declval<Shape>(), std::declval<Sender>()));
 
 
 } // end detail

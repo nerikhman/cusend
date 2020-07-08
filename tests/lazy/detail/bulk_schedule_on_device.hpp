@@ -1,7 +1,11 @@
 #include <cassert>
-#include <cusend/lazy/detail/bulk_schedule_with_stream_executor.hpp>
+#include <cusend/lazy/detail/bulk_schedule_on_device.hpp>
+#include <cusend/lazy/device_scheduler.hpp>
 #include <cusend/lazy/just.hpp>
 #include <cusend/lazy/submit.hpp>
+
+
+namespace ns = cusend;
 
 
 #ifndef __host__
@@ -110,20 +114,22 @@ struct my_receiver
 };
 
 
-void test_bulk_schedule_with_stream_executor()
+void test_bulk_schedule_on_device()
 {
-// stream_executor requires CUDA C++
 #ifdef __CUDACC__
+  // device_scheduler requires CUDA C++
+  ns::device_scheduler<ns::execution::stream_executor> scheduler;
+
   {
     result0 = false;
     result1 = false;
 
-    auto s0 = cusend::just();
-    auto s1 = cusend::detail::bulk_schedule_with_stream_executor(cusend::execution::stream_executor{}, 2, std::move(s0));
+    auto s0 = ns::just();
+    auto s1 = ns::detail::bulk_schedule_on_device(scheduler, 2, std::move(s0));
 
-    cusend::submit(std::move(s1), my_receiver{13,7});
+    ns::submit(std::move(s1), my_receiver{13,7});
 
-    cudaStreamSynchronize(0);
+    cudaStreamSynchronize(scheduler.executor().stream());
     assert(result0);
     assert(result1);
   }
@@ -132,12 +138,12 @@ void test_bulk_schedule_with_stream_executor()
     result0 = false;
     result1 = false;
 
-    auto s0 = cusend::just(13);
-    auto s1 = cusend::detail::bulk_schedule_with_stream_executor(cusend::execution::stream_executor{}, 2, std::move(s0));
+    auto s0 = ns::just(13);
+    auto s1 = ns::detail::bulk_schedule_on_device(scheduler, 2, std::move(s0));
 
-    cusend::submit(std::move(s1), my_receiver{13,7});
+    ns::submit(std::move(s1), my_receiver{13,7});
 
-    cudaStreamSynchronize(0);
+    cudaStreamSynchronize(scheduler.executor().stream());
     assert(result0);
     assert(result1);
   }
@@ -146,12 +152,12 @@ void test_bulk_schedule_with_stream_executor()
     result0 = false;
     result1 = false;
 
-    auto s0 = cusend::just(13,7);
-    auto s1 = cusend::detail::bulk_schedule_with_stream_executor(cusend::execution::stream_executor{}, 2, std::move(s0));
+    auto s0 = ns::just(13,7);
+    auto s1 = ns::detail::bulk_schedule_on_device(scheduler, 2, std::move(s0));
 
-    cusend::submit(std::move(s1), my_receiver{13,7});
+    ns::submit(std::move(s1), my_receiver{13,7});
 
-    cudaStreamSynchronize(0);
+    cudaStreamSynchronize(scheduler.executor().stream());
     assert(result0);
     assert(result1);
   }

@@ -31,7 +31,6 @@
 #include <utility>
 #include "../detail/static_const.hpp"
 #include "../detail/type_traits/is_detected.hpp"
-#include "detail/bulk_schedule_with_stream_executor.hpp"
 #include "detail/default_bulk_schedule.hpp"
 
 
@@ -42,73 +41,59 @@ namespace detail
 {
 
 
-template<class Executor, class Shape, class Sender>
-using bulk_schedule_member_function_t = decltype(std::declval<Executor>().bulk_schedule(std::declval<Shape>(), std::declval<Sender>()));
+template<class Scheduler, class Shape, class Sender>
+using bulk_schedule_member_function_t = decltype(std::declval<Scheduler>().bulk_schedule(std::declval<Shape>(), std::declval<Sender>()));
 
-template<class Executor, class Shape, class Sender>
-using has_bulk_schedule_member_function = is_detected<bulk_schedule_member_function_t, Executor, Shape, Sender>;
+template<class Scheduler, class Shape, class Sender>
+using has_bulk_schedule_member_function = is_detected<bulk_schedule_member_function_t, Scheduler, Shape, Sender>;
 
 
-template<class Executor, class Shape, class Sender>
-using bulk_schedule_free_function_t = decltype(bulk_schedule(std::declval<Executor>(), std::declval<Shape>(), std::declval<Sender>()));
+template<class Scheduler, class Shape, class Sender>
+using bulk_schedule_free_function_t = decltype(bulk_schedule(std::declval<Scheduler>(), std::declval<Shape>(), std::declval<Sender>()));
 
-template<class Executor, class Shape, class Sender>
-using has_bulk_schedule_free_function = is_detected<bulk_schedule_free_function_t, Executor, Shape, Sender>;
+template<class Scheduler, class Shape, class Sender>
+using has_bulk_schedule_free_function = is_detected<bulk_schedule_free_function_t, Scheduler, Shape, Sender>;
 
 
 // this is the type of the bulk_schedule CPO
 struct dispatch_bulk_schedule
 {
   CUSEND_EXEC_CHECK_DISABLE
-  template<class Executor, class Shape, class Sender,
-           CUSEND_REQUIRES(has_bulk_schedule_member_function<Executor&&,Shape&&,Sender&&>::value)
+  template<class Scheduler, class Shape, class Sender,
+           CUSEND_REQUIRES(has_bulk_schedule_member_function<Scheduler&&,Shape&&,Sender&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr bulk_schedule_member_function_t<Executor&&,Shape&&,Sender&&>
-    operator()(Executor&& executor, Shape&& shape, Sender&& sender) const
+  constexpr bulk_schedule_member_function_t<Scheduler&&,Shape&&,Sender&&>
+    operator()(Scheduler&& scheduler, Shape&& shape, Sender&& sender) const
   {
-    return std::forward<Executor>(executor).bulk_schedule(std::forward<Shape>(shape), std::forward<Sender>(sender));
+    return std::forward<Scheduler>(scheduler).bulk_schedule(std::forward<Shape>(shape), std::forward<Sender>(sender));
   }
 
 
   CUSEND_EXEC_CHECK_DISABLE
-  template<class Executor, class Shape, class Sender,
-           CUSEND_REQUIRES(!has_bulk_schedule_member_function<Executor&&,Shape&&,Sender&&>::value),
-           CUSEND_REQUIRES(has_bulk_schedule_free_function<Executor&&,Shape&&,Sender&&>::value)
+  template<class Scheduler, class Shape, class Sender,
+           CUSEND_REQUIRES(!has_bulk_schedule_member_function<Scheduler&&,Shape&&,Sender&&>::value),
+           CUSEND_REQUIRES(has_bulk_schedule_free_function<Scheduler&&,Shape&&,Sender&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr bulk_schedule_free_function_t<Executor&&,Shape&&,Sender&&>
-    operator()(Executor&& executor, Shape&& shape, Sender&& sender) const
+  constexpr bulk_schedule_free_function_t<Scheduler&&,Shape&&,Sender&&>
+    operator()(Scheduler&& scheduler, Shape&& shape, Sender&& sender) const
   {
-    return bulk_schedule(std::forward<Executor>(executor), std::forward<Shape>(shape), std::forward<Sender>(sender));
+    return bulk_schedule(std::forward<Scheduler>(scheduler), std::forward<Shape>(shape), std::forward<Sender>(sender));
   }
 
 
   CUSEND_EXEC_CHECK_DISABLE
-  template<class Executor, class Shape, class Sender,
-           CUSEND_REQUIRES(!has_bulk_schedule_member_function<Executor&&,Shape&&,Sender&&>::value),
-           CUSEND_REQUIRES(!has_bulk_schedule_free_function<Executor&&,Shape&&,Sender&&>::value),
-           CUSEND_REQUIRES(is_detected<bulk_schedule_with_stream_executor_t,Executor&&,Shape&&,Sender&&>::value)
-          >
-  constexpr bulk_schedule_with_stream_executor_t<Executor&&,Shape&&,Sender&&>
-    operator()(Executor&& executor, Shape&& shape, Sender&& sender) const
-  {
-    return detail::bulk_schedule_with_stream_executor(std::forward<Executor>(executor), std::forward<Shape>(shape), std::forward<Sender>(sender));
-  }
-
-
-  CUSEND_EXEC_CHECK_DISABLE
-  template<class Executor, class Shape, class Sender,
-           CUSEND_REQUIRES(!has_bulk_schedule_member_function<Executor&&,Shape&&,Sender&&>::value),
-           CUSEND_REQUIRES(!has_bulk_schedule_free_function<Executor&&,Shape&&,Sender&&>::value),
-           CUSEND_REQUIRES(!is_detected<bulk_schedule_with_stream_executor_t,Executor&&,Shape&&,Sender&&>::value),
-           CUSEND_REQUIRES(is_detected<default_bulk_schedule_t,Executor&&,Shape&&,Sender&&>::value)
+  template<class Scheduler, class Shape, class Sender,
+           CUSEND_REQUIRES(!has_bulk_schedule_member_function<Scheduler&&,Shape&&,Sender&&>::value),
+           CUSEND_REQUIRES(!has_bulk_schedule_free_function<Scheduler&&,Shape&&,Sender&&>::value),
+           CUSEND_REQUIRES(is_detected<default_bulk_schedule_t,Scheduler&&,Shape&&,Sender&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr default_bulk_schedule_t<Executor&&,Shape&&,Sender&&>
-    operator()(Executor&& executor, Shape&& shape, Sender&& sender) const
+  constexpr default_bulk_schedule_t<Scheduler&&,Shape&&,Sender&&>
+    operator()(Scheduler&& scheduler, Shape&& shape, Sender&& sender) const
   {
-    return detail::default_bulk_schedule(std::forward<Executor>(executor), std::forward<Shape>(shape), std::forward<Sender>(sender));
+    return detail::default_bulk_schedule(std::forward<Scheduler>(scheduler), std::forward<Shape>(shape), std::forward<Sender>(sender));
   }
 };
 
@@ -131,8 +116,8 @@ const __device__ detail::dispatch_bulk_schedule bulk_schedule;
 } // end anonymous namespace
 
 
-template<class Executor, class Shape, class Sender>
-using bulk_schedule_t = decltype(bulk_schedule(std::declval<Executor>(), std::declval<Shape>(), std::declval<Sender>()));
+template<class Scheduler, class Shape, class Sender>
+using bulk_schedule_t = decltype(bulk_schedule(std::declval<Scheduler>(), std::declval<Shape>(), std::declval<Sender>()));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

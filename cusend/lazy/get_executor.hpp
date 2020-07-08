@@ -32,6 +32,7 @@
 #include "../detail/static_const.hpp"
 #include "../detail/type_traits/is_detected.hpp"
 #include "../execution/executor/is_executor.hpp"
+#include "detail/default_get_executor.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -85,6 +86,22 @@ struct dispatch_get_executor
   {
     return get_executor(std::forward<T>(arg));
   }
+
+
+  // case 3: try the default implementation
+  CUSEND_EXEC_CHECK_DISABLE
+  template<class T,
+           CUSEND_REQUIRES(!has_executor_member_function<T&&>::value),
+           CUSEND_REQUIRES(!has_get_executor_free_function<T&&>::value),
+           CUSEND_REQUIRES(is_detected<default_get_executor_t,T&&>::value)
+          >
+  CUSEND_ANNOTATION
+  constexpr default_get_executor_t<T&&> operator()(T&& arg) const
+  {
+    return detail::default_get_executor(std::forward<T>(arg));
+  }
+
+
 };
 
 
