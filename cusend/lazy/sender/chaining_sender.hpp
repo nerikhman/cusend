@@ -30,12 +30,11 @@
 
 #include <type_traits>
 #include <utility>
-#include "../bulk_schedule.hpp"
 #include "../connect.hpp"
-#include "../connect.hpp"
-#include "../get_executor.hpp"
 #include "../on.hpp"
 #include "../pack.hpp"
+#include "../scheduler/bulk_schedule.hpp"
+#include "../scheduler/get_executor.hpp"
 #include "../submit.hpp"
 #include "../transform.hpp"
 #include "../unpack.hpp"
@@ -116,6 +115,7 @@ class chaining_sender
     ~chaining_sender() {}
 
 
+    // XXX this needs to take a scheduler instead of an executor
     template<class Executor,
              class Shape,
              CUSEND_REQUIRES(detail::is_detected<bulk_schedule_t, const Executor&, const Shape&, Sender&&>::value)

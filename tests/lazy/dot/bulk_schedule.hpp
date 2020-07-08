@@ -3,6 +3,7 @@
 #include <cusend/execution/executor/stream_executor.hpp>
 #include <cusend/lazy/dot/bulk_schedule.hpp>
 #include <cusend/lazy/dot/just.hpp>
+#include <cusend/lazy/scheduler/device_scheduler.hpp>
 
 
 namespace ns = cusend;
@@ -110,14 +111,14 @@ struct my_receiver
 };
 
 
-template<class Executor>
-void test(Executor ex)
+template<class Scheduler>
+void test(Scheduler scheduler)
 {
   {
     result0 = false;
     result1 = false;
 
-    ns::dot::just().bulk_schedule(ex, 2).submit(my_receiver{13,7});
+    ns::dot::just().bulk_schedule(scheduler, 2).submit(my_receiver{13,7});
 
     cudaStreamSynchronize(0);
     assert(result0);
@@ -128,7 +129,7 @@ void test(Executor ex)
     result0 = false;
     result1 = false;
 
-    ns::dot::just(13).bulk_schedule(ex, 2).submit(my_receiver{13,7});
+    ns::dot::just(13).bulk_schedule(scheduler, 2).submit(my_receiver{13,7});
 
     cudaStreamSynchronize(0);
     assert(result0);
@@ -139,7 +140,7 @@ void test(Executor ex)
     result0 = false;
     result1 = false;
 
-    ns::dot::just(13,7).bulk_schedule(ex, 2).submit(my_receiver{13,7});
+    ns::dot::just(13,7).bulk_schedule(scheduler, 2).submit(my_receiver{13,7});
 
     cudaStreamSynchronize(0);
     assert(result0);
@@ -152,9 +153,9 @@ void test_bulk_schedule()
 {
 #ifdef __CUDACC__
   // stream_executor requires CUDA C++
-  test(ns::execution::stream_executor{});
+  test(ns::device_scheduler<ns::execution::stream_executor>());
 #endif
 
-  test(ns::execution::inline_executor{});
+  test(ns::as_scheduler(ns::execution::inline_executor{}));
 }
 

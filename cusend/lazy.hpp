@@ -28,12 +28,9 @@
 
 #include "detail/prologue.hpp"
 
-#include "lazy/bulk_schedule.hpp"
 #include "lazy/connect.hpp"
 #include "lazy/dot.hpp"
-#include "lazy/get_executor.hpp"
 #include "lazy/invoke_on.hpp"
-#include "lazy/is_scheduler.hpp"
 #include "lazy/is_sender_to.hpp"
 #include "lazy/is_typed_sender_to.hpp"
 #include "lazy/just.hpp"
@@ -41,7 +38,7 @@
 #include "lazy/on.hpp"
 #include "lazy/pack.hpp"
 #include "lazy/receiver.hpp"
-#include "lazy/schedule.hpp"
+#include "lazy/scheduler.hpp"
 #include "lazy/sender.hpp"
 #include "lazy/start.hpp"
 #include "lazy/submit.hpp"

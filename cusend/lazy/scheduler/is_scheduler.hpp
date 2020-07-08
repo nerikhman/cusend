@@ -26,29 +26,29 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <type_traits>
-#include "../detail/is_stream_executor.hpp"
-#include "../detail/type_traits/conjunction.hpp"
-#include "../detail/type_traits/is_detected.hpp"
-#include "get_executor.hpp"
-#include "is_scheduler.hpp"
+#include "../../detail/type_traits/conjunction.hpp"
+#include "../../detail/type_traits/is_detected.hpp"
+#include "../../detail/type_traits/is_equality_comparable.hpp"
+#include "schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-template<class T>
-using is_device_scheduler = detail::conjunction<
-  is_scheduler<T>,
-  detail::is_detected_and<detail::is_stream_executor, get_executor_t, T>
+template<class S>
+using is_scheduler = detail::conjunction<
+  std::is_nothrow_copy_constructible<detail::remove_cvref_t<S>>,
+  std::is_nothrow_destructible<detail::remove_cvref_t<S>>,
+  detail::is_equality_comparable<detail::remove_cvref_t<S>>,
+  detail::is_detected<schedule_t, S>
 >;
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../detail/epilogue.hpp"
-
+#include "../../detail/epilogue.hpp"
 

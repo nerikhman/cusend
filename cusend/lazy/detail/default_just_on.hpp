@@ -34,12 +34,12 @@
 #include "../../detail/type_traits/remove_cvref.hpp"
 #include "../../detail/utility/index_sequence.hpp"
 #include "../connect.hpp"
-#include "../is_scheduler.hpp"
-#include "../schedule.hpp"
 #include "../receiver/is_receiver_of.hpp"
 #include "../receiver/set_done.hpp"
 #include "../receiver/set_error.hpp"
 #include "../receiver/set_value.hpp"
+#include "../scheduler/is_scheduler.hpp"
+#include "../scheduler/schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

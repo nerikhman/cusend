@@ -1,6 +1,6 @@
 #include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/lazy/just.hpp>
-#include <cusend/lazy/is_scheduler.hpp>
+#include <cusend/lazy/scheduler/is_scheduler.hpp>
 
 
 namespace ns = cusend;

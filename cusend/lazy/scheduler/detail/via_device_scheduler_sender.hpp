@@ -26,20 +26,20 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <type_traits>
-#include "../../detail/type_traits/remove_cvref.hpp"
-#include "../../future/future.hpp"
-#include "../../future/host_promise.hpp"
+#include "../../../detail/type_traits/remove_cvref.hpp"
+#include "../../../future/future.hpp"
+#include "../../../future/host_promise.hpp"
+#include "../../pack.hpp"
+#include "../../receiver/is_receiver_of.hpp"
+#include "../../sender/sender_traits.hpp"
+#include "../../start.hpp"
+#include "../../unpack.hpp"
 #include "../get_executor.hpp"
 #include "../is_device_scheduler.hpp"
-#include "../pack.hpp"
-#include "../receiver/is_receiver_of.hpp"
-#include "../sender/sender_traits.hpp"
-#include "../start.hpp"
-#include "../unpack.hpp"
-#include "detail/variant.hpp"
+#include "variant.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -163,5 +163,5 @@ class via_device_scheduler_sender
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

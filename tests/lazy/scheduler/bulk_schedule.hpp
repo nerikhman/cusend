@@ -1,10 +1,10 @@
 #include <cassert>
 #include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/execution/executor/stream_executor.hpp>
-#include <cusend/lazy/as_scheduler.hpp>
-#include <cusend/lazy/bulk_schedule.hpp>
-#include <cusend/lazy/device_scheduler.hpp>
 #include <cusend/lazy/just.hpp>
+#include <cusend/lazy/scheduler/as_scheduler.hpp>
+#include <cusend/lazy/scheduler/bulk_schedule.hpp>
+#include <cusend/lazy/scheduler/device_scheduler.hpp>
 #include <cusend/lazy/submit.hpp>
 
 

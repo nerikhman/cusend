@@ -26,11 +26,11 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <utility>
 // XXX this trait ought to be named is_device_executor, and cudex ought to provide it
-#include "../detail/is_stream_executor.hpp"
+#include "../../detail/is_stream_executor.hpp"
 #include "detail/uncancelable_sender.hpp"
 #include "detail/via_device_scheduler_sender.hpp"
 #include "detail/bulk_schedule_on_device.hpp"
@@ -132,5 +132,5 @@ device_scheduler<DeviceExecutor> as_scheduler(const DeviceExecutor& executor)
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

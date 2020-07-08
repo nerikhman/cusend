@@ -2,7 +2,7 @@
 #include <cstring>
 #include <cusend/execution/executor/inline_executor.hpp>
 #include <cusend/lazy/dot/schedule.hpp>
-#include <cusend/lazy/get_executor.hpp>
+#include <cusend/lazy/scheduler/get_executor.hpp>
 #include <cusend/lazy/sender/is_sender.hpp>
 #include <cusend/lazy/submit.hpp>
 

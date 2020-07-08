@@ -1,9 +1,8 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/execution/executor/inline_executor.hpp>
-#include <cusend/lazy/as_scheduler.hpp>
-#include <cusend/lazy/get_executor.hpp>
-#include <cusend/lazy/is_scheduler.hpp>
+#include <cusend/lazy/scheduler/get_executor.hpp>
+#include <cusend/lazy/scheduler/schedule.hpp>
 #include <cusend/lazy/sender/is_sender.hpp>
 #include <cusend/lazy/submit.hpp>
 
@@ -42,10 +41,8 @@ struct my_receiver
 __host__ __device__
 void test()
 {
-  auto scheduler = ns::as_scheduler(ns::execution::inline_executor{});
-  static_assert(ns::is_scheduler<decltype(scheduler)>::value, "Error.");
+  auto sender = ns::schedule(ns::execution::inline_executor{});
 
-  auto sender = ns::schedule(scheduler);
   static_assert(ns::is_sender<decltype(sender)>::value, "Error.");
 
   assert(ns::execution::inline_executor{} == ns::get_executor(sender));
@@ -96,7 +93,7 @@ void device_invoke(F f)
 }
 
 
-void test_as_scheduler()
+void test_schedule()
 {
   test();
 

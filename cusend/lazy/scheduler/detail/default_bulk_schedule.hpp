@@ -26,16 +26,16 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <type_traits>
 #include <utility>
-#include "../../detail/type_traits/remove_cvref.hpp"
-#include "../connect.hpp"
+#include "../../../detail/type_traits/remove_cvref.hpp"
+#include "../../connect.hpp"
+#include "../../sender/is_typed_sender.hpp"
 #include "../get_executor.hpp"
 #include "../is_scheduler.hpp"
-#include "../sender/is_typed_sender.hpp"
-#include "detail/fan_out_receiver.hpp"
+#include "fan_out_receiver.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -137,5 +137,5 @@ using default_bulk_schedule_t = decltype(detail::default_bulk_schedule(std::decl
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

@@ -26,13 +26,13 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <utility>
-#include "../../execution/executor/is_executor.hpp"
+#include "../../../execution/executor/is_executor.hpp"
+#include "../../detail/invocable_as_receiver.hpp"
+#include "../../submit.hpp"
 #include "../is_scheduler.hpp"
-#include "../submit.hpp"
-#include "invocable_as_receiver.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -118,5 +118,5 @@ using default_get_executor_t = decltype(detail::default_get_executor(std::declva
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

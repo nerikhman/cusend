@@ -1,6 +1,6 @@
 #include <cassert>
 #include <cusend/execution/executor/inline_executor.hpp>
-#include <cusend/lazy/detail/detail/execute_operation.hpp>
+#include <cusend/lazy/scheduler/detail/execute_operation.hpp>
 
 #ifndef __host__
 #define __host__

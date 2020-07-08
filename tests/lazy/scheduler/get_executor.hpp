@@ -1,10 +1,12 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/execution/executor/inline_executor.hpp>
-#include <cusend/lazy/get_executor.hpp>
-#include <cusend/lazy/schedule.hpp>
-#include <cusend/lazy/sender/is_sender.hpp>
-#include <cusend/lazy/submit.hpp>
+#include <cusend/lazy/scheduler/get_executor.hpp>
+#include <exception>
+#include <utility>
+
+
+namespace ns = cusend;
 
 
 #ifndef __host__
@@ -15,41 +17,22 @@
 #endif
 
 
-
-namespace ns = cusend;
-
-
-struct my_receiver
+struct has_executor_member_function
 {
-  bool& received;
-
   __host__ __device__
-  void set_value() &&
+  ns::execution::inline_executor executor() const
   {
-    received = true;
+    return {};
   }
-
-  template<class E>
-  __host__ __device__
-  void set_error(E&&) && noexcept {}
-
-  __host__ __device__
-  void set_done() && noexcept {}
 };
 
 
+struct has_get_executor_free_function {};
+
 __host__ __device__
-void test()
+ns::execution::inline_executor get_executor(has_get_executor_free_function)
 {
-  auto sender = ns::schedule(ns::execution::inline_executor{});
-
-  static_assert(ns::is_sender<decltype(sender)>::value, "Error.");
-
-  assert(ns::execution::inline_executor{} == ns::get_executor(sender));
-
-  bool result = false;
-  ns::submit(std::move(sender), my_receiver{result});
-  assert(result);
+  return {};
 }
 
 
@@ -93,16 +76,38 @@ void device_invoke(F f)
 }
 
 
-void test_schedule()
+template<class T>
+__host__ __device__
+void test(T&& arg)
 {
-  test();
+  auto ex = ns::get_executor(std::forward<T>(arg));
+
+  // assert that the thing we got acts like an executor
+  int expected = 13;
+  int result = 0;
+
+  ex.execute([&]
+  {
+    result = expected;
+  });
+
+  assert(expected == result);
+}
+
+
+void test_get_executor()
+{
+  test(ns::execution::inline_executor{});
+  test(has_get_executor_free_function{});
+  test(has_executor_member_function{});
 
 #ifdef __CUDACC__
   device_invoke([] __device__ ()
   {
-    test();
+    test(ns::execution::inline_executor{});
+    test(has_get_executor_free_function{});
+    test(has_executor_member_function{});
   });
-  assert(cudaDeviceSynchronize() == cudaSuccess);
 #endif
 }
 

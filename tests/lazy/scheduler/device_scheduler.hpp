@@ -1,11 +1,11 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/execution/executor/stream_executor.hpp>
-#include <cusend/lazy/bulk_schedule.hpp>
-#include <cusend/lazy/device_scheduler.hpp>
-#include <cusend/lazy/get_executor.hpp>
-#include <cusend/lazy/is_device_scheduler.hpp>
-#include <cusend/lazy/schedule.hpp>
+#include <cusend/lazy/scheduler/bulk_schedule.hpp>
+#include <cusend/lazy/scheduler/device_scheduler.hpp>
+#include <cusend/lazy/scheduler/get_executor.hpp>
+#include <cusend/lazy/scheduler/is_device_scheduler.hpp>
+#include <cusend/lazy/scheduler/schedule.hpp>
 #include <cusend/lazy/sender/is_sender.hpp>
 #include <cusend/lazy/submit.hpp>
 #include <cusend/lazy/via.hpp>

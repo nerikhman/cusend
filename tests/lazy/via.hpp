@@ -1,12 +1,12 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/execution/executor/stream_executor.hpp>
-#include <cusend/lazy/as_scheduler.hpp>
-#include <cusend/lazy/device_scheduler.hpp>
 #include <cusend/lazy/just.hpp>
-#include <cusend/lazy/via.hpp>
-#include <cusend/lazy/schedule.hpp>
+#include <cusend/lazy/scheduler/as_scheduler.hpp>
+#include <cusend/lazy/scheduler/device_scheduler.hpp>
+#include <cusend/lazy/scheduler/schedule.hpp>
 #include <cusend/lazy/transform.hpp>
+#include <cusend/lazy/via.hpp>
 
 
 namespace ns = cusend;

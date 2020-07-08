@@ -34,7 +34,7 @@
 #include "../../execution/executor/inline_executor.hpp"
 #include "../../lazy/connect.hpp"
 #include "../../lazy/receiver/is_many_receiver_of.hpp"
-#include "../../lazy/schedule.hpp"
+#include "../../lazy/scheduler/schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

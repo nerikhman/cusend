@@ -26,22 +26,22 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <cstdint>
 #include <type_traits>
 #include <utility>
-#include "../../detail/is_stream_executor.hpp"
-#include "../../detail/type_traits/remove_cvref.hpp"
-#include "../../future/host_promise.hpp"
+#include "../../../detail/is_stream_executor.hpp"
+#include "../../../detail/type_traits/remove_cvref.hpp"
+#include "../../../future/host_promise.hpp"
+#include "../../pack.hpp"
+#include "../../sender/is_typed_sender.hpp"
+#include "../../sender/sender_traits.hpp"
+#include "../../start.hpp"
 #include "../get_executor.hpp"
 #include "../is_device_scheduler.hpp"
-#include "../pack.hpp"
-#include "../sender/is_typed_sender.hpp"
-#include "../sender/sender_traits.hpp"
-#include "../start.hpp"
-#include "detail/unpack_second_receiver.hpp"
-#include "detail/variant.hpp"
+#include "unpack_second_receiver.hpp"
+#include "variant.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -208,5 +208,5 @@ using bulk_schedule_on_device_t = decltype(detail::bulk_schedule_on_device(std::
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

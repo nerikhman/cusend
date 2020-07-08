@@ -26,13 +26,13 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <exception>
 #include <type_traits>
 #include <utility>
-#include "../../execution/executor/execute.hpp"
-#include "receiver_as_trivially_copyable_invocable.hpp"
+#include "../../../execution/executor/execute.hpp"
+#include "../../detail/receiver_as_trivially_copyable_invocable.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -142,5 +142,5 @@ class uncancelable_sender
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

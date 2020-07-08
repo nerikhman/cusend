@@ -1,7 +1,7 @@
 #include <cassert>
-#include <cusend/lazy/detail/bulk_schedule_on_device.hpp>
-#include <cusend/lazy/device_scheduler.hpp>
 #include <cusend/lazy/just.hpp>
+#include <cusend/lazy/scheduler/detail/bulk_schedule_on_device.hpp>
+#include <cusend/lazy/scheduler/device_scheduler.hpp>
 #include <cusend/lazy/submit.hpp>
 
 

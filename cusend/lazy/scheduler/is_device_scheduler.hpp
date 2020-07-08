@@ -28,68 +28,22 @@
 
 #include "../../detail/prologue.hpp"
 
-#include <exception>
 #include <type_traits>
-#include <utility>
-#include "../receiver/is_receiver.hpp"
-#include "../receiver/is_receiver_of.hpp"
-#include "../receiver/set_error.hpp"
-#include "../receiver/set_value.hpp"
+#include "../../detail/is_stream_executor.hpp"
+#include "../../detail/type_traits/conjunction.hpp"
+#include "../../detail/type_traits/is_detected.hpp"
+#include "get_executor.hpp"
+#include "is_scheduler.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-namespace detail
-{
-
-
-template<class R>
-struct receiver_as_trivially_copyable_invocable
-{
-  R r_;
-
-#if CUSEND_HAS_EXCEPTIONS
-    template<class... Args,
-             CUSEND_REQUIRES(is_receiver_of<R, Args&&...>::value)
-            >
-    CUSEND_ANNOTATION
-    void operator()(Args&&... args)
-    {
-      try
-      {
-        set_value(std::move(r_), std::forward<Args>(args)...);
-      }
-      catch(...)
-      {
-        set_error(std::move(r_), std::current_exception());
-      }
-    }
-#else
-    template<class... Args,
-             CUSEND_REQUIRES(is_receiver_of<R, Args&&...>::value)
-            >
-    CUSEND_ANNOTATION
-    void operator()(Args&&... args)
-    {
-      set_value(std::move(r_), std::forward<Args>(args)...);
-    }
-#endif
-};
-
-
-template<class Receiver,
-         CUSEND_REQUIRES(std::is_trivially_copyable<Receiver>::value),
-         CUSEND_REQUIRES(is_receiver<Receiver>::value)
-        >
-CUSEND_ANNOTATION
-receiver_as_trivially_copyable_invocable<Receiver> as_trivially_copyable_invocable(Receiver receiver)
-{
-  return {std::forward<Receiver>(receiver)};
-}
-
-
-} // end detail
+template<class T>
+using is_device_scheduler = detail::conjunction<
+  is_scheduler<T>,
+  detail::is_detected_and<detail::is_stream_executor, get_executor_t, T>
+>;
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE

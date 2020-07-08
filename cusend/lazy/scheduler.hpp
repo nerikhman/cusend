@@ -26,44 +26,14 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-#include <utility>
-#include "../../execution/executor/is_executor.hpp"
-#include "../as_scheduler.hpp"
+#include "scheduler/as_scheduler.hpp"
+#include "scheduler/bulk_schedule.hpp"
+#include "scheduler/device_scheduler.hpp"
+#include "scheduler/is_device_scheduler.hpp"
+#include "scheduler/is_scheduler.hpp"
+#include "scheduler/schedule.hpp"
 
-
-CUSEND_NAMESPACE_OPEN_BRACE
-
-
-namespace detail
-{
-
-
-template<class Executor,
-         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
-        >
-CUSEND_ANNOTATION
-auto default_schedule(const Executor& ex)
-  -> decltype(as_scheduler(ex).schedule())
-{
-  // XXX ideally, we'd call CUSEND_NAMESPACE::schedule(ex) instead
-  //     of using the member function .schedule()
-  //     unfortunately, doing so would create a circular dependency
-  //     between CUSEND_NAMESPACE::schedule and default_schedule
-  return as_scheduler(ex).schedule();
-}
-
-
-template<class E>
-using default_schedule_t = decltype(detail::default_schedule(std::declval<E>()));
-
-
-} // end detail
-
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-
-#include "../../detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 

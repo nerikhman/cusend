@@ -30,7 +30,7 @@
 
 #include <utility>
 #include "../../detail/type_traits/is_invocable.hpp"
-#include "../is_scheduler.hpp"
+#include "../scheduler/is_scheduler.hpp"
 #include "../just_on.hpp"
 #include "../transform.hpp"
 

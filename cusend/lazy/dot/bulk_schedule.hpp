@@ -30,8 +30,8 @@
 
 #include <utility>
 #include "../../detail/type_traits/is_detected.hpp"
+#include "../scheduler/bulk_schedule.hpp"
 #include "../sender/chaining_sender.hpp"
-#include "../bulk_schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

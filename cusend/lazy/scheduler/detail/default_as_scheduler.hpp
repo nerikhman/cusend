@@ -26,29 +26,89 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
-#include <type_traits>
-#include "../detail/type_traits/conjunction.hpp"
-#include "../detail/type_traits/is_detected.hpp"
-#include "../detail/type_traits/is_equality_comparable.hpp"
-#include "schedule.hpp"
+#include <utility>
+#include "../../../execution/executor/is_executor.hpp"
+#include "executor_as_sender.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-template<class S>
-using is_scheduler = detail::conjunction<
-  std::is_nothrow_copy_constructible<detail::remove_cvref_t<S>>,
-  std::is_nothrow_destructible<detail::remove_cvref_t<S>>,
-  detail::is_equality_comparable<detail::remove_cvref_t<S>>,
-  detail::is_detected<schedule_t, S>
->;
+namespace detail
+{
+
+
+template<class Executor>
+class executor_as_scheduler
+{
+  public:
+    CUSEND_EXEC_CHECK_DISABLE
+    CUSEND_ANNOTATION
+    executor_as_scheduler(const Executor& executor)
+      : executor_{executor}
+    {}
+
+
+    CUSEND_EXEC_CHECK_DISABLE
+    executor_as_scheduler(const executor_as_scheduler&) = default;
+
+
+    CUSEND_ANNOTATION
+    const Executor& executor() const
+    {
+      return executor_;
+    }
+
+
+    CUSEND_ANNOTATION
+    executor_as_sender<Executor> schedule() const
+    {
+      return {executor()};
+    }
+
+
+  private:
+    CUSEND_EXEC_CHECK_DISABLE
+    CUSEND_ANNOTATION
+    friend bool operator==(const executor_as_scheduler& lhs, const executor_as_scheduler& rhs)
+    {
+      return lhs.executor_ == rhs.executor_;
+    }
+
+
+    CUSEND_EXEC_CHECK_DISABLE
+    CUSEND_ANNOTATION
+    friend bool operator!=(const executor_as_scheduler& lhs, const executor_as_scheduler& rhs)
+    {
+      return lhs.executor_ != rhs.executor_;
+    }
+
+
+    Executor executor_;
+};
+
+
+template<class Executor,
+         CUSEND_REQUIRES(execution::is_executor<Executor>::value)
+        >
+CUSEND_ANNOTATION
+executor_as_scheduler<Executor> default_as_scheduler(const Executor& ex)
+{
+  return {ex};
+}
+
+
+template<class E>
+using default_as_scheduler_t = decltype(detail::default_as_scheduler(std::declval<E>()));
+
+
+} // end detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 
