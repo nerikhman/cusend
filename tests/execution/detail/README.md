@@ -1,24 +1,14 @@
-This directory contains unit tests exercising functionality defined beneath the `cusend/execution` directory.
+This directory contains unit tests exercising implementation details defined beneath the `cudex/detail` directory.
+
+These tests are intended to test implementation details complex and encapsulated enough to be validated independently of public functionality.
 
 For example, To build and execute a single test program named `foo`:
 
     $ make test.foo
 
-To build and execute all test programs in the current directory:
+To build and execute all test programs:
 
     $ make test
-
-To build and execute all test programs in a subdirectory named `subdirectory/` (note the trailing slash):
-
-    $ make subdirectory/
-
-To build and execute all test programs in all subdirectories rooted in the current directory:
-
-    $ make all
-
-Protip: to get color-coded build output, pipe to `ccze`:
-
-    $ make all | ccze -A
 
 # Details
 
@@ -39,10 +29,4 @@ For example, a unit test named `foo.cpp` should look like:
     }
 
 The `Makefile` automates this. To create a new unit test for `foo`, create a header file named `foo.hpp` and define a function named `test_foo`. The `Makefile` will take care of the rest.
-
-# Style Guide
-
-To the degree possible, these unit test programs should be self-contained. This makes it easy to isolate test failures and produce minimal reproducer programs for bug reports.
-
-The tradeoff is that common constructs these programs use are repeated.
 
