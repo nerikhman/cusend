@@ -1,6 +1,6 @@
 This directory contains the default implementations of customizable sender combinators such as `transform` and others.
 
-For every combinator `foo`, there is a headers `default_foo.hpp`.
+For every combinator `foo`, there is a header `default_foo.hpp`.
 
 `default_foo.hpp` contains a function named `detail::default_foo` and a type trait `detail::default_foo_t` - the type of `default_foo(arg, args...)` result.
 
