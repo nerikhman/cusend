@@ -29,8 +29,7 @@
 #include "../../detail/prologue.hpp"
 
 #include <utility>
-// XXX this trait ought to be named is_device_executor, and cudex ought to provide it
-#include "../../detail/is_stream_executor.hpp"
+#include "../../execution/executor/is_device_executor.hpp"
 #include "../sender/is_typed_sender.hpp"
 #include "detail/bulk_schedule_on_device.hpp"
 #include "detail/schedule_on_device.hpp"
@@ -47,7 +46,7 @@ template<class DeviceExecutor>
 class device_scheduler
 {
   public:
-    static_assert(detail::is_stream_executor<DeviceExecutor>::value, "DeviceExecutor must be a stream executor.");
+    static_assert(execution::is_device_executor<DeviceExecutor>::value, "DeviceExecutor must be a device executor.");
 
 
     explicit device_scheduler(const DeviceExecutor& executor)
@@ -111,7 +110,7 @@ class device_scheduler
 
 
 template<class DeviceExecutor,
-         CUSEND_REQUIRES(detail::is_stream_executor<DeviceExecutor>::value)
+         CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
         >
 device_scheduler<DeviceExecutor> make_device_scheduler(const DeviceExecutor& executor)
 {
@@ -125,7 +124,7 @@ namespace execution
 
 // provide a specialization of as_scheduler for device executors in namespace execution
 template<class DeviceExecutor,
-         CUSEND_REQUIRES(CUSEND_NAMESPACE::detail::is_stream_executor<DeviceExecutor>::value)
+         CUSEND_REQUIRES(is_device_executor<DeviceExecutor>::value)
         >
 device_scheduler<DeviceExecutor> as_scheduler(const DeviceExecutor& executor)
 {

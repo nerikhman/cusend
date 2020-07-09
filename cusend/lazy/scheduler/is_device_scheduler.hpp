@@ -29,9 +29,9 @@
 #include "../../detail/prologue.hpp"
 
 #include <type_traits>
-#include "../../detail/is_stream_executor.hpp"
 #include "../../detail/type_traits/conjunction.hpp"
 #include "../../detail/type_traits/is_detected.hpp"
+#include "../../execution/executor/is_device_executor.hpp"
 #include "get_executor.hpp"
 #include "is_scheduler.hpp"
 
@@ -42,7 +42,7 @@ CUSEND_NAMESPACE_OPEN_BRACE
 template<class T>
 using is_device_scheduler = detail::conjunction<
   is_scheduler<T>,
-  detail::is_detected_and<detail::is_stream_executor, get_executor_t, T>
+  detail::is_detected_and<execution::is_device_executor, get_executor_t, T>
 >;
 
 

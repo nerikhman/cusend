@@ -32,6 +32,7 @@
 #include <type_traits>
 #include <utility>
 #include "../../execution/executor/inline_executor.hpp"
+#include "../../execution/executor/is_device_executor.hpp"
 #include "../../lazy/connect.hpp"
 #include "../../lazy/receiver/is_many_receiver_of.hpp"
 #include "../../lazy/scheduler/schedule.hpp"
@@ -44,17 +45,17 @@ namespace detail
 {
 
 
-template<class Future, class StreamExecutor, class ManyReceiver>
+template<class Future, class DeviceExecutor, class ManyReceiver>
 class bulk_future_receiver
 {
   private:
     Future future_;
-    StreamExecutor executor_;
+    DeviceExecutor executor_;
     std::size_t shape_;
     ManyReceiver receiver_;
 
   public:
-    bulk_future_receiver(Future&& future, const StreamExecutor& executor, std::size_t shape, ManyReceiver receiver)
+    bulk_future_receiver(Future&& future, const DeviceExecutor& executor, std::size_t shape, ManyReceiver receiver)
       : future_{std::move(future)},
         executor_{executor},
         shape_{shape},
@@ -90,18 +91,18 @@ class bulk_future_receiver
 };
 
 
-template<class Future, class StreamExecutor>
+template<class Future, class DeviceExecutor>
 class bulk_future
 {
   private:
     Future future_;
-    StreamExecutor executor_;
+    DeviceExecutor executor_;
     std::size_t shape_;
 
     using value_type = decltype(std::declval<Future>().get());
 
   public:
-    bulk_future(Future&& future, const StreamExecutor& executor, std::size_t shape)
+    bulk_future(Future&& future, const DeviceExecutor& executor, std::size_t shape)
       : future_{std::move(future)},
         executor_{executor},
         shape_{shape}
@@ -121,7 +122,7 @@ class bulk_future
     auto connect(ManyReceiver receiver) &&
     {
       // wrap everything together into a bulk_future_receiver
-      bulk_future_receiver<Future,StreamExecutor,ManyReceiver> wrapped_r{std::move(future_), executor_, shape_, receiver};
+      bulk_future_receiver<Future,DeviceExecutor,ManyReceiver> wrapped_r{std::move(future_), executor_, shape_, receiver};
 
       return CUSEND_NAMESPACE::connect(schedule(execution::inline_executor{}), std::move(wrapped_r));
     }
@@ -137,15 +138,15 @@ class bulk_future
     auto connect(ManyReceiver receiver) &&
     {
       // wrap everything together into a bulk_future_receiver
-      bulk_future_receiver<Future,StreamExecutor,ManyReceiver> wrapped_r{std::move(future_), executor_, shape_, receiver};
+      bulk_future_receiver<Future,DeviceExecutor,ManyReceiver> wrapped_r{std::move(future_), executor_, shape_, receiver};
 
       return CUSEND_NAMESPACE::connect(schedule(execution::inline_executor{}), std::move(wrapped_r));
     }
 
-    template<class OtherStreamExecutor,
-             CUSEND_REQUIRES(is_stream_executor<OtherStreamExecutor>::value)
+    template<class OtherDeviceExecutor,
+             CUSEND_REQUIRES(execution::is_device_executor<OtherDeviceExecutor>::value)
             >
-    bulk_future<Future,OtherStreamExecutor> via(const OtherStreamExecutor& ex) &&
+    bulk_future<Future,OtherDeviceExecutor> via(const OtherDeviceExecutor& ex) &&
     {
       return {std::move(future_), ex, shape_};
     }

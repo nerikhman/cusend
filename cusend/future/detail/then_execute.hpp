@@ -31,10 +31,10 @@
 #include <exception>
 #include <future>
 #include <type_traits>
-#include "../../detail/is_stream_executor.hpp"
 #include "../../detail/type_traits/is_invocable.hpp"
 #include "../../execution/executor/callback_executor.hpp"
 #include "../../execution/executor/execute.hpp"
+#include "../../execution/executor/is_device_executor.hpp"
 #include "../../lazy/detail/receiver_as_trivially_copyable_invocable.hpp"
 #include "../../lazy/receiver/is_receiver_of.hpp"
 #include "../../lazy/receiver/set_error.hpp"
@@ -83,14 +83,14 @@ detail::event then_execute(const execution::callback_executor& ex, std::future<v
 }
 
 
-template<class StreamExecutor,
+template<class DeviceExecutor,
          class Receiver,
-         CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+         CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
          CUSEND_REQUIRES(is_receiver_of<Receiver,void>::value),
          CUSEND_REQUIRES(std::is_trivially_copyable<Receiver>::value)
         >
 CUSEND_ANNOTATION
-event then_execute(const StreamExecutor& ex, event&& e, Receiver receiver)
+event then_execute(const DeviceExecutor& ex, event&& e, Receiver receiver)
 {
   // get ex's stream
   cudaStream_t stream = detail::stream_of(ex);

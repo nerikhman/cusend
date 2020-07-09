@@ -29,8 +29,8 @@
 #include "../detail/prologue.hpp"
 
 #include <utility>
-#include "../detail/is_stream_executor.hpp"
 #include "../execution/executor/callback_executor.hpp"
+#include "../execution/executor/is_device_executor.hpp"
 #include "detail/host_future.hpp"
 #include "detail/stream_of.hpp"
 
@@ -91,22 +91,22 @@ class host_promise
 
 
     // this is an alias for the type of future returned by get_future
-    template<class StreamExecutor>
-    using future_type = detail::host_future<T,StreamExecutor>;
+    template<class DeviceExecutor>
+    using future_type = detail::host_future<T,DeviceExecutor>;
 
 
-    template<class StreamExecutor,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+    template<class DeviceExecutor,
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
             >
-    detail::host_future<T,StreamExecutor> get_future(const StreamExecutor& executor, const execution::callback_executor& waiting_executor)
+    detail::host_future<T,DeviceExecutor> get_future(const DeviceExecutor& executor, const execution::callback_executor& waiting_executor)
     {
       return detail::make_unready_host_future(executor, waiting_executor, promise_.get_future());
     }
 
-    template<class StreamExecutor,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+    template<class DeviceExecutor,
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
             >
-    detail::host_future<T,StreamExecutor> get_future(const StreamExecutor& executor)
+    detail::host_future<T,DeviceExecutor> get_future(const DeviceExecutor& executor)
     {
       return this->get_future(executor, execution::callback_executor{detail::stream_of(executor)});
     }

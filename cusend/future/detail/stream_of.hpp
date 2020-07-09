@@ -28,7 +28,7 @@
 
 #include "../../detail/prologue.hpp"
 
-#include "../../detail/is_stream_executor.hpp"
+#include "../../execution/executor/is_device_executor.hpp"
 #include "../../execution/property/stream.hpp"
 #include "../../property/query.hpp"
 
@@ -40,11 +40,11 @@ namespace detail
 {
 
 
-template<class StreamExecutor,
-         CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value)
+template<class DeviceExecutor,
+         CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
         >
 CUSEND_ANNOTATION
-cudaStream_t stream_of(const StreamExecutor& ex)
+cudaStream_t stream_of(const DeviceExecutor& ex)
 {
   return CUSEND_NAMESPACE::query(ex, execution::stream);
 }

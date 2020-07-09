@@ -31,8 +31,8 @@
 #include <exception>
 #include <type_traits>
 #include <utility>
-#include "../../../detail/is_stream_executor.hpp"
 #include "../../../execution/executor/execute.hpp"
+#include "../../../execution/executor/is_device_executor.hpp"
 #include "../../detail/receiver_as_trivially_copyable_invocable.hpp"
 #include "../get_executor.hpp"
 #include "../is_device_scheduler.hpp"
@@ -144,7 +144,7 @@ class schedule_on_device_sender
 
 
     template<class DeviceExecutor,
-             CUSEND_REQUIRES(is_stream_executor<DeviceExecutor>::value)
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
             >
     schedule_on_device_sender<as_scheduler_t<DeviceExecutor>>
       on(const DeviceExecutor& executor) const

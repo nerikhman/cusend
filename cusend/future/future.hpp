@@ -31,11 +31,11 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
-#include "../detail/is_stream_executor.hpp"
 #include "../detail/type_traits/invoke_result.hpp"
 #include "../detail/type_traits/is_invocable.hpp"
 #include "../detail/type_traits/remove_cvref.hpp"
 #include "../execution/executor/stream_executor.hpp"
+#include "../execution/executor/is_device_executor.hpp"
 #include "../lazy/detail/invocable_as_receiver.hpp"
 #include "../lazy/receiver/is_receiver_of.hpp"
 #include "../memory/unique_ptr.hpp"
@@ -130,13 +130,13 @@ class future_base
     // this version of then returns our event via a move
     // the returned event corresponds to the completion
     // of set_value called on the given receiver
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
              CUSEND_REQUIRES(is_receiver_of<R,void>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value)
             >
     CUSEND_ANNOTATION
-    detail::event then_set_value_and_move_event(const StreamExecutor& ex, R receiver) &&
+    detail::event then_set_value_and_move_event(const DeviceExecutor& ex, R receiver) &&
     {
       // invalidate ourself
       invalidate();
@@ -149,13 +149,13 @@ class future_base
     // this version of then returns a copy of our event
     // the returned event corresponds to the completion
     // of set_value called on the given receiver
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
              CUSEND_REQUIRES(is_receiver_of<R,void>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value)
             >
     CUSEND_ANNOTATION
-    detail::event then_set_value_and_copy_event(const StreamExecutor& ex, R r) &
+    detail::event then_set_value_and_copy_event(const DeviceExecutor& ex, R r) &
     {
       // execute the receiver on ex
       event_ = std::move(*this).then_set_value_and_move_event(ex, r);
@@ -165,13 +165,13 @@ class future_base
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
              CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value)
             >
     CUSEND_ANNOTATION
-    detail::event bulk_then_set_value_and_move_event(const StreamExecutor& ex, R receiver, std::size_t shape) &&
+    detail::event bulk_then_set_value_and_move_event(const DeviceExecutor& ex, R receiver, std::size_t shape) &&
     {
       // invalidate ourself
       invalidate();
@@ -206,14 +206,14 @@ namespace detail
 {
 
 
-template<class StreamExecutor>
+template<class DeviceExecutor>
 CUSEND_ANNOTATION
-future<void, StreamExecutor> make_unready_future(const StreamExecutor& ex, event&& e);
+future<void, DeviceExecutor> make_unready_future(const DeviceExecutor& ex, event&& e);
 
 
-template<class T, class StreamExecutor>
+template<class T, class DeviceExecutor>
 CUSEND_ANNOTATION
-future<T,StreamExecutor> make_unready_future(const StreamExecutor& ex, event&& e, memory::unique_ptr<T>&& value);
+future<T,DeviceExecutor> make_unready_future(const DeviceExecutor& ex, event&& e, memory::unique_ptr<T>&& value);
 
 
 } // end detail
@@ -270,16 +270,16 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
              class Result = set_value_t<R,T&&>,
              CUSEND_REQUIRES(std::is_void<Result>::value)
             >
     CUSEND_ANNOTATION
-    CUSEND_NAMESPACE::future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    CUSEND_NAMESPACE::future<void,DeviceExecutor> then(const DeviceExecutor& ex, R receiver) &&
     {
       // close over receiver and our state
       auto wrapped_receiver = detail::make_receive_indirectly(receiver, value_.get());
@@ -290,9 +290,9 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
              class Result = set_value_t<R,T&&>,
@@ -300,7 +300,7 @@ class future : private detail::future_base<Executor>
              CUSEND_REQUIRES(std::is_same<Result,T>::value)
             >
     CUSEND_ANNOTATION
-    future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    future<Result,DeviceExecutor> then(const DeviceExecutor& ex, R receiver) &&
     {
       // close over receiver and our state
       auto wrapped_receiver = detail::make_receive_indirectly_inplace(receiver, value_.get());
@@ -311,9 +311,9 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,T&&>::value),
              class Result = set_value_t<R,T&&>,
@@ -321,7 +321,7 @@ class future : private detail::future_base<Executor>
              CUSEND_REQUIRES(!std::is_same<Result,T>::value)
             >
     CUSEND_ANNOTATION
-    future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    future<Result,DeviceExecutor> then(const DeviceExecutor& ex, R receiver) &&
     {
       // create storage for the result of the receiver
       // XXX this result needs to be allocated via an allocator
@@ -348,15 +348,15 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class Function,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
              CUSEND_REQUIRES(detail::is_invocable<Function,T&&>::value),
              class Result = detail::invoke_result_t<Function,T&&>
             >
     CUSEND_ANNOTATION
-    future<Result,StreamExecutor> then(const StreamExecutor& ex, Function f) &&
+    future<Result,DeviceExecutor> then(const DeviceExecutor& ex, Function f) &&
     {
       return std::move(*this).then(ex, detail::as_receiver(f));
     }
@@ -374,14 +374,14 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t,T&>::value)
             >
     CUSEND_ANNOTATION
-    future<T,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
+    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, std::size_t shape) &&
     {
       // close over receiver and our state
       auto wrapped_receiver = detail::make_receive_indirectly_with_index(receiver, value_.get());
@@ -403,14 +403,14 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class F,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
              CUSEND_REQUIRES(detail::is_invocable<F,std::size_t,T&>::value)
             >
     CUSEND_ANNOTATION
-    future<T,StreamExecutor> bulk_then(const StreamExecutor& ex, F f, std::size_t shape) &&
+    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, std::size_t shape) &&
     {
       return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
     }
@@ -427,10 +427,10 @@ class future : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+    template<class DeviceExecutor,
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
             >
-    detail::bulk_future<future, StreamExecutor> bulk(const StreamExecutor& ex, std::size_t shape) &&
+    detail::bulk_future<future, DeviceExecutor> bulk(const DeviceExecutor& ex, std::size_t shape) &&
     {
       return {std::move(*this), ex, shape};
     }
@@ -492,15 +492,15 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,void>::value),
              CUSEND_REQUIRES(std::is_void<set_value_t<R>>::value)
             >
     CUSEND_ANNOTATION
-    future<void,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    future<void,DeviceExecutor> then(const DeviceExecutor& ex, R receiver) &&
     {
       // return a future corresponding to the completion of the receiver
       // move the base's event when we do this
@@ -508,16 +508,16 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_receiver_of<R,void>::value),
              CUSEND_REQUIRES(!std::is_void<set_value_t<R>>::value),
              class Result = set_value_t<R> 
             >
     CUSEND_ANNOTATION
-    future<Result,StreamExecutor> then(const StreamExecutor& ex, R receiver) &&
+    future<Result,DeviceExecutor> then(const DeviceExecutor& ex, R receiver) &&
     {
       // create storage for the result of set_value
       // XXX this result needs to be allocated via an allocator
@@ -544,15 +544,15 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class Function,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<Function>::value),
              CUSEND_REQUIRES(detail::is_invocable<Function>::value),
              class Result = detail::invoke_result_t<Function>
             >
     CUSEND_ANNOTATION
-    future<Result,StreamExecutor> then(const StreamExecutor& ex, Function f) &&
+    future<Result,DeviceExecutor> then(const DeviceExecutor& ex, Function f) &&
     {
       return std::move(*this).then(ex, detail::as_receiver(std::forward<Function>(f)));
     }
@@ -570,14 +570,14 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class R,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
              CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t>::value)
             >
     CUSEND_ANNOTATION
-    future<void,StreamExecutor> bulk_then(const StreamExecutor& ex, R receiver, std::size_t shape) &&
+    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, std::size_t shape) &&
     {
       // return a future corresponding to the completion of the receiver
       return detail::make_unready_future(ex, std::move(*this).bulk_then_set_value_and_move_event(ex, receiver, shape));
@@ -595,14 +595,14 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
+    template<class DeviceExecutor,
              class F,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value),
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
              CUSEND_REQUIRES(detail::is_invocable<F,std::size_t>::value)
             >
     CUSEND_ANNOTATION
-    future<void,StreamExecutor> bulk_then(const StreamExecutor& ex, F f, std::size_t shape) &&
+    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, std::size_t shape) &&
     {
       return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
     }
@@ -619,10 +619,10 @@ class future<void,Executor> : private detail::future_base<Executor>
     }
 
 
-    template<class StreamExecutor,
-             CUSEND_REQUIRES(detail::is_stream_executor<StreamExecutor>::value)
+    template<class DeviceExecutor,
+             CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
             >
-    detail::bulk_future<future, StreamExecutor> bulk(const StreamExecutor& ex, std::size_t shape) &&
+    detail::bulk_future<future, DeviceExecutor> bulk(const DeviceExecutor& ex, std::size_t shape) &&
     {
       return {std::move(*this), ex, shape};
     }
@@ -665,17 +665,17 @@ namespace detail
 
 
 
-template<class StreamExecutor>
+template<class DeviceExecutor>
 CUSEND_ANNOTATION
-future<void,StreamExecutor> make_unready_future(const StreamExecutor& ex, event&& e)
+future<void,DeviceExecutor> make_unready_future(const DeviceExecutor& ex, event&& e)
 {
   return {ex, true, std::move(e)};
 }
 
 
-template<class T, class StreamExecutor>
+template<class T, class DeviceExecutor>
 CUSEND_ANNOTATION
-future<T,StreamExecutor> make_unready_future(const StreamExecutor& ex, event&& e, memory::unique_ptr<T>&& value)
+future<T,DeviceExecutor> make_unready_future(const DeviceExecutor& ex, event&& e, memory::unique_ptr<T>&& value)
 {
   return {ex, true, std::move(e), std::move(value)};
 }

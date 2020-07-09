@@ -30,8 +30,8 @@
 
 #include <future>
 #include <type_traits>
-#include "../../detail/is_stream_executor.hpp"
 #include "../../execution/executor/bulk_execute.hpp"
+#include "../../execution/executor/is_device_executor.hpp"
 #include "../../lazy/detail/many_receiver_as_trivially_copyable_invocable.hpp"
 #include "../../lazy/receiver/is_many_receiver_of.hpp"
 #include "event.hpp"
@@ -46,13 +46,13 @@ namespace detail
 {
 
 
-template<class StreamExecutor,
+template<class DeviceExecutor,
          class ManyReceiver,
-         CUSEND_REQUIRES(is_stream_executor<StreamExecutor>::value),
+         CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
          CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver,std::size_t>::value)
         >
 CUSEND_ANNOTATION
-event then_bulk_execute(const StreamExecutor& ex, event&& e, ManyReceiver receiver, std::size_t shape)
+event then_bulk_execute(const DeviceExecutor& ex, event&& e, ManyReceiver receiver, std::size_t shape)
 {
   // get ex's stream
   cudaStream_t stream = detail::stream_of(ex);

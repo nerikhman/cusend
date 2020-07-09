@@ -31,7 +31,6 @@
 #include <cstdint>
 #include <type_traits>
 #include <utility>
-#include "../../../detail/is_stream_executor.hpp"
 #include "../../../detail/type_traits/remove_cvref.hpp"
 #include "../../../future/host_promise.hpp"
 #include "../../combinator/pack.hpp"
