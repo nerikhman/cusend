@@ -9,7 +9,6 @@ DIRECTORIES = $(sort $(wildcard */))
 
 # this first builds all the tests, then runs them, then prints if everything ran successfully
 test : all-test-sources all-cpp-test-programs all-cuda-test-programs all-test-results
-	@echo "All OK."
 
 # this turns a .hpp file into a .cpp file
 %.cpp : %.hpp
@@ -46,19 +45,23 @@ all-test-results : $(addprefix test., $(basename $(wildcard *.hpp))) $(addsuffix
 clean:
 	rm -f *.cpp *.cu *-cuda $(basename $(wildcard *.hpp))
 
-.PHONY : test clean $(all-test-results)
+.PHONY : test clean $(all-test-results) $(DIRECTORIES)
 
 # when the name of a directory is a target, make recursively descends into that directory
 $(DIRECTORIES):
 	$(MAKE) --directory=$@ $(TARGET)
 
-# the all target tests absolutely everything
-all: test $(DIRECTORIES)
+# the all target builds and tests absolutely everything
+# || exit 1 causes our build to fail if any subdirectory's build fails
+all: test
+	@for dir in $(DIRECTORIES); do \
+	  $(MAKE) --directory=$$dir $@ || exit 1; \
+        done
+	@echo "$(CURDIR) OK."
 
 # the all_clean target cleans absolutely everything
 all_clean: clean
-	for dir in $(DIRECTORIES); do \
+	@for dir in $(DIRECTORIES); do \
 	  $(MAKE) --directory=$$dir $@; \
 	 done
-
 
