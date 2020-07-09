@@ -26,11 +26,11 @@
 
 #pragma once
 
-#include "prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <cuda_runtime_api.h>
-#include "throw_on_error.hpp"
-#include "throw_runtime_error.hpp"
+#include "../../detail/throw_on_error.hpp"
+#include "../../detail/throw_runtime_error.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -165,5 +165,5 @@ class event
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

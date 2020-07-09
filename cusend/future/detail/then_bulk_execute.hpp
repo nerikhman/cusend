@@ -30,11 +30,11 @@
 
 #include <future>
 #include <type_traits>
-#include "../../detail/event.hpp"
 #include "../../detail/is_stream_executor.hpp"
 #include "../../execution/executor/bulk_execute.hpp"
 #include "../../lazy/detail/many_receiver_as_trivially_copyable_invocable.hpp"
 #include "../../lazy/receiver/is_many_receiver_of.hpp"
+#include "event.hpp"
 #include "stream_of.hpp"
 #include "stream_wait_for.hpp"
 

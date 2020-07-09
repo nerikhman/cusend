@@ -31,7 +31,6 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
-#include "../detail/event.hpp"
 #include "../detail/is_stream_executor.hpp"
 #include "../detail/type_traits/invoke_result.hpp"
 #include "../detail/type_traits/is_invocable.hpp"
@@ -41,6 +40,7 @@
 #include "../lazy/receiver/is_receiver_of.hpp"
 #include "../memory/unique_ptr.hpp"
 #include "detail/bulk_future.hpp"
+#include "detail/event.hpp"
 #include "detail/receiver.hpp"
 #include "detail/stream_of.hpp"
 #include "detail/then_bulk_execute.hpp"

@@ -31,7 +31,6 @@
 #include <exception>
 #include <future>
 #include <type_traits>
-#include "../../detail/event.hpp"
 #include "../../detail/is_stream_executor.hpp"
 #include "../../detail/type_traits/is_invocable.hpp"
 #include "../../execution/executor/callback_executor.hpp"
@@ -39,6 +38,7 @@
 #include "../../lazy/detail/receiver_as_trivially_copyable_invocable.hpp"
 #include "../../lazy/receiver/is_receiver_of.hpp"
 #include "../../lazy/receiver/set_error.hpp"
+#include "event.hpp"
 #include "stream_of.hpp"
 #include "stream_wait_for.hpp"
 
