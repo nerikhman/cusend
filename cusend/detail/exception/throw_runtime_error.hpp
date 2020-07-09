@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "prologue.hpp"
+#include "../prologue.hpp"
 
 #include "terminate.hpp"
 
@@ -53,5 +53,5 @@ inline void throw_runtime_error(const char* message)
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "epilogue.hpp"
+#include "../epilogue.hpp"
 

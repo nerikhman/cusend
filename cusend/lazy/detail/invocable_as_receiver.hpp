@@ -33,7 +33,7 @@
 #include "../../detail/functional/invoke.hpp"
 #include "../../detail/type_traits/invoke_result.hpp"
 #include "../../detail/type_traits/is_invocable.hpp"
-#include "../../detail/terminate.hpp"
+#include "../../detail/exception/terminate.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

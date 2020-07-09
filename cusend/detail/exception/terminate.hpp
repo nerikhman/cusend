@@ -26,50 +26,35 @@
 
 #pragma once
 
-#include "prologue.hpp"
+#include "../prologue.hpp"
 
 #include <cstdio>
-#include <stdexcept>
-#include <string>
-#include "terminate.hpp"
-
+#include <exception>
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
+
 namespace detail
-{
-namespace throw_on_error_detail
 {
 
 
 CUSEND_ANNOTATION
-inline void print_error_message(cudaError_t e, const char* message) noexcept
+inline void terminate() noexcept
 {
-#if CUSEND_HAS_CUDART
-  printf("Error after %s: %s\n", message, cudaGetErrorString(e));
+#ifdef __CUDA_ARCH__
+  asm("trap;");
 #else
-  (void)e; // silence unused variable warning
-  printf("Error: %s\n", message);
+  std::terminate();
 #endif
 }
 
 
-} // end throw_on_error_detail
-
-
 CUSEND_ANNOTATION
-inline void throw_on_error(cudaError_t e, const char* message)
+inline void terminate_with_message(const char* message)
 {
-  if(e)
-  {
-#ifndef __CUDA_ARCH__
-    std::string what = std::string(message) + std::string(": ") + cudaGetErrorString(e);
-    throw std::runtime_error(what);
-#else
-    detail::throw_on_error_detail::print_error_message(e, message);
-    detail::terminate();
-#endif
-  }
+  printf("%s\n", message);
+
+  detail::terminate();
 }
 
 
@@ -77,5 +62,5 @@ inline void throw_on_error(cudaError_t e, const char* message)
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "epilogue.hpp"
+#include "../epilogue.hpp"
 

@@ -29,8 +29,8 @@
 #include "../../detail/prologue.hpp"
 
 #include <cuda_runtime_api.h>
-#include "../../detail/throw_on_error.hpp"
-#include "../../detail/throw_runtime_error.hpp"
+#include "../../detail/exception/throw_on_error.hpp"
+#include "../../detail/exception/throw_runtime_error.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
