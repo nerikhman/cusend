@@ -34,10 +34,10 @@
 #include <utility>
 #include "../../detail/is_stream_executor.hpp"
 #include "../../execution/executor/callback_executor.hpp"
+#include "../../lazy/combinator/just.hpp"
+#include "../../lazy/combinator/transform.hpp"
 #include "../../lazy/detail/invocable_as_receiver.hpp"
-#include "../../lazy/just.hpp"
 #include "../../lazy/receiver/discard_receiver.hpp"
-#include "../../lazy/transform.hpp"
 #include "../../memory/unique_ptr.hpp"
 #include "../future.hpp"
 #include "bulk_future.hpp"

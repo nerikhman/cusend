@@ -1,8 +1,8 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/execution/executor/inline_executor.hpp>
+#include <cusend/lazy/combinator/just.hpp>
 #include <cusend/lazy/dot/just_on.hpp>
-#include <cusend/lazy/just.hpp>
 #include <cusend/lazy/sender/is_typed_sender.hpp>
 #include <exception>
 #include <utility>

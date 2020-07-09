@@ -26,24 +26,24 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <utility>
-#include "../../detail/functional/invoke.hpp"
-#include "../../detail/type_traits/decay.hpp"
-#include "../../detail/type_traits/invoke_result.hpp"
-#include "../../detail/type_traits/is_nothrow_invocable.hpp"
-#include "../../detail/type_traits/is_nothrow_receiver_of.hpp"
-#include "../receiver/discard_receiver.hpp"
-#include "../receiver/is_receiver.hpp"
-#include "../receiver/is_receiver_of.hpp"
-#include "../receiver/set_done.hpp"
-#include "../receiver/set_error.hpp"
-#include "../receiver/set_value.hpp"
-#include "../sender/is_typed_sender.hpp"
-#include "../sender/sender_base.hpp"
-#include "../connect.hpp"
-#include "../is_sender_to.hpp"
+#include "../../../detail/functional/invoke.hpp"
+#include "../../../detail/type_traits/decay.hpp"
+#include "../../../detail/type_traits/invoke_result.hpp"
+#include "../../../detail/type_traits/is_nothrow_invocable.hpp"
+#include "../../../detail/type_traits/is_nothrow_receiver_of.hpp"
+#include "../../receiver/discard_receiver.hpp"
+#include "../../receiver/is_receiver.hpp"
+#include "../../receiver/is_receiver_of.hpp"
+#include "../../receiver/set_done.hpp"
+#include "../../receiver/set_error.hpp"
+#include "../../receiver/set_value.hpp"
+#include "../../sender/is_typed_sender.hpp"
+#include "../../sender/sender_base.hpp"
+#include "../../connect.hpp"
+#include "../../is_sender_to.hpp"
 #include "detail/type_list.hpp"
 
 
@@ -307,5 +307,5 @@ using default_transform_t = decltype(detail::default_transform(std::declval<S>()
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

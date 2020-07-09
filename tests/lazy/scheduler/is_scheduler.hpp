@@ -1,5 +1,5 @@
 #include <cusend/execution/executor/inline_executor.hpp>
-#include <cusend/lazy/just.hpp>
+#include <cusend/lazy/combinator/just.hpp>
 #include <cusend/lazy/scheduler/is_scheduler.hpp>
 
 

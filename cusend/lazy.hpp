@@ -28,23 +28,16 @@
 
 #include "detail/prologue.hpp"
 
+#include "lazy/combinator.hpp"
 #include "lazy/connect.hpp"
 #include "lazy/dot.hpp"
-#include "lazy/invoke_on.hpp"
 #include "lazy/is_sender_to.hpp"
 #include "lazy/is_typed_sender_to.hpp"
-#include "lazy/just.hpp"
-#include "lazy/just_on.hpp"
-#include "lazy/on.hpp"
-#include "lazy/pack.hpp"
 #include "lazy/receiver.hpp"
 #include "lazy/scheduler.hpp"
 #include "lazy/sender.hpp"
 #include "lazy/start.hpp"
 #include "lazy/submit.hpp"
-#include "lazy/transform.hpp"
-#include "lazy/unpack.hpp"
-#include "lazy/via.hpp"
 
 #include "detail/epilogue.hpp"
 

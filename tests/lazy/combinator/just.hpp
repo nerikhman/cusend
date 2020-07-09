@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstring>
-#include <cusend/lazy/just.hpp>
-#include <cusend/lazy/pack.hpp>
+#include <cusend/lazy/combinator/just.hpp>
+#include <cusend/lazy/sender/is_typed_sender.hpp>
 #include <exception>
 #include <utility>
 
@@ -30,39 +30,39 @@ struct move_only
 };
 
 
-struct my_tuple_receiver
+struct my_receiver
 {
   __host__ __device__
-  void set_value(ns::detail::tuple<>&& value)
+  void set_value()
   {
     result1 = true;
   }
 
   __host__ __device__
-  void set_value(ns::detail::tuple<int>&& value)
+  void set_value(int value)
   {
-    result1 = ns::detail::get<0>(value);
+    result1 = value;
   }
 
   __host__ __device__
-  void set_value(ns::detail::tuple<int,int>&& value)
+  void set_value(int value1, int value2)
   {
-    result1 = ns::detail::get<0>(value);
-    result2 = ns::detail::get<1>(value);
+    result1 = value1;
+    result2 = value2;
   }
 
   __host__ __device__
-  void set_value(ns::detail::tuple<int,int,int>&& value)
+  void set_value(int value1, int value2, int value3)
   {
-    result1 = ns::detail::get<0>(value);
-    result2 = ns::detail::get<1>(value);
-    result3 = ns::detail::get<2>(value);
+    result1 = value1;
+    result2 = value2;
+    result3 = value3;
   }
 
   __host__ __device__
-  void set_value(ns::detail::tuple<move_only>&& value)
+  void set_value(move_only&& value)
   {
-    result1 = ns::detail::get<0>(value).value;
+    result1 = value.value;
   }
 
   void set_error(std::exception_ptr) {}
@@ -76,24 +76,38 @@ __host__ __device__
 void test_is_typed_sender()
 {
   {
-    auto result = ns::pack(ns::just());
+    auto result = ns::just();
     static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = ns::pack(ns::just(1));
+    auto result = ns::just(1);
     static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = ns::pack(ns::just(1,2));
+    auto result = ns::just(1,2);
     static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
 
   {
-    auto result = ns::pack(ns::just(1,2,3));
+    auto result = ns::just(1,2,3);
     static_assert(ns::is_typed_sender<decltype(result)>::value, "Error.");
   }
+}
+
+
+__host__ __device__
+void test_copyable()
+{
+  result1 = 0;
+  int expected = 13;
+
+  my_receiver r;
+
+  ns::just(expected).connect(std::move(r)).start();
+
+  assert(expected == result1);
 }
 
 
@@ -103,9 +117,9 @@ void test_move_only()
   result1 = 0;
   int expected = 13;
 
-  my_tuple_receiver r;
+  my_receiver r;
 
-  ns::pack(ns::just(move_only{expected})).connect(std::move(r)).start();
+  ns::just(move_only{expected}).connect(std::move(r)).start();
 
   assert(expected == result1);
 }
@@ -121,9 +135,9 @@ void test_variadic()
   {
     result1 = 0;
 
-    my_tuple_receiver r;
+    my_receiver r;
 
-    ns::pack(ns::just()).connect(std::move(r)).start();
+    ns::just().connect(std::move(r)).start();
 
     assert(true == result1);
   }
@@ -131,9 +145,9 @@ void test_variadic()
   {
     result1 = 0;
 
-    my_tuple_receiver r;
+    my_receiver r;
 
-    ns::pack(ns::just(expected1)).connect(std::move(r)).start();
+    ns::just(expected1).connect(std::move(r)).start();
 
     assert(expected1 == result1);
   }
@@ -142,9 +156,9 @@ void test_variadic()
     result1 = 0;
     result2 = 0;
 
-    my_tuple_receiver r;
+    my_receiver r;
 
-    ns::pack(ns::just(expected1, expected2)).connect(std::move(r)).start();
+    ns::just(expected1, expected2).connect(std::move(r)).start();
 
     assert(expected1 == result1);
     assert(expected2 == result2);
@@ -155,9 +169,9 @@ void test_variadic()
     result2 = 0;
     result3 = 0;
 
-    my_tuple_receiver r;
+    my_receiver r;
 
-    ns::pack(ns::just(expected1, expected2, expected3)).connect(std::move(r)).start();
+    ns::just(expected1, expected2, expected3).connect(std::move(r)).start();
 
     assert(expected1 == result1);
     assert(expected2 == result2);
@@ -206,9 +220,10 @@ void device_invoke(F f)
 }
 
 
-void test_pack()
+void test_just()
 {
   test_is_typed_sender();
+  test_copyable();
   test_move_only();
   test_variadic();
 
@@ -216,6 +231,7 @@ void test_pack()
   device_invoke([] __device__ ()
   {
     test_is_typed_sender();
+    test_copyable();
     test_move_only();
     test_variadic();
   });

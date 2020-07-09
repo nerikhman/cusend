@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstring>
-#include <cusend/lazy/just.hpp>
-#include <cusend/lazy/unpack.hpp>
+#include <cusend/lazy/combinator/just.hpp>
+#include <cusend/lazy/combinator/unpack.hpp>
 #include <exception>
 #include <utility>
 

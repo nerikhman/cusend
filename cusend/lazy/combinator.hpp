@@ -26,16 +26,16 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../detail/prologue.hpp"
 
-CUSEND_NAMESPACE_OPEN_BRACE
+#include "combinator/invoke_on.hpp"
+#include "combinator/just.hpp"
+#include "combinator/just_on.hpp"
+#include "combinator/on.hpp"
+#include "combinator/pack.hpp"
+#include "combinator/transform.hpp"
+#include "combinator/unpack.hpp"
+#include "combinator/via.hpp"
 
-
-template<class...>
-struct type_list {};
-
-
-CUSEND_NAMESPACE_CLOSE_BRACE
-
-#include "../../../detail/epilogue.hpp"
+#include "../detail/epilogue.hpp"
 

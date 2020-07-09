@@ -30,8 +30,8 @@
 
 #include <utility>
 #include "../../detail/type_traits/is_detected.hpp"
+#include "../combinator/transform.hpp"
 #include "../sender/chaining_sender.hpp"
-#include "../transform.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE

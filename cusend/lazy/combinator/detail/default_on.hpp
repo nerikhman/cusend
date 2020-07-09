@@ -26,21 +26,21 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <type_traits>
 #include <utility>
-#include "../../detail/type_traits/remove_cvref.hpp"
-#include "../connect.hpp"
-#include "../is_sender_to.hpp"
-#include "../receiver/set_done.hpp"
-#include "../receiver/set_error.hpp"
-#include "../receiver/set_value.hpp"
-#include "../scheduler/is_scheduler.hpp"
-#include "../scheduler/schedule.hpp"
-#include "../sender/is_sender.hpp"
-#include "../sender/sender_base.hpp"
-#include "../submit.hpp"
+#include "../../../detail/type_traits/remove_cvref.hpp"
+#include "../../connect.hpp"
+#include "../../is_sender_to.hpp"
+#include "../../receiver/set_done.hpp"
+#include "../../receiver/set_error.hpp"
+#include "../../receiver/set_value.hpp"
+#include "../../scheduler/is_scheduler.hpp"
+#include "../../scheduler/schedule.hpp"
+#include "../../sender/is_sender.hpp"
+#include "../../sender/sender_base.hpp"
+#include "../../submit.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -185,5 +185,5 @@ using default_on_t = decltype(detail::default_on(std::declval<Sender>(), std::de
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

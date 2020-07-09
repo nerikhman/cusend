@@ -26,11 +26,11 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <utility>
-#include "../detail/static_const.hpp"
-#include "../detail/type_traits/is_detected.hpp"
+#include "../../detail/static_const.hpp"
+#include "../../detail/type_traits/is_detected.hpp"
 #include "detail/default_via.hpp"
 
 
@@ -123,5 +123,5 @@ using via_t = decltype(via(std::declval<Sender>(), std::declval<Scheduler>()));
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

@@ -26,9 +26,9 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
-#include "../../execution/executor/inline_executor.hpp"
+#include "../../../execution/executor/inline_executor.hpp"
 #include "../just_on.hpp"
 
 
@@ -57,5 +57,5 @@ using default_just_t = decltype(detail::default_just(std::declval<Types>()...));
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

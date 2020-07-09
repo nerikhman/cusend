@@ -1,8 +1,8 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/execution/executor/inline_executor.hpp>
-#include <cusend/lazy/just.hpp>
-#include <cusend/lazy/transform.hpp>
+#include <cusend/lazy/combinator/just.hpp>
+#include <cusend/lazy/combinator/transform.hpp>
 
 
 namespace ns = cusend;

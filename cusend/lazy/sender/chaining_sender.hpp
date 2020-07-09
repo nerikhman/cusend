@@ -30,15 +30,15 @@
 
 #include <type_traits>
 #include <utility>
+#include "../combinator/on.hpp"
+#include "../combinator/pack.hpp"
+#include "../combinator/transform.hpp"
+#include "../combinator/unpack.hpp"
+#include "../combinator/via.hpp"
 #include "../connect.hpp"
-#include "../on.hpp"
-#include "../pack.hpp"
 #include "../scheduler/bulk_schedule.hpp"
 #include "../scheduler/get_executor.hpp"
 #include "../submit.hpp"
-#include "../transform.hpp"
-#include "../unpack.hpp"
-#include "../via.hpp"
 #include "is_sender.hpp"
 #include "sender_traits.hpp"
 

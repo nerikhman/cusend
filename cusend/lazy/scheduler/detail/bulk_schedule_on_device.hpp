@@ -34,7 +34,7 @@
 #include "../../../detail/is_stream_executor.hpp"
 #include "../../../detail/type_traits/remove_cvref.hpp"
 #include "../../../future/host_promise.hpp"
-#include "../../pack.hpp"
+#include "../../combinator/pack.hpp"
 #include "../../sender/is_typed_sender.hpp"
 #include "../../sender/sender_traits.hpp"
 #include "../../start.hpp"

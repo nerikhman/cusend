@@ -26,42 +26,43 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <utility>
-#include "../../detail/type_traits/is_detected.hpp"
-#include "../combinator/via.hpp"
-#include "../sender/chaining_sender.hpp"
+#include "../../../detail/type_traits/is_invocable.hpp"
+#include "../../scheduler/is_scheduler.hpp"
+#include "../just_on.hpp"
+#include "../transform.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-namespace dot
+namespace detail
 {
 
 
-CUSEND_EXEC_CHECK_DISABLE
-template<class Sender, class Scheduler,
-         CUSEND_REQUIRES(detail::is_detected<CUSEND_NAMESPACE::via_t, Sender&&, Scheduler&&>::value)
+template<class Scheduler, class Invocable, class... Args,
+         CUSEND_REQUIRES(is_scheduler<Scheduler>::value),
+         CUSEND_REQUIRES(detail::is_invocable<Invocable,Args...>::value)
         >
 CUSEND_ANNOTATION
-constexpr ensure_chaining_sender_t<CUSEND_NAMESPACE::via_t<Sender&&,Scheduler&&>>
-  via(Sender&& sender, Scheduler&& scheduler)
+auto default_invoke_on(const Scheduler& scheduler, Invocable&& f, Args&&... args)
+  -> decltype(transform(just_on(scheduler, std::forward<Args>(args)...), std::forward<Invocable>(f)))
 {
-  return CUSEND_NAMESPACE::ensure_chaining_sender(CUSEND_NAMESPACE::via(std::forward<Sender>(sender), std::forward<Scheduler>(scheduler)));
+  return transform(just_on(scheduler, std::forward<Args>(args)...), std::forward<Invocable>(f));
 }
 
 
-template<class Sender, class Scheduler>
-using via_t = decltype(dot::via(std::declval<Sender>(), std::declval<Scheduler>()));
+template<class Scheduler, class Invocable, class... Args>
+using default_invoke_on_t = decltype(detail::default_invoke_on(std::declval<Scheduler>(), std::declval<Invocable>(), std::declval<Args>()...));
 
 
-} // end dot
+} // end namespace detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

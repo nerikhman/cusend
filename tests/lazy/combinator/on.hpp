@@ -1,9 +1,9 @@
 #include <cassert>
 #include <cstring>
-#include <cusend/lazy/just.hpp>
-#include <cusend/lazy/on.hpp>
+#include <cusend/lazy/combinator/just.hpp>
+#include <cusend/lazy/combinator/on.hpp>
+#include <cusend/lazy/combinator/transform.hpp>
 #include <cusend/lazy/submit.hpp>
-#include <cusend/lazy/transform.hpp>
 
 
 namespace ns = cusend;

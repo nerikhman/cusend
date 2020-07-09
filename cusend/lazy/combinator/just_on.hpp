@@ -26,11 +26,11 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <utility>
-#include "../detail/static_const.hpp"
-#include "../detail/type_traits/is_detected.hpp"
+#include "../../detail/static_const.hpp"
+#include "../../detail/type_traits/is_detected.hpp"
 #include "detail/default_just_on.hpp"
 
 
@@ -121,5 +121,5 @@ using just_on_t = decltype(just_on(std::declval<S>(), std::declval<Types>()...))
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 

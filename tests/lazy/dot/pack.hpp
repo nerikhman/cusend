@@ -1,6 +1,6 @@
 #include <cassert>
 #include <cstring>
-#include <cusend/lazy/just.hpp>
+#include <cusend/lazy/combinator/just.hpp>
 #include <cusend/lazy/dot/pack.hpp>
 #include <exception>
 #include <utility>

@@ -26,43 +26,16 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
-
-#include <utility>
-#include "../../detail/type_traits/is_invocable.hpp"
-#include "../scheduler/is_scheduler.hpp"
-#include "../just_on.hpp"
-#include "../transform.hpp"
-
+#include "../../../../detail/prologue.hpp"
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-namespace detail
-{
-
-
-template<class Scheduler, class Invocable, class... Args,
-         CUSEND_REQUIRES(is_scheduler<Scheduler>::value),
-         CUSEND_REQUIRES(detail::is_invocable<Invocable,Args...>::value)
-        >
-CUSEND_ANNOTATION
-auto default_invoke_on(const Scheduler& scheduler, Invocable&& f, Args&&... args)
-  -> decltype(transform(just_on(scheduler, std::forward<Args>(args)...), std::forward<Invocable>(f)))
-{
-  return transform(just_on(scheduler, std::forward<Args>(args)...), std::forward<Invocable>(f));
-}
-
-
-template<class Scheduler, class Invocable, class... Args>
-using default_invoke_on_t = decltype(detail::default_invoke_on(std::declval<Scheduler>(), std::declval<Invocable>(), std::declval<Args>()...));
-
-
-} // end namespace detail
+template<class...>
+struct type_list {};
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-
-#include "../../detail/epilogue.hpp"
+#include "../../../../detail/epilogue.hpp"
 

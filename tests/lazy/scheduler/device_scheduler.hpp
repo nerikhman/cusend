@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstring>
 #include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/lazy/combinator/via.hpp>
 #include <cusend/lazy/scheduler/bulk_schedule.hpp>
 #include <cusend/lazy/scheduler/device_scheduler.hpp>
 #include <cusend/lazy/scheduler/get_executor.hpp>
@@ -9,7 +10,6 @@
 #include <cusend/lazy/scheduler/schedule.hpp>
 #include <cusend/lazy/sender/is_sender.hpp>
 #include <cusend/lazy/submit.hpp>
-#include <cusend/lazy/via.hpp>
 
 
 #ifndef __host__

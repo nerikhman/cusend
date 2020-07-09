@@ -30,7 +30,7 @@
 
 #include <utility>
 #include "../../detail/type_traits/is_detected.hpp"
-#include "../invoke_on.hpp"
+#include "../combinator/invoke_on.hpp"
 #include "../sender/chaining_sender.hpp"
 
 

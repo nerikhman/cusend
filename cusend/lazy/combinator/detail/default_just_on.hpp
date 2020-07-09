@@ -26,20 +26,20 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
 #include <utility>
-#include "../../detail/functional/apply.hpp"
-#include "../../detail/tuple.hpp"
-#include "../../detail/type_traits/remove_cvref.hpp"
-#include "../../detail/utility/index_sequence.hpp"
-#include "../connect.hpp"
-#include "../receiver/is_receiver_of.hpp"
-#include "../receiver/set_done.hpp"
-#include "../receiver/set_error.hpp"
-#include "../receiver/set_value.hpp"
-#include "../scheduler/is_scheduler.hpp"
-#include "../scheduler/schedule.hpp"
+#include "../../../detail/functional/apply.hpp"
+#include "../../../detail/tuple.hpp"
+#include "../../../detail/type_traits/remove_cvref.hpp"
+#include "../../../detail/utility/index_sequence.hpp"
+#include "../../connect.hpp"
+#include "../../receiver/is_receiver_of.hpp"
+#include "../../receiver/set_done.hpp"
+#include "../../receiver/set_error.hpp"
+#include "../../receiver/set_value.hpp"
+#include "../../scheduler/is_scheduler.hpp"
+#include "../../scheduler/schedule.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -215,5 +215,5 @@ using default_just_on_t = decltype(detail::default_just_on(std::declval<Schedule
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

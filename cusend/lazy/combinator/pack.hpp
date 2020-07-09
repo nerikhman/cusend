@@ -26,12 +26,12 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
 #include <utility>
-#include "../detail/static_const.hpp"
-#include "../detail/type_traits/is_detected.hpp"
-#include "detail/default_unpack.hpp"
+#include "../../detail/static_const.hpp"
+#include "../../detail/type_traits/is_detected.hpp"
+#include "detail/default_pack.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
@@ -42,56 +42,56 @@ namespace detail
 
 
 template<class S>
-using unpack_member_function_t = decltype(std::declval<S>().unpack());
+using pack_member_function_t = decltype(std::declval<S>().pack());
 
 template<class S>
-using has_unpack_member_function = is_detected<unpack_member_function_t, S>;
+using has_pack_member_function = is_detected<pack_member_function_t, S>;
 
 
 template<class S>
-using unpack_free_function_t = decltype(unpack(std::declval<S>()));
+using pack_free_function_t = decltype(pack(std::declval<S>()));
 
 template<class S>
-using has_unpack_free_function = is_detected<unpack_free_function_t, S>;
+using has_pack_free_function = is_detected<pack_free_function_t, S>;
 
 
-// this is the type of the unpack CPO
-struct dispatch_unpack
+// this is the type of the pack CPO
+struct dispatch_pack
 {
   CUSEND_EXEC_CHECK_DISABLE
   template<class S,
-           CUSEND_REQUIRES(has_unpack_member_function<S&&>::value)
+           CUSEND_REQUIRES(has_pack_member_function<S&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr unpack_member_function_t<S&&>
+  constexpr pack_member_function_t<S&&>
     operator()(S&& s) const
   {
-    return std::forward<S>(s).unpack();
+    return std::forward<S>(s).pack();
   }
 
   CUSEND_EXEC_CHECK_DISABLE
   template<class S,
-           CUSEND_REQUIRES(!has_unpack_member_function<S&&>::value),
-           CUSEND_REQUIRES(has_unpack_free_function<S&&>::value)
+           CUSEND_REQUIRES(!has_pack_member_function<S&&>::value),
+           CUSEND_REQUIRES(has_pack_free_function<S&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr unpack_free_function_t<S&&>
+  constexpr pack_free_function_t<S&&>
     operator()(S&& s) const
   {
-    return unpack(std::forward<S>(s));
+    return pack(std::forward<S>(s));
   }
 
   CUSEND_EXEC_CHECK_DISABLE
   template<class S,
-           CUSEND_REQUIRES(!has_unpack_member_function<S&&>::value),
-           CUSEND_REQUIRES(!has_unpack_free_function<S&&>::value),
-           CUSEND_REQUIRES(is_detected<default_unpack_t, S&&>::value)
+           CUSEND_REQUIRES(!has_pack_member_function<S&&>::value),
+           CUSEND_REQUIRES(!has_pack_free_function<S&&>::value),
+           CUSEND_REQUIRES(is_detected<default_pack_t, S&&>::value)
           >
   CUSEND_ANNOTATION
-  constexpr default_unpack_t<S&&>
+  constexpr default_pack_t<S&&>
     operator()(S&& s) const
   {
-    return detail::default_unpack(std::forward<S>(s));
+    return detail::default_pack(std::forward<S>(s));
   }
 };
 
@@ -103,11 +103,11 @@ namespace
 {
 
 
-// define the unpack customization point object
+// define the pack customization point object
 #ifndef __CUDA_ARCH__
-constexpr auto const& unpack = detail::static_const<detail::dispatch_unpack>::value;
+constexpr auto const& pack = detail::static_const<detail::dispatch_pack>::value;
 #else
-const __device__ detail::dispatch_unpack unpack;
+const __device__ detail::dispatch_pack pack;
 #endif
 
 
@@ -115,11 +115,11 @@ const __device__ detail::dispatch_unpack unpack;
 
 
 template<class S>
-using unpack_t = decltype(unpack(std::declval<S>()));
+using pack_t = decltype(pack(std::declval<S>()));
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
 
-#include "../detail/epilogue.hpp"
+#include "../../detail/epilogue.hpp"
 
