@@ -31,11 +31,11 @@
 #include <type_traits>
 #include <utility>
 #include "../../../detail/type_traits/remove_cvref.hpp"
-#include "../../../execution/executor/executor_shape.hpp"
 #include "../../connect.hpp"
 #include "../../sender/is_typed_sender.hpp"
 #include "../get_executor.hpp"
 #include "../is_scheduler.hpp"
+#include "../scheduler_shape.hpp"
 #include "detail/fan_out_receiver.hpp"
 
 
@@ -51,7 +51,7 @@ class bulk_sender
 {
   private:
     using executor_type = get_executor_t<Scheduler>;
-    using shape_type = execution::executor_shape_t<executor_type>;
+    using shape_type = scheduler_shape_t<Scheduler>;
 
     Scheduler scheduler_;
     shape_type shape_;
@@ -122,7 +122,7 @@ template<class Scheduler, class TypedSender,
          CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
         >
 CUSEND_ANNOTATION
-bulk_sender<Scheduler, remove_cvref_t<TypedSender>> default_bulk_schedule(const Scheduler& scheduler, execution::executor_shape_t<get_executor_t<Scheduler>> shape, TypedSender&& sender)
+bulk_sender<Scheduler, remove_cvref_t<TypedSender>> default_bulk_schedule(const Scheduler& scheduler, scheduler_shape_t<Scheduler> shape, TypedSender&& sender)
 {
   return {scheduler, shape, std::forward<TypedSender>(sender)};
 }
