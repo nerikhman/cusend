@@ -35,6 +35,8 @@
 #include "../../../../detail/type_traits/is_detected.hpp"
 #include "../../../../detail/utility/index_sequence.hpp"
 #include "../../../../execution/executor/bulk_execute.hpp"
+#include "../../../../execution/executor/executor_index.hpp"
+#include "../../../../execution/executor/executor_shape.hpp"
 #include "../../../receiver/is_many_receiver_of.hpp"
 #include "../../../receiver/set_done.hpp"
 #include "../../../receiver/set_error.hpp"
@@ -84,16 +86,19 @@ class fan_out_receiver
     using sender_type = remove_cvref_t<TypedSingleSender>;
     using receiver_type = remove_cvref_t<ManyReceiver>;
     using variant_of_tuples_type = typename sender_traits<sender_type>::template value_types<tuple, variant>;
+
+    using index_type = execution::executor_index_t<Executor>;
+    using shape_type = execution::executor_shape_t<Executor>;
   
     detail::optional<variant_of_tuples_type> maybe_variant_of_tuples_;
     Executor ex_;
-    std::size_t shape_;
+    shape_type shape_;
     receiver_type receiver_;
 
   public:
     CUSEND_EXEC_CHECK_DISABLE
     CUSEND_ANNOTATION
-    fan_out_receiver(const Executor& ex, std::size_t shape, receiver_type&& receiver)
+    fan_out_receiver(const Executor& ex, shape_type shape, receiver_type&& receiver)
       : maybe_variant_of_tuples_{},
         ex_{ex},
         shape_{shape},
@@ -129,19 +134,19 @@ class fan_out_receiver
       receiver_type receiver;
 
       template<std::size_t... I,
-               CUSEND_REQUIRES(is_many_receiver_of<receiver_type, std::size_t, Args&...>::value)
+               CUSEND_REQUIRES(is_many_receiver_of<receiver_type, index_type, Args&...>::value)
               >
       CUSEND_ANNOTATION
-      void impl(std::size_t i, index_sequence<I...>)
+      void impl(index_type idx, index_sequence<I...>)
       {
-        CUSEND_NAMESPACE::set_value(receiver, i, detail::get<I>(args)...);
+        CUSEND_NAMESPACE::set_value(receiver, idx, detail::get<I>(args)...);
       }
 
-      template<CUSEND_REQUIRES(is_many_receiver_of<receiver_type, std::size_t, Args&...>::value)>
+      template<CUSEND_REQUIRES(is_many_receiver_of<receiver_type, index_type, Args&...>::value)>
       CUSEND_ANNOTATION
-      void operator()(std::size_t i)
+      void operator()(index_type idx)
       {
-        this->impl(i, index_sequence_for<Args...>{});
+        this->impl(idx, index_sequence_for<Args...>{});
       }
     };
 
@@ -149,7 +154,7 @@ class fan_out_receiver
     struct set_value_visitor
     {
       Executor ex;
-      std::size_t shape;
+      shape_type shape;
       receiver_type receiver;
 
       template<class... Args>
@@ -165,7 +170,7 @@ class fan_out_receiver
 
   public:
     template<class... Args,
-             CUSEND_REQUIRES(is_many_receiver_of<receiver_type, std::size_t, remove_cvref_t<Args>&...>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<receiver_type, index_type, remove_cvref_t<Args>&...>::value)
              // XXX not sure how to spell this requirement
              //, CUSEND_REQUIRES(fan_out_receiver_detail::can_emplace<optional<variant_of_tuples_type>, tuple<Args&&...>>::value)
             >
@@ -232,7 +237,7 @@ template<class TypedSender, class Executor, class ManyReceiver,
          , CUSEND_REQUIRES(fan_out_receiver_detail::is_many_receiver_of_all_of<ManyReceiver&&,BulkSenderValueTypes>::value)
         >
 CUSEND_ANNOTATION
-fan_out_receiver<TypedSender,Executor,ManyReceiver> make_fan_out_receiver(const Executor& ex, std::size_t shape, ManyReceiver&& r)
+fan_out_receiver<TypedSender,Executor,ManyReceiver> make_fan_out_receiver(const Executor& ex, execution::executor_shape_t<Executor> shape, ManyReceiver&& r)
 {
   return {ex, shape, std::forward<ManyReceiver>(r)};
 }
