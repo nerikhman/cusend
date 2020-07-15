@@ -26,51 +26,34 @@
 
 #pragma once
 
-#include "prologue.hpp"
+#include "../detail/prologue.hpp"
 
-// for std::get used below
-#include <tuple>
-#include <utility>
-
-
-#define TUPLE_NAMESPACE CUDEX_NAMESPACE::detail
-#define TUPLE_NAMESPACE_OPEN_BRACE CUDEX_NAMESPACE_OPEN_BRACE namespace detail {
-#define TUPLE_NAMESPACE_CLOSE_BRACE } CUDEX_NAMESPACE_CLOSE_BRACE
-#define TUPLE_DETAIL_NAMESPACE tuple_detail
-#define TUPLE_ANNOTATION CUDEX_ANNOTATION
-
-
-#include "tuple/tuple.hpp"
-
-
-#undef TUPLE_NAMESPACE
-#undef TUPLE_NAMESPACE_OPEN_BRACE
-#undef TUPLE_NAMESPACE_CLOSE_BRACE
-#undef TUPLE_DETAIL_NAMESPACE
-#undef TUPLE_ANNOTATION
-#undef TUPLE_EXEC_CHECK_DISABLE
+#include <cstdint>
+#include "../detail/type_traits/is_detected.hpp"
+#include "executor_shape.hpp"
 
 
 CUDEX_NAMESPACE_OPEN_BRACE
 
 
-namespace detail
+template<class Executor>
+struct executor_index
 {
+  private:
+    template<class T>
+    using nested_executor_index_t = typename T::index_type;
+
+  public:
+    using type = detail::detected_or_t<executor_shape_t<Executor>, nested_executor_index_t, Executor>;
+};
 
 
-CUDEX_EXEC_CHECK_DISABLE
-template<std::size_t i, class TupleLike>
-CUDEX_ANNOTATION
-constexpr decltype(auto) get(TupleLike&& t)
-{
-  return std::get<i>(std::forward<TupleLike>(t));
-}
-
-
-} // end detail
+template<class Executor>
+using executor_index_t = typename executor_index<Executor>::type;
 
 
 CUDEX_NAMESPACE_CLOSE_BRACE
 
-#include "epilogue.hpp"
+
+#include "../detail/epilogue.hpp"
 

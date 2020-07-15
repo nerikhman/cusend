@@ -26,29 +26,12 @@
 
 #pragma once
 
-#include "prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
-// for std::get used below
 #include <tuple>
-#include <utility>
-
-
-#define TUPLE_NAMESPACE CUDEX_NAMESPACE::detail
-#define TUPLE_NAMESPACE_OPEN_BRACE CUDEX_NAMESPACE_OPEN_BRACE namespace detail {
-#define TUPLE_NAMESPACE_CLOSE_BRACE } CUDEX_NAMESPACE_CLOSE_BRACE
-#define TUPLE_DETAIL_NAMESPACE tuple_detail
-#define TUPLE_ANNOTATION CUDEX_ANNOTATION
-
-
-#include "tuple/tuple.hpp"
-
-
-#undef TUPLE_NAMESPACE
-#undef TUPLE_NAMESPACE_OPEN_BRACE
-#undef TUPLE_NAMESPACE_CLOSE_BRACE
-#undef TUPLE_DETAIL_NAMESPACE
-#undef TUPLE_ANNOTATION
-#undef TUPLE_EXEC_CHECK_DISABLE
+#include <type_traits>
+#include "../../../detail/tuple.hpp"
+#include "../../../detail/utility/index_sequence.hpp"
 
 
 CUDEX_NAMESPACE_OPEN_BRACE
@@ -58,12 +41,48 @@ namespace detail
 {
 
 
-CUDEX_EXEC_CHECK_DISABLE
-template<std::size_t i, class TupleLike>
+template<class Index, class Shape,
+         CUDEX_REQUIRES(std::is_integral<Index>::value)
+        >
 CUDEX_ANNOTATION
-constexpr decltype(auto) get(TupleLike&& t)
+constexpr bool in_iteration_space(const Index& index, const Shape& shape)
 {
-  return std::get<i>(std::forward<TupleLike>(t));
+  return index < shape;
+}
+
+
+template<class Index, class Shape,
+         CUDEX_REQUIRES(!std::is_integral<Index>::value)
+        >
+CUDEX_ANNOTATION
+constexpr bool in_iteration_space(const Index& index, const Shape& shape);
+
+
+template<class Index, class Shape>
+CUDEX_ANNOTATION
+constexpr bool in_iteration_space_impl(const Index&, const Shape&, index_sequence<>)
+{
+  return true;
+}
+
+
+template<class Index, class Shape, std::size_t i0, std::size_t... is>
+CUDEX_ANNOTATION
+constexpr bool in_iteration_space_impl(const Index& index, const Shape& shape, index_sequence<i0,is...>)
+{
+  return detail::in_iteration_space(detail::get<i0>(index), detail::get<i0>(shape)) and detail::in_iteration_space_impl(index, shape, index_sequence<is...>{});
+}
+
+
+template<class Index, class Shape,
+         CUDEX_REQUIRES_DEF(!std::is_integral<Index>::value)
+        >
+CUDEX_ANNOTATION
+constexpr bool in_iteration_space(const Index& index, const Shape& shape)
+{
+  constexpr std::size_t num_axes = std::tuple_size<Shape>::value;
+
+  return detail::in_iteration_space_impl(index, shape, make_index_sequence<num_axes>{});
 }
 
 
@@ -72,5 +91,5 @@ constexpr decltype(auto) get(TupleLike&& t)
 
 CUDEX_NAMESPACE_CLOSE_BRACE
 
-#include "epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 
