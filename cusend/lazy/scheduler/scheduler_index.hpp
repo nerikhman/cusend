@@ -26,16 +26,38 @@
 
 #pragma once
 
-#include "../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include "scheduler/as_scheduler.hpp"
-#include "scheduler/bulk_schedule.hpp"
-#include "scheduler/device_scheduler.hpp"
-#include "scheduler/is_device_scheduler.hpp"
-#include "scheduler/is_scheduler.hpp"
-#include "scheduler/schedule.hpp"
-#include "scheduler/scheduler_index.hpp"
-#include "scheduler/scheduler_shape.hpp"
+#include <cstdint>
+#include "../../detail/type_traits/is_detected.hpp"
+#include "scheduler_shape.hpp"
 
-#include "../detail/epilogue.hpp"
+
+CUSEND_NAMESPACE_OPEN_BRACE
+
+
+template<class Scheduler>
+struct scheduler_index
+{
+  private:
+    template<class T>
+    using nested_index_t = typename T::index_type;
+
+  public:
+    using type = detail::detected_or_t<
+      scheduler_shape_t<Scheduler>,
+      nested_index_t,
+      Scheduler
+    >;
+};
+
+
+template<class Scheduler>
+using scheduler_index_t = typename scheduler_index<Scheduler>::type;
+
+
+CUSEND_NAMESPACE_CLOSE_BRACE
+
+
+#include "../../detail/epilogue.hpp"
 

@@ -39,6 +39,8 @@
 #include "../../start.hpp"
 #include "../get_executor.hpp"
 #include "../is_device_scheduler.hpp"
+#include "../scheduler_index.hpp"
+#include "../scheduler_shape.hpp"
 #include "detail/unpack_second_receiver.hpp"
 #include "detail/variant.hpp"
 
@@ -57,11 +59,8 @@ class bulk_schedule_on_device_sender
     static_assert(is_typed_sender<TypedSender>::value, "TypedSender must be a typed sender.");
     static_assert(is_device_scheduler<DeviceScheduler>::value, "DeviceScheduler must be a device scheduler.");
 
-    // XXX generalize this to executor_shape_t
-    using index_type = std::size_t;
-
-    // XXX generalize this to executor_index_t
-    using shape_type = std::size_t;
+    using index_type = scheduler_index_t<DeviceScheduler>;
+    using shape_type = scheduler_shape_t<DeviceScheduler>;
 
     TypedSender prologue_;
     DeviceScheduler scheduler_;
@@ -95,7 +94,7 @@ class bulk_schedule_on_device_sender
 
 
     template<class OtherSender>
-    bulk_schedule_on_device_sender(OtherSender&& prologue, const DeviceScheduler& scheduler, std::size_t shape)
+    bulk_schedule_on_device_sender(OtherSender&& prologue, const DeviceScheduler& scheduler, shape_type shape)
       : prologue_{std::forward<OtherSender>(prologue)},
         scheduler_{scheduler},
         shape_{shape}
@@ -191,7 +190,7 @@ template<class DeviceScheduler, class TypedSender,
          CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
         >
 bulk_schedule_on_device_sender<remove_cvref_t<TypedSender>,DeviceScheduler>
-  bulk_schedule_on_device(const DeviceScheduler& scheduler, std::size_t shape, TypedSender&& sender)
+  bulk_schedule_on_device(const DeviceScheduler& scheduler, scheduler_shape_t<DeviceScheduler> shape, TypedSender&& sender)
 {
   return {std::forward<TypedSender>(sender), scheduler, shape};
 }
