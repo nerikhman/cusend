@@ -31,6 +31,7 @@
 #include <type_traits>
 #include <utility>
 #include "../../../detail/type_traits/remove_cvref.hpp"
+#include "../../../execution/executor/executor_shape.hpp"
 #include "../../connect.hpp"
 #include "../../sender/is_typed_sender.hpp"
 #include "../get_executor.hpp"
@@ -49,12 +50,12 @@ template<class Scheduler, class TypedSender>
 class bulk_sender
 {
   private:
-    Scheduler scheduler_;
-    // XXX generalize to executor_shape_t
-    std::size_t shape_;
-    TypedSender predecessor_;
-
     using executor_type = get_executor_t<Scheduler>;
+    using shape_type = execution::executor_shape_t<executor_type>;
+
+    Scheduler scheduler_;
+    shape_type shape_;
+    TypedSender predecessor_;
 
   public:
     template<template<class...> class Tuple, template<class...> class Variant>
@@ -69,7 +70,7 @@ class bulk_sender
     CUSEND_EXEC_CHECK_DISABLE
     template<class Sender>
     CUSEND_ANNOTATION
-    bulk_sender(const Scheduler& scheduler, std::size_t shape, Sender&& predecessor)
+    bulk_sender(const Scheduler& scheduler, shape_type shape, Sender&& predecessor)
       : scheduler_{scheduler},
         shape_{shape},
         predecessor_{std::forward<Sender>(predecessor)}
@@ -84,7 +85,7 @@ class bulk_sender
 
 
     template<class ManyReceiver,
-             CUSEND_REQUIRES(can_make_fan_out_receiver<TypedSender,executor_type,std::size_t,ManyReceiver&&>::value)
+             CUSEND_REQUIRES(can_make_fan_out_receiver<TypedSender,executor_type,shape_type,ManyReceiver&&>::value)
             >
     CUSEND_ANNOTATION
     auto connect(ManyReceiver&& r) &&
@@ -121,7 +122,7 @@ template<class Scheduler, class TypedSender,
          CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
         >
 CUSEND_ANNOTATION
-bulk_sender<Scheduler, remove_cvref_t<TypedSender>> default_bulk_schedule(const Scheduler& scheduler, std::size_t shape, TypedSender&& sender)
+bulk_sender<Scheduler, remove_cvref_t<TypedSender>> default_bulk_schedule(const Scheduler& scheduler, execution::executor_shape_t<get_executor_t<Scheduler>> shape, TypedSender&& sender)
 {
   return {scheduler, shape, std::forward<TypedSender>(sender)};
 }
