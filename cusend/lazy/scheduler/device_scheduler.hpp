@@ -30,6 +30,8 @@
 
 #include <utility>
 #include "../../execution/executor/is_device_executor.hpp"
+#include "../../execution/executor/executor_index.hpp"
+#include "../../execution/executor/executor_shape.hpp"
 #include "../sender/is_typed_sender.hpp"
 #include "detail/bulk_schedule_on_device.hpp"
 #include "detail/schedule_on_device.hpp"
@@ -47,6 +49,10 @@ class device_scheduler
 {
   public:
     static_assert(execution::is_device_executor<DeviceExecutor>::value, "DeviceExecutor must be a device executor.");
+
+
+    using index_type = execution::executor_index_t<DeviceExecutor>;
+    using shape_type = execution::executor_shape_t<DeviceExecutor>;
 
 
     explicit device_scheduler(const DeviceExecutor& executor)
@@ -71,12 +77,11 @@ class device_scheduler
     }
 
 
-    // XXX generalize shape to executor_shape_t
     template<class TypedSender,
              CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
             >
-    detail::bulk_schedule_on_device_t<device_scheduler, std::size_t, TypedSender&&>
-      bulk_schedule(std::size_t shape, TypedSender&& prologue) const
+    detail::bulk_schedule_on_device_t<device_scheduler, shape_type, TypedSender&&>
+      bulk_schedule(shape_type shape, TypedSender&& prologue) const
     {
       return detail::bulk_schedule_on_device(*this, shape, std::forward<TypedSender>(prologue));
     }
