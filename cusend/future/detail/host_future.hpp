@@ -33,6 +33,8 @@
 #include <type_traits>
 #include <utility>
 #include "../../execution/executor/callback_executor.hpp"
+#include "../../execution/executor/executor_index.hpp"
+#include "../../execution/executor/executor_shape.hpp"
 #include "../../execution/executor/is_device_executor.hpp"
 #include "../../lazy/combinator/just.hpp"
 #include "../../lazy/combinator/transform.hpp"
@@ -261,9 +263,9 @@ class host_future : public host_future_base<T,Executor>
              class R,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t,T&>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<R,execution::executor_index_t<DeviceExecutor>,T&>::value)
             >
-    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, std::size_t shape) &&
+    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, execution::executor_shape_t<DeviceExecutor> shape) &&
     {
       // after this future's result is ready, move it into device_state_
       detail::event event = asynchronously_move_result_to_device();
@@ -278,9 +280,9 @@ class host_future : public host_future_base<T,Executor>
 
     template<class R,
              CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t,T&>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_index_t<Executor>, T&>::value)
             >
-    future<T,Executor> bulk_then(R receiver, std::size_t shape) &&
+    future<T,Executor> bulk_then(R receiver, execution::executor_shape_t<Executor> shape) &&
     {
       return std::move(*this).bulk_then(executor(), receiver, shape);
     }
@@ -290,9 +292,9 @@ class host_future : public host_future_base<T,Executor>
              class F,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copyable<F>::value),
-             CUSEND_REQUIRES(is_invocable<F,std::size_t,T&>::value)
+             CUSEND_REQUIRES(is_invocable<F, execution::executor_index_t<DeviceExecutor>, T&>::value)
             >
-    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, std::size_t shape) &&
+    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, execution::executor_shape_t<DeviceExecutor> shape) &&
     {
       return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
     }
@@ -300,9 +302,9 @@ class host_future : public host_future_base<T,Executor>
 
     template<class F,
              CUSEND_REQUIRES(std::is_trivially_copyable<F>::value),
-             CUSEND_REQUIRES(is_invocable<F,std::size_t,T&>::value)
+             CUSEND_REQUIRES(is_invocable<F, execution::executor_index_t<Executor>, T&>::value)
             >
-    future<T,Executor> bulk_then(F f, std::size_t shape) &&
+    future<T,Executor> bulk_then(F f, execution::executor_shape_t<Executor> shape) &&
     {
       return std::move(*this).bulk_then(executor(), detail::as_receiver(f), shape);
     }
@@ -328,13 +330,13 @@ class host_future : public host_future_base<T,Executor>
     template<class DeviceExecutor,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
             >
-    detail::bulk_future<host_future, DeviceExecutor> bulk(const DeviceExecutor& ex, std::size_t shape) &&
+    detail::bulk_future<host_future, DeviceExecutor> bulk(const DeviceExecutor& ex, execution::executor_shape_t<DeviceExecutor> shape) &&
     {
       return {std::move(*this), ex, shape};
     }
 
 
-    detail::bulk_future<host_future, Executor> bulk(std::size_t shape) &&
+    detail::bulk_future<host_future, Executor> bulk(execution::executor_shape_t<Executor> shape) &&
     {
       return std::move(*this).bulk(executor(), shape);
     }
@@ -483,9 +485,9 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
              class R,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_index_t<DeviceExecutor>>::value)
             >
-    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, std::size_t shape) &&
+    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, execution::executor_shape_t<DeviceExecutor> shape) &&
     {
       // on a stream callback, wait for the future to complete
       detail::event event = std::move(*this).then_on_stream_callback([]()
@@ -503,9 +505,9 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
 
     template<class R,
              CUSEND_REQUIRES(std::is_trivially_copyable<R>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<R,std::size_t>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_index_t<Executor>>::value)
             >
-    future<void,Executor> bulk_then(R receiver, std::size_t shape) &&
+    future<void,Executor> bulk_then(R receiver, execution::executor_shape_t<Executor> shape) &&
     {
       return std::move(*this).bulk_then(executor(), receiver, shape);
     }
@@ -515,9 +517,9 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
              class F,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copyable<F>::value),
-             CUSEND_REQUIRES(is_invocable<F,std::size_t>::value)
+             CUSEND_REQUIRES(is_invocable<F, execution::executor_index_t<DeviceExecutor>>::value)
             >
-    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, std::size_t shape) &&
+    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, execution::executor_shape_t<DeviceExecutor> shape) &&
     {
       return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
     }
@@ -525,9 +527,9 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
 
     template<class F,
              CUSEND_REQUIRES(std::is_trivially_copyable<F>::value),
-             CUSEND_REQUIRES(is_invocable<F,std::size_t>::value)
+             CUSEND_REQUIRES(is_invocable<F, execution::executor_index_t<Executor>>::value)
             >
-    future<void,Executor> bulk_then(F f, std::size_t shape) &&
+    future<void,Executor> bulk_then(F f, execution::executor_shape_t<Executor> shape) &&
     {
       return std::move(*this).bulk_then(executor(), detail::as_receiver(f), shape);
     }
@@ -550,13 +552,13 @@ class host_future<void,Executor> : public host_future_base<void,Executor>
     template<class DeviceExecutor,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
             >
-    detail::bulk_future<host_future, DeviceExecutor> bulk(const DeviceExecutor& ex, std::size_t shape) &&
+    detail::bulk_future<host_future, DeviceExecutor> bulk(const DeviceExecutor& ex, execution::executor_shape_t<DeviceExecutor> shape) &&
     {
       return {std::move(*this), ex, shape};
     }
 
 
-    detail::bulk_future<host_future, Executor> bulk(std::size_t shape) &&
+    detail::bulk_future<host_future, Executor> bulk(execution::executor_shape_t<Executor> shape) &&
     {
       return std::move(*this).bulk(executor(), shape);
     }
