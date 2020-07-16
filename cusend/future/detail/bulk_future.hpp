@@ -31,6 +31,8 @@
 #include <cstddef>
 #include <type_traits>
 #include <utility>
+#include "../../execution/executor/executor_index.hpp"
+#include "../../execution/executor/executor_shape.hpp"
 #include "../../execution/executor/inline_executor.hpp"
 #include "../../execution/executor/is_device_executor.hpp"
 #include "../../lazy/connect.hpp"
@@ -51,11 +53,11 @@ class bulk_future_receiver
   private:
     Future future_;
     DeviceExecutor executor_;
-    std::size_t shape_;
+    execution::executor_shape_t<DeviceExecutor> shape_;
     ManyReceiver receiver_;
 
   public:
-    bulk_future_receiver(Future&& future, const DeviceExecutor& executor, std::size_t shape, ManyReceiver receiver)
+    bulk_future_receiver(Future&& future, const DeviceExecutor& executor, execution::executor_shape_t<DeviceExecutor> shape, ManyReceiver receiver)
       : future_{std::move(future)},
         executor_{executor},
         shape_{shape},
@@ -97,12 +99,12 @@ class bulk_future
   private:
     Future future_;
     DeviceExecutor executor_;
-    std::size_t shape_;
+    execution::executor_shape_t<DeviceExecutor> shape_;
 
     using value_type = decltype(std::declval<Future>().get());
 
   public:
-    bulk_future(Future&& future, const DeviceExecutor& executor, std::size_t shape)
+    bulk_future(Future&& future, const DeviceExecutor& executor, execution::executor_shape_t<DeviceExecutor> shape)
       : future_{std::move(future)},
         executor_{executor},
         shape_{shape}
@@ -111,12 +113,11 @@ class bulk_future
     bulk_future(bulk_future&&) = default;
 
 
-    // XXX needs to be generalized from size_t to executor_index_t
-    // XXX the only reason there are two overloads for connect() is to avoid using is_many_receiver_of with void&, which is illegal
+    // the only reason there are two overloads for connect() is to avoid using is_many_receiver_of with void&, which is illegal
     template<class ManyReceiver,
              class T = value_type,
              CUSEND_REQUIRES(std::is_void<T>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver, std::size_t>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver, execution::executor_index_t<DeviceExecutor>>::value),
              CUSEND_REQUIRES(std::is_trivially_copyable<ManyReceiver>::value)
             >
     auto connect(ManyReceiver receiver) &&
@@ -128,11 +129,10 @@ class bulk_future
     }
 
 
-    // XXX needs to be generalized from size_t to executor_index_t
     template<class ManyReceiver,
              class T = value_type,
              CUSEND_REQUIRES(!std::is_void<T>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver, std::size_t, T&>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver, execution::executor_index_t<DeviceExecutor>, T&>::value),
              CUSEND_REQUIRES(std::is_trivially_copyable<ManyReceiver>::value)
             >
     auto connect(ManyReceiver receiver) &&
