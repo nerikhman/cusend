@@ -1,5 +1,5 @@
 #include <cassert>
-#include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/execution/executor/kernel_executor.hpp>
 #include <cusend/execution/property/stream.hpp>
 #include <cusend/property/query.hpp>
 
@@ -12,7 +12,7 @@ void test_stream_property()
   cudaStream_t expected{};
   assert(cudaSuccess == cudaStreamCreate(&expected));
 
-  ns::execution::stream_executor ex{expected};
+  ns::execution::kernel_executor ex{expected};
   assert(expected == cusend::query(ex, ns::execution::stream));
 
   assert(cudaSuccess == cudaStreamDestroy(expected));

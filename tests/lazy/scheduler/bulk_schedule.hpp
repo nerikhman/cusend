@@ -1,6 +1,6 @@
 #include <cassert>
 #include <cusend/execution/executor/inline_executor.hpp>
-#include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/execution/executor/kernel_executor.hpp>
 #include <cusend/lazy/combinator/just.hpp>
 #include <cusend/lazy/scheduler/as_scheduler.hpp>
 #include <cusend/lazy/scheduler/bulk_schedule.hpp>
@@ -16,6 +16,40 @@ namespace ns = cusend;
 #define __device__
 #define __managed__
 #endif
+
+
+template<class Coord>
+__host__ __device__
+Coord to_shape(std::size_t size);
+
+
+template<>
+__host__ __device__
+std::size_t to_shape<std::size_t>(std::size_t size)
+{
+  return size;
+}
+
+template<>
+__host__ __device__
+ns::execution::kernel_executor::coordinate_type to_shape<ns::execution::kernel_executor::coordinate_type>(std::size_t size)
+{
+  return {dim3(1), dim3(size)};
+}
+
+__host__ __device__
+std::size_t to_index(std::size_t idx)
+{
+  return idx;
+}
+
+
+__host__ __device__
+std::size_t to_index(ns::execution::kernel_executor::coordinate_type coord)
+{
+  // XXX really ought to generalize this
+  return coord.thread.x;
+}
 
 
 __managed__ bool result0;
@@ -104,6 +138,14 @@ struct my_receiver
   }
 
 
+  template<class Coord, class... Args>
+  __host__ __device__
+  void set_value(Coord coord, Args&&... args) const
+  {
+    return this->set_value(to_index(coord), std::forward<Args>(args)...);
+  }
+
+
   template<class E>
   __host__ __device__
   void set_error(E&&) && noexcept {}
@@ -120,8 +162,11 @@ void test(Scheduler scheduler)
     result0 = false;
     result1 = false;
 
+    using coord_type = ns::scheduler_coordinate_t<Scheduler>;
+    coord_type shape = to_shape<coord_type>(2);
+
     auto s0 = ns::just();
-    auto s1 = ns::bulk_schedule(scheduler, 2, std::move(s0));
+    auto s1 = ns::bulk_schedule(scheduler, shape, std::move(s0));
 
     ns::submit(std::move(s1), my_receiver{13,7});
 
@@ -133,9 +178,12 @@ void test(Scheduler scheduler)
   {
     result0 = false;
     result1 = false;
+
+    using coord_type = ns::scheduler_coordinate_t<Scheduler>;
+    coord_type shape = to_shape<coord_type>(2);
 
     auto s0 = ns::just(13);
-    auto s1 = ns::bulk_schedule(scheduler, 2, std::move(s0));
+    auto s1 = ns::bulk_schedule(scheduler, shape, std::move(s0));
 
     ns::submit(std::move(s1), my_receiver{13,7});
 
@@ -148,8 +196,11 @@ void test(Scheduler scheduler)
     result0 = false;
     result1 = false;
 
+    using coord_type = ns::scheduler_coordinate_t<Scheduler>;
+    coord_type shape = to_shape<coord_type>(2);
+
     auto s0 = ns::just(13,7);
-    auto s1 = ns::bulk_schedule(scheduler, 2, std::move(s0));
+    auto s1 = ns::bulk_schedule(scheduler, shape, std::move(s0));
 
     ns::submit(std::move(s1), my_receiver{13,7});
 
@@ -164,7 +215,7 @@ void test_bulk_schedule()
 {
 #ifdef __CUDACC__
   // device_scheduler requires CUDA C++
-  test(ns::device_scheduler<ns::execution::stream_executor>());
+  test(ns::device_scheduler<ns::execution::kernel_executor>());
 #endif
 
   test(ns::as_scheduler(ns::execution::inline_executor{}));

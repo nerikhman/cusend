@@ -36,7 +36,7 @@
 #include "../detail/type_traits/remove_cvref.hpp"
 #include "../execution/executor/executor_coordinate.hpp"
 #include "../execution/executor/is_device_executor.hpp"
-#include "../execution/executor/stream_executor.hpp"
+#include "../execution/executor/kernel_executor.hpp"
 #include "../lazy/detail/invocable_as_receiver.hpp"
 #include "../lazy/receiver/is_receiver_of.hpp"
 #include "../memory/unique_ptr.hpp"
@@ -199,7 +199,7 @@ class future_base
 
 
 // declare future for make_unready_future below
-template<class T, class Executor = execution::stream_executor>
+template<class T, class Executor = execution::kernel_executor>
 class future;
 
 
@@ -657,7 +657,7 @@ class future<void,Executor> : private detail::future_base<Executor>
 CUSEND_ANNOTATION
 inline future<void> make_ready_future()
 {
-  return future<void>{execution::stream_executor{}, true};
+  return future<void>{execution::kernel_executor{}, true};
 }
 
 

@@ -1,4 +1,4 @@
-#include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/execution/executor/kernel_executor.hpp>
 #include <cusend/lazy/combinator/just.hpp>
 #include <cusend/lazy/scheduler/is_device_scheduler.hpp>
 
@@ -29,7 +29,7 @@ ns::just_t<> schedule(const has_schedule_free_function&);
 template<class Base>
 struct has_executor_member_function : Base
 {
-  ns::execution::stream_executor executor() const;
+  ns::execution::kernel_executor executor() const;
 };
 
 
@@ -37,7 +37,7 @@ template<class Base>
 struct has_get_executor_free_function : Base {};
 
 template<class Base>
-ns::execution::stream_executor get_executor(const has_get_executor_free_function<Base>&);
+ns::execution::kernel_executor get_executor(const has_get_executor_free_function<Base>&);
 
 
 struct not_a_device_scheduler {};

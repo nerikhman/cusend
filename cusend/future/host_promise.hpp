@@ -111,9 +111,9 @@ class host_promise
       return this->get_future(executor, execution::callback_executor{detail::stream_of(executor)});
     }
 
-    detail::host_future<T,execution::stream_executor> get_future()
+    detail::host_future<T,execution::kernel_executor> get_future()
     {
-      return this->get_future(execution::stream_executor{});
+      return this->get_future(execution::kernel_executor{});
     }
 
   private:

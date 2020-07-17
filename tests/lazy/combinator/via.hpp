@@ -1,6 +1,6 @@
 #include <cassert>
 #include <cstring>
-#include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/execution/executor/kernel_executor.hpp>
 #include <cusend/lazy/combinator/just.hpp>
 #include <cusend/lazy/combinator/transform.hpp>
 #include <cusend/lazy/combinator/via.hpp>
@@ -203,7 +203,7 @@ void test_via_device_scheduler()
     result1 = false;
 
     // just().via(scheduler)
-    auto sender = ns::via(cusend::just(), ns::device_scheduler<ns::execution::stream_executor>{});
+    auto sender = ns::via(cusend::just(), ns::device_scheduler<ns::execution::kernel_executor>{});
 
     std::move(sender).connect(my_receiver{}).start();
 
@@ -216,7 +216,7 @@ void test_via_device_scheduler()
 
     // just(13).via(scheduler)
     int expected1 = 13;
-    auto sender = ns::via(ns::just(expected1), ns::device_scheduler<ns::execution::stream_executor>{});
+    auto sender = ns::via(ns::just(expected1), ns::device_scheduler<ns::execution::kernel_executor>{});
 
     std::move(sender).connect(my_receiver{}).start();
 
@@ -231,7 +231,7 @@ void test_via_device_scheduler()
     // just(13,7).via(scheduler)
     int expected1 = 13;
     int expected2 = 7;
-    auto sender = ns::via(ns::just(expected1,expected2), ns::device_scheduler<ns::execution::stream_executor>{});
+    auto sender = ns::via(ns::just(expected1,expected2), ns::device_scheduler<ns::execution::kernel_executor>{});
 
     std::move(sender).connect(my_receiver{}).start();
 

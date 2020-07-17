@@ -35,6 +35,7 @@
 #include "../../execution/executor/callback_executor.hpp"
 #include "../../execution/executor/executor_coordinate.hpp"
 #include "../../execution/executor/is_device_executor.hpp"
+#include "../../execution/executor/kernel_executor.hpp"
 #include "../../lazy/combinator/just.hpp"
 #include "../../lazy/combinator/transform.hpp"
 #include "../../lazy/detail/invocable_as_receiver.hpp"
@@ -53,7 +54,7 @@ namespace detail
 {
 
 
-template<class T, class Executor = execution::stream_executor>
+template<class T, class Executor = execution::kernel_executor>
 class host_future;
 
 

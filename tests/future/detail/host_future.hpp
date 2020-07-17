@@ -1,5 +1,6 @@
 #include <cassert>
 #include <utility>
+#include <cusend/execution/executor/kernel_executor.hpp>
 #include <cusend/future/host_promise.hpp>
 #include <cusend/lazy/submit.hpp>
 
@@ -100,8 +101,8 @@ void test_get(Executor ex)
 // these tests exercise each case of .then
 
 
-template<class StreamExecutor>
-void test_then_void_to_void(StreamExecutor ex)
+template<class Executor>
+void test_then_void_to_void(Executor ex)
 {
   // then void -> void
   auto f1 = make_ready_host_future(ex);
@@ -120,8 +121,8 @@ void test_then_void_to_void(StreamExecutor ex)
 }
 
 
-template<class StreamExecutor>
-void test_then_int_to_void(StreamExecutor ex)
+template<class Executor>
+void test_then_int_to_void(Executor ex)
 {
   // then int -> void
   auto f1 = make_ready_host_future(ex, 7);
@@ -140,8 +141,8 @@ void test_then_int_to_void(StreamExecutor ex)
 }
 
 
-template<class StreamExecutor>
-void test_then_void_to_int(StreamExecutor ex)
+template<class Executor>
+void test_then_void_to_int(Executor ex)
 {
   // then void -> int
   auto f1 = make_ready_host_future(ex);
@@ -159,8 +160,8 @@ void test_then_void_to_int(StreamExecutor ex)
 }
 
 
-template<class StreamExecutor>
-void test_then_int_to_int(StreamExecutor ex)
+template<class Executor>
+void test_then_int_to_int(Executor ex)
 {
   // then int -> int
   auto f1 = make_ready_host_future(ex, 7);
@@ -178,8 +179,8 @@ void test_then_int_to_int(StreamExecutor ex)
 }
 
 
-template<class StreamExecutor>
-void test_then_int_to_float(StreamExecutor ex)
+template<class Executor>
+void test_then_int_to_float(Executor ex)
 {
   // then int -> float
   auto f1 = make_ready_host_future(ex, 7);
@@ -195,6 +196,63 @@ void test_then_int_to_float(StreamExecutor ex)
   assert(std::move(f2).get() == 13.f);
   assert(!f2.valid());
 }
+
+
+template<class Coord>
+__host__ __device__
+Coord to_shape(std::size_t size);
+
+
+template<>
+__host__ __device__
+std::size_t to_shape<std::size_t>(std::size_t size)
+{
+  return size;
+}
+
+template<>
+__host__ __device__
+ns::execution::kernel_executor::coordinate_type to_shape<ns::execution::kernel_executor::coordinate_type>(std::size_t size)
+{
+  return {dim3(1), dim3(size)};
+}
+
+
+
+__host__ __device__
+std::size_t to_index(std::size_t idx)
+{
+  return idx;
+}
+
+
+__host__ __device__
+std::size_t to_index(ns::execution::kernel_executor::coordinate_type coord)
+{
+  // XXX really ought to generalize this
+  return coord.thread.x;
+}
+
+
+template<class Coord>
+__host__ __device__
+Coord to_coord(std::size_t idx);
+
+template<>
+__host__ __device__
+std::size_t to_coord<std::size_t>(std::size_t idx)
+{
+  return idx;
+}
+
+template<>
+__host__ __device__
+ns::execution::kernel_executor::coordinate_type to_coord<ns::execution::kernel_executor::coordinate_type>(std::size_t idx)
+{
+  return {dim3(0,0,0), dim3(1,0,0)};
+}
+
+
 
 
 __managed__ int single_result;
@@ -391,6 +449,12 @@ struct many_receiver_of_int
     }
   }
 
+  __host__ __device__
+  void set_value(ns::execution::kernel_executor::coordinate_type coord, int& value) noexcept
+  {
+    set_value(to_index(coord), value);
+  }
+
   template<class E>
   __host__ __device__
   void set_error(E&&) && noexcept {}
@@ -409,7 +473,10 @@ void test_bulk_then_receiver_of_int(Executor ex)
   bulk_result0 = false;
   bulk_result1 = false;
 
-  auto f2 = std::move(f1).bulk_then(ex, many_receiver_of_int{expected}, 2);
+  using coord_type = ns::execution::executor_coordinate_t<Executor>;
+  auto shape = to_shape<coord_type>(2);
+
+  auto f2 = std::move(f1).bulk_then(ex, many_receiver_of_int{expected}, shape);
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -450,6 +517,12 @@ struct many_receiver_of_void
     }
   }
 
+  __host__ __device__
+  void set_value(ns::execution::kernel_executor::coordinate_type coord) noexcept
+  {
+    set_value(to_index(coord));
+  }
+
   template<class E>
   __host__ __device__
   void set_error(E&&) && noexcept {}
@@ -467,7 +540,10 @@ void test_bulk_then_receiver_of_void(Executor ex)
   bulk_result0 = false;
   bulk_result1 = false;
 
-  auto f2 = std::move(f1).bulk_then(ex, many_receiver_of_void{}, 2);
+  using coord_type = ns::execution::executor_coordinate_t<Executor>;
+  auto shape = to_shape<coord_type>(2);
+
+  auto f2 = std::move(f1).bulk_then(ex, many_receiver_of_void{}, shape);
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -488,9 +564,12 @@ void test_bulk_then_void_to_void(Executor ex)
   bulk_result0 = false;
   bulk_result1 = false;
 
-  auto f2 = std::move(f1).bulk_then(ex, [] __host__ __device__ (std::size_t idx)
+  using coord_type = ns::execution::executor_coordinate_t<Executor>;
+  coord_type shape = to_shape<coord_type>(2);
+
+  auto f2 = std::move(f1).bulk_then(ex, [] __host__ __device__ (coord_type coord)
   {
-    switch(idx)
+    switch(to_index(coord))
     {
       case 0:
       {
@@ -510,7 +589,7 @@ void test_bulk_then_void_to_void(Executor ex)
         break;
       }
     }
-  }, 2);
+  }, shape);
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -531,9 +610,12 @@ void test_bulk_then_int_to_int(Executor ex)
   bulk_result0 = false;
   bulk_result1 = false;
 
-  auto f2 = std::move(f1).bulk_then(ex, [] __host__ __device__ (std::size_t idx, int& value)
+  using coord_type = ns::execution::executor_coordinate_t<Executor>;
+  coord_type shape = to_shape<coord_type>(2);
+
+  auto f2 = std::move(f1).bulk_then(ex, [] __host__ __device__ (coord_type coord, int& value)
   {
-    switch(idx)
+    switch(to_index(coord))
     {
       case 0:
       {
@@ -553,7 +635,7 @@ void test_bulk_then_int_to_int(Executor ex)
         break;
       }
     }
-  }, 2);
+  }, shape);
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -575,7 +657,10 @@ void test_bulk(Executor ex)
     bulk_result0 = false;
     bulk_result1 = false;
 
-    ns::submit(make_ready_host_future(ex).bulk(2), many_receiver_of_void{});
+    using coord_type = ns::execution::executor_coordinate_t<Executor>;
+    coord_type shape = to_shape<coord_type>(2);
+
+    ns::submit(make_ready_host_future(ex).bulk(shape), many_receiver_of_void{});
     assert(cudaSuccess == cudaDeviceSynchronize());
 
     assert(bulk_result0);
@@ -588,7 +673,10 @@ void test_bulk(Executor ex)
     bulk_result0 = false;
     bulk_result1 = false;
 
-    ns::submit(make_ready_host_future(ex, 13).bulk(2), many_receiver_of_int{13});
+    using coord_type = ns::execution::executor_coordinate_t<Executor>;
+    coord_type shape = to_shape<coord_type>(2);
+
+    ns::submit(make_ready_host_future(ex, 13).bulk(shape), many_receiver_of_int{13});
     assert(cudaSuccess == cudaDeviceSynchronize());
 
     assert(bulk_result0);
@@ -597,8 +685,8 @@ void test_bulk(Executor ex)
 }
 
 
-template<class StreamExecutor>
-void test(StreamExecutor ex)
+template<class Executor>
+void test(Executor ex)
 {
   test_move_construction(ex);
   test_move_assignment(ex);
@@ -628,8 +716,8 @@ void test(StreamExecutor ex)
 void test_host_future()
 {
 #ifdef __CUDACC__
-  // stream_executor launches kernels, so only test it with a CUDA compiler
-  test(ns::execution::stream_executor{});
+  // kernel_executor launches kernels, so only test it with a CUDA compiler
+  test(ns::execution::kernel_executor{});
 #endif
 
   test(ns::execution::callback_executor{});

@@ -1,6 +1,6 @@
 #include <cassert>
 #include <cusend/execution/executor/inline_executor.hpp>
-#include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/execution/executor/kernel_executor.hpp>
 #include <cusend/lazy/dot/bulk_schedule.hpp>
 #include <cusend/lazy/dot/just.hpp>
 #include <cusend/lazy/scheduler/device_scheduler.hpp>
@@ -16,8 +16,42 @@ namespace ns = cusend;
 #endif
 
 
+template<class Coord>
+__host__ __device__
+Coord to_shape(std::size_t size);
+
+
+template<>
+__host__ __device__
+std::size_t to_shape<std::size_t>(std::size_t size)
+{
+  return size;
+}
+
+template<>
+__host__ __device__
+ns::execution::kernel_executor::coordinate_type to_shape<ns::execution::kernel_executor::coordinate_type>(std::size_t size)
+{
+  return {dim3(1), dim3(size)};
+}
+
+__host__ __device__
+std::size_t to_index(std::size_t idx)
+{
+  return idx;
+}
+
+
 __managed__ bool result0;
 __managed__ bool result1;
+
+
+__host__ __device__
+std::size_t to_index(ns::execution::kernel_executor::coordinate_type coord)
+{
+  // XXX really ought to generalize this
+  return coord.thread.x;
+}
 
 
 struct my_receiver
@@ -101,6 +135,13 @@ struct my_receiver
     }
   }
 
+  template<class Coord, class... Args>
+  __host__ __device__
+  void set_value(Coord coord, Args&&... args) const
+  {
+    return set_value(to_index(coord), std::forward<Args>(args)...);
+  }
+
 
   template<class E>
   __host__ __device__
@@ -118,7 +159,10 @@ void test(Scheduler scheduler)
     result0 = false;
     result1 = false;
 
-    ns::dot::just().bulk_schedule(scheduler, 2).submit(my_receiver{13,7});
+    using coord_type = ns::scheduler_coordinate_t<Scheduler>;
+    coord_type shape = to_shape<coord_type>(2);
+
+    ns::dot::just().bulk_schedule(scheduler, shape).submit(my_receiver{13,7});
 
     cudaStreamSynchronize(0);
     assert(result0);
@@ -129,7 +173,10 @@ void test(Scheduler scheduler)
     result0 = false;
     result1 = false;
 
-    ns::dot::just(13).bulk_schedule(scheduler, 2).submit(my_receiver{13,7});
+    using coord_type = ns::scheduler_coordinate_t<Scheduler>;
+    coord_type shape = to_shape<coord_type>(2);
+
+    ns::dot::just(13).bulk_schedule(scheduler, shape).submit(my_receiver{13,7});
 
     cudaStreamSynchronize(0);
     assert(result0);
@@ -140,7 +187,10 @@ void test(Scheduler scheduler)
     result0 = false;
     result1 = false;
 
-    ns::dot::just(13,7).bulk_schedule(scheduler, 2).submit(my_receiver{13,7});
+    using coord_type = ns::scheduler_coordinate_t<Scheduler>;
+    coord_type shape = to_shape<coord_type>(2);
+
+    ns::dot::just(13,7).bulk_schedule(scheduler, shape).submit(my_receiver{13,7});
 
     cudaStreamSynchronize(0);
     assert(result0);
@@ -152,8 +202,8 @@ void test(Scheduler scheduler)
 void test_bulk_schedule()
 {
 #ifdef __CUDACC__
-  // stream_executor requires CUDA C++
-  test(ns::device_scheduler<ns::execution::stream_executor>());
+  // kernel_executor requires CUDA C++
+  test(ns::device_scheduler<ns::execution::kernel_executor>());
 #endif
 
   test(ns::as_scheduler(ns::execution::inline_executor{}));

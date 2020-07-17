@@ -341,6 +341,14 @@ void test_then_receiver_of_int_and_return_int()
 }
 
 
+__host__ __device__
+std::size_t to_index(ns::execution::kernel_executor::coordinate_type coord)
+{
+  // XXX really ought to generalize this
+  return coord.thread.x;
+}
+
+
 __managed__ bool bulk_result0;
 __managed__ bool bulk_result1;
 
@@ -350,9 +358,9 @@ struct many_receiver_of_int
   int expected;
 
   __device__
-  void set_value(int idx, int& value) noexcept
+  void set_value(ns::execution::kernel_executor::coordinate_type coord, int& value) noexcept
   {
-    switch(idx)
+    switch(to_index(coord))
     {
       case 0:
       {
@@ -391,7 +399,9 @@ void test_bulk_then_receiver_of_int()
   bulk_result0 = false;
   bulk_result1 = false;
 
-  auto f2 = std::move(f1).bulk_then(many_receiver_of_int{expected}, 2);
+  ns::execution::kernel_executor::coordinate_type shape{{1},{2}};
+
+  auto f2 = std::move(f1).bulk_then(many_receiver_of_int{expected}, shape);
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -408,9 +418,9 @@ void test_bulk_then_receiver_of_int()
 struct many_receiver_of_void
 {
   __device__
-  void set_value(int idx) noexcept
+  void set_value(ns::execution::kernel_executor::coordinate_type coord) noexcept
   {
-    switch(idx)
+    switch(to_index(coord))
     {
       case 0:
       {
@@ -448,7 +458,9 @@ void test_bulk_then_receiver_of_void()
   bulk_result0 = false;
   bulk_result1 = false;
 
-  auto f2 = std::move(f1).bulk_then(many_receiver_of_void{}, 2);
+  ns::execution::kernel_executor::coordinate_type shape{{1},{2}};
+
+  auto f2 = std::move(f1).bulk_then(many_receiver_of_void{}, shape);
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -468,9 +480,11 @@ void test_bulk_then_void_to_void()
   bulk_result0 = false;
   bulk_result1 = false;
 
-  auto f2 = std::move(f1).bulk_then([] __device__ (std::size_t idx)
+  ns::execution::kernel_executor::coordinate_type shape{{1},{2}};
+
+  auto f2 = std::move(f1).bulk_then([] __device__ (ns::execution::kernel_executor::coordinate_type coord)
   {
-    switch(idx)
+    switch(to_index(coord))
     {
       case 0:
       {
@@ -490,7 +504,7 @@ void test_bulk_then_void_to_void()
         break;
       }
     }
-  }, 2);
+  }, shape);
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -510,9 +524,11 @@ void test_bulk_then_int_to_int()
   bulk_result0 = false;
   bulk_result1 = false;
 
-  auto f2 = std::move(f1).bulk_then([expected] __device__ (std::size_t idx, int& value)
+  ns::execution::kernel_executor::coordinate_type shape{{1},{2}};
+
+  auto f2 = std::move(f1).bulk_then([expected] __device__ (ns::execution::kernel_executor::coordinate_type coord, int& value)
   {
-    switch(idx)
+    switch(to_index(coord))
     {
       case 0:
       {
@@ -532,7 +548,7 @@ void test_bulk_then_int_to_int()
         break;
       }
     }
-  }, 2);
+  }, shape);
 
   assert(!f1.valid());
   assert(f2.valid());
@@ -553,7 +569,9 @@ void test_bulk()
     bulk_result0 = false;
     bulk_result1 = false;
 
-    ns::submit(ns::make_ready_future().bulk(2), many_receiver_of_void{});
+    ns::execution::kernel_executor::coordinate_type shape{{1},{2}};
+
+    ns::submit(ns::make_ready_future().bulk(shape), many_receiver_of_void{});
     assert(cudaSuccess == cudaDeviceSynchronize());
 
     assert(bulk_result0);
@@ -566,7 +584,9 @@ void test_bulk()
     bulk_result0 = false;
     bulk_result1 = false;
 
-    ns::submit(ns::make_ready_future(13).bulk(2), many_receiver_of_int{13});
+    ns::execution::kernel_executor::coordinate_type shape{{1},{2}};
+
+    ns::submit(ns::make_ready_future(13).bulk(shape), many_receiver_of_int{13});
     assert(cudaSuccess == cudaDeviceSynchronize());
 
     assert(bulk_result0);

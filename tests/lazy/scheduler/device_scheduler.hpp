@@ -1,6 +1,6 @@
 #include <cassert>
 #include <cstring>
-#include <cusend/execution/executor/stream_executor.hpp>
+#include <cusend/execution/executor/kernel_executor.hpp>
 #include <cusend/lazy/combinator/via.hpp>
 #include <cusend/lazy/scheduler/bulk_schedule.hpp>
 #include <cusend/lazy/scheduler/device_scheduler.hpp>
@@ -22,6 +22,14 @@
 
 
 namespace ns = cusend;
+
+
+__host__ __device__
+std::size_t to_index(ns::execution::kernel_executor::coordinate_type coord)
+{
+  // XXX really ought to generalize this
+  return coord.thread.x;
+}
 
 
 __managed__ int set_value_result;
@@ -202,6 +210,14 @@ struct my_many_receiver
   }
 
 
+  template<class Coord, class... Args>
+  __host__ __device__
+  void set_value(Coord coord, Args&&... args) const
+  {
+    set_value(to_index(coord), std::forward<Args>(args)...);
+  }
+
+
   template<class E>
   __host__ __device__
   void set_error(E&&) && noexcept
@@ -224,8 +240,10 @@ void test_bulk_schedule(Executor ex)
     set_value_result1 = false;
     set_error_called = false;
 
+    ns::scheduler_coordinate_t<ns::device_scheduler<Executor>> shape{dim3(1),dim3(2)};
+
     auto s0 = ns::just();
-    auto s1 = ns::bulk_schedule(scheduler, 2, std::move(s0));
+    auto s1 = ns::bulk_schedule(scheduler, shape, std::move(s0));
 
     ns::submit(std::move(s1), my_many_receiver{13,7});
     assert(cudaSuccess == cudaStreamSynchronize(scheduler.executor().stream()));
@@ -243,9 +261,11 @@ void test_bulk_schedule(Executor ex)
     set_value_result0 = false;
     set_value_result1 = false;
     set_error_called = false;
+
+    ns::scheduler_coordinate_t<ns::device_scheduler<Executor>> shape{dim3(1),dim3(2)};
 
     auto s0 = ns::just(13);
-    auto s1 = ns::bulk_schedule(scheduler, 2, std::move(s0));
+    auto s1 = ns::bulk_schedule(scheduler, shape, std::move(s0));
 
     ns::submit(std::move(s1), my_many_receiver{13,7});
     assert(cudaSuccess == cudaStreamSynchronize(scheduler.executor().stream()));
@@ -264,8 +284,10 @@ void test_bulk_schedule(Executor ex)
     set_value_result1 = false;
     set_error_called = false;
 
+    ns::scheduler_coordinate_t<ns::device_scheduler<Executor>> shape{dim3(1),dim3(2)};
+
     auto s0 = ns::just(13,7);
-    auto s1 = ns::bulk_schedule(scheduler, 2, std::move(s0));
+    auto s1 = ns::bulk_schedule(scheduler, shape, std::move(s0));
 
     ns::submit(std::move(s1), my_many_receiver{13,7});
     assert(cudaSuccess == cudaStreamSynchronize(scheduler.executor().stream()));
@@ -333,6 +355,6 @@ void test(Executor ex)
 
 void test_device_scheduler()
 {
-  test(ns::execution::stream_executor{});
+  test(ns::execution::kernel_executor{});
 }
 
