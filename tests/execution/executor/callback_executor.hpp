@@ -1,15 +1,15 @@
 #include <cassert>
 #include <cusend/execution/executor/callback_executor.hpp>
 
-namespace ns = cusend::execution;
-
 
 int result;
 
 
 void test(cudaStream_t s)
 {
-  ns::callback_executor ex1{s};
+  using namespace cusend::execution;
+
+  callback_executor ex1{s};
 
   assert(ex1.stream() == s);
 
@@ -25,7 +25,7 @@ void test(cudaStream_t s)
 
   assert(expected == result);
 
-  ns::callback_executor ex2{s};
+  callback_executor ex2{s};
 
   assert(ex1 == ex2);
   assert(!(ex1 != ex2));

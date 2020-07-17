@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cusend/execution/stream_pool.hpp>
 
+
 namespace ns = cusend::execution;
 
 
@@ -33,15 +34,67 @@ void test_execute(ns::static_stream_pool::executor_type ex, int expected)
 }
 
 
+__host__ __device__
+unsigned int hash_coord(ns::kernel_executor::coordinate_type coord)
+{
+  return coord.block.x ^ coord.block.y ^ coord.block.z ^ coord.thread.x ^ coord.thread.y ^ coord.thread.z;
+}
+
+
+// this array has blockIdx X threadIdx axes
+// put 4 elements in each axis
+__managed__ unsigned int bulk_result[4][4][4][4][4][4] = {};
+
+
+void test_bulk_execute(ns::static_stream_pool::executor_type ex)
+{
+  ns::static_stream_pool::executor_type::coordinate_type shape{::dim3(4,4,4), ::dim3(4,4,4)};
+
+  ex.bulk_execute([=] __device__ (ns::static_stream_pool::executor_type::coordinate_type coord)
+  {
+    unsigned int result = hash_coord(coord);
+
+    bulk_result[coord.block.x][coord.block.y][coord.block.z][coord.thread.x][coord.thread.y][coord.thread.z] = result;
+  }, shape);
+
+  assert(cudaStreamSynchronize(ex.stream()) == cudaSuccess);
+
+  for(unsigned int bx = 0; bx != shape.block.x; ++bx)
+  {
+    for(unsigned int by = 0; by != shape.block.y; ++by)
+    {
+      for(unsigned int bz = 0; bz != shape.block.z; ++bz)
+      {
+        for(unsigned int tx = 0; tx != shape.thread.x; ++tx)
+        {
+          for(unsigned int ty = 0; ty != shape.thread.y; ++ty)
+          {
+            for(unsigned int tz = 0; tz != shape.thread.z; ++tz)
+            {
+              ns::static_stream_pool::executor_type::coordinate_type coord{{bx,by,bz}, {tx,ty,tz}};
+              unsigned int expected = hash_coord(coord);
+
+              assert(expected == bulk_result[coord.block.x][coord.block.y][coord.block.z][coord.thread.x][coord.thread.y][coord.thread.z]);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
 void test_stream_pool()
 {
+  using namespace ns;
+
 #ifdef __CUDACC__
   {
     // static_stream_pool::executor_type::execute requires a CUDA C++ compiler
 
-    ns::static_stream_pool pool(0, 4);
+    static_stream_pool pool(0, 4);
 
-    ns::static_stream_pool::executor_type ex = pool.executor();
+    static_stream_pool::executor_type ex = pool.executor();
 
     result = 0;
     int expected = 13;
@@ -55,21 +108,34 @@ void test_stream_pool()
 #endif
 
 
+#ifdef __CUDACC__
+  {
+    // static_stream_pool::executor_type::bulk_execute requires a CUDA C++ compiler
+
+    static_stream_pool pool(0, 4);
+
+    static_stream_pool::executor_type ex = pool.executor();
+
+    test_bulk_execute(ex);
+  }
+#endif
+
+
   {
     // everything else works in CUDA C++ or C++
 
     int num_streams = 4;
 
-    ns::static_stream_pool pool(0, num_streams);
+    static_stream_pool pool(0, num_streams);
 
     // round-robin through executors
-    std::vector<ns::static_stream_pool::executor_type> first_round;
+    std::vector<static_stream_pool::executor_type> first_round;
     for(int i = 0; i < num_streams; ++i)
     {
       first_round.push_back(pool.executor());
     }
 
-    std::vector<ns::static_stream_pool::executor_type> second_round;
+    std::vector<static_stream_pool::executor_type> second_round;
     for(int i = 0; i < num_streams; ++i)
     {
       second_round.push_back(pool.executor());

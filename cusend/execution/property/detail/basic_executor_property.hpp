@@ -45,7 +45,7 @@ struct basic_executor_property
 
 #if __cplusplus >= 201402L
   template<class T>
-  static constexpr bool is_applicable_property_v = basic_executor_property::template is_applicable_property<T>();
+  static constexpr bool is_applicable_property_v = is_applicable_property<T>();
 
 // XXX workaround nvbug 2988190
 #if !defined(__CUDACC__)
