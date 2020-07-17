@@ -31,8 +31,7 @@
 #include <future>
 #include <type_traits>
 #include "../../execution/executor/bulk_execute.hpp"
-#include "../../execution/executor/executor_index.hpp"
-#include "../../execution/executor/executor_shape.hpp"
+#include "../../execution/executor/executor_coordinate.hpp"
 #include "../../execution/executor/is_device_executor.hpp"
 #include "../../lazy/detail/many_receiver_as_trivially_copyable_invocable.hpp"
 #include "../../lazy/receiver/is_many_receiver_of.hpp"
@@ -51,11 +50,11 @@ namespace detail
 template<class DeviceExecutor,
          class ManyReceiver,
          CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
-         class Index = execution::executor_index_t<DeviceExecutor>,
-         CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver,Index>::value)
+         class Coord = execution::executor_coordinate_t<DeviceExecutor>,
+         CUSEND_REQUIRES(is_many_receiver_of<ManyReceiver,Coord>::value)
         >
 CUSEND_ANNOTATION
-event then_bulk_execute(const DeviceExecutor& ex, event&& e, ManyReceiver receiver, execution::executor_shape_t<DeviceExecutor> shape)
+event then_bulk_execute(const DeviceExecutor& ex, event&& e, ManyReceiver receiver, execution::executor_coordinate_t<DeviceExecutor> shape)
 {
   // get ex's stream
   cudaStream_t stream = detail::stream_of(ex);

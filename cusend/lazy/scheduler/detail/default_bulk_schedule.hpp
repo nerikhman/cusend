@@ -35,7 +35,7 @@
 #include "../../sender/is_typed_sender.hpp"
 #include "../get_executor.hpp"
 #include "../is_scheduler.hpp"
-#include "../scheduler_shape.hpp"
+#include "../scheduler_coordinate.hpp"
 #include "detail/fan_out_receiver.hpp"
 
 
@@ -51,10 +51,10 @@ class bulk_sender
 {
   private:
     using executor_type = get_executor_t<Scheduler>;
-    using shape_type = scheduler_shape_t<Scheduler>;
+    using coordinate_type = scheduler_coordinate_t<Scheduler>;
 
     Scheduler scheduler_;
-    shape_type shape_;
+    coordinate_type shape_;
     TypedSender predecessor_;
 
   public:
@@ -70,7 +70,7 @@ class bulk_sender
     CUSEND_EXEC_CHECK_DISABLE
     template<class Sender>
     CUSEND_ANNOTATION
-    bulk_sender(const Scheduler& scheduler, shape_type shape, Sender&& predecessor)
+    bulk_sender(const Scheduler& scheduler, coordinate_type shape, Sender&& predecessor)
       : scheduler_{scheduler},
         shape_{shape},
         predecessor_{std::forward<Sender>(predecessor)}
@@ -85,7 +85,7 @@ class bulk_sender
 
 
     template<class ManyReceiver,
-             CUSEND_REQUIRES(can_make_fan_out_receiver<TypedSender,executor_type,shape_type,ManyReceiver&&>::value)
+             CUSEND_REQUIRES(can_make_fan_out_receiver<TypedSender,executor_type,coordinate_type,ManyReceiver&&>::value)
             >
     CUSEND_ANNOTATION
     auto connect(ManyReceiver&& r) &&
@@ -122,7 +122,7 @@ template<class Scheduler, class TypedSender,
          CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
         >
 CUSEND_ANNOTATION
-bulk_sender<Scheduler, remove_cvref_t<TypedSender>> default_bulk_schedule(const Scheduler& scheduler, scheduler_shape_t<Scheduler> shape, TypedSender&& sender)
+bulk_sender<Scheduler, remove_cvref_t<TypedSender>> default_bulk_schedule(const Scheduler& scheduler, scheduler_coordinate_t<Scheduler> shape, TypedSender&& sender)
 {
   return {scheduler, shape, std::forward<TypedSender>(sender)};
 }

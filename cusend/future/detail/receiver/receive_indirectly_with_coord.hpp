@@ -26,39 +26,64 @@
 
 #pragma once
 
-#include "../../detail/prologue.hpp"
+#include "../../../detail/prologue.hpp"
 
-#include <cstdint>
-#include "../../detail/type_traits/is_detected.hpp"
-#include "../../execution/executor/executor_shape.hpp"
-#include "get_executor.hpp"
+#include <type_traits>
+#include <utility>
+#include "../../../lazy/receiver/set_error.hpp"
+#include "../../../lazy/receiver/set_value.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-template<class Scheduler>
-struct scheduler_shape
+namespace detail
 {
-  private:
-    template<class T>
-    using nested_shape_t = typename T::shape_type;
 
-  public:
-    using type = detail::detected_or_t<
-      execution::executor_shape_t<get_executor_t<Scheduler>>,
-      nested_shape_t,
-      Scheduler
-    >;
+
+template<class ManyReceiver, class ValuePointer>
+struct receive_indirectly_with_coord
+{
+  ManyReceiver r;
+  ValuePointer value_ptr;
+
+  template<class Coord>
+  CUSEND_ANNOTATION
+  void set_value(Coord coord)
+  {
+    CUSEND_NAMESPACE::set_value(r, coord, *value_ptr);
+  }
+
+  template<class E>
+  CUSEND_ANNOTATION
+  void set_error(E&& e) && noexcept
+  {
+    CUSEND_NAMESPACE::set_error(std::move(r), std::forward<E>(e));
+  }
+
+  CUSEND_ANNOTATION
+  void set_done() && noexcept
+  {
+    set_done(std::move(r));
+  }
 };
 
 
-template<class Scheduler>
-using scheduler_shape_t = typename scheduler_shape<Scheduler>::type;
+template<class ManyReceiver, class ValuePointer,
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ManyReceiver>::value),
+         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
+        >
+CUSEND_ANNOTATION
+receive_indirectly_with_coord<ManyReceiver,ValuePointer> make_receive_indirectly_with_coord(ManyReceiver r, ValuePointer value_ptr)
+{
+  return {r, value_ptr};
+}
+
+
+} // end detail
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-
-#include "../../detail/epilogue.hpp"
+#include "../../../detail/epilogue.hpp"
 

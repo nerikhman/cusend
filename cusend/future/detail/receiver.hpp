@@ -32,7 +32,7 @@
 #include "receiver/receive_indirectly_and_construct_at.hpp"
 #include "receiver/receive_indirectly.hpp"
 #include "receiver/receive_indirectly_inplace.hpp"
-#include "receiver/receive_indirectly_with_index.hpp"
+#include "receiver/receive_indirectly_with_coord.hpp"
 
 #include "../../detail/epilogue.hpp"
 

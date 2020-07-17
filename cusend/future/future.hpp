@@ -34,8 +34,7 @@
 #include "../detail/type_traits/invoke_result.hpp"
 #include "../detail/type_traits/is_invocable.hpp"
 #include "../detail/type_traits/remove_cvref.hpp"
-#include "../execution/executor/executor_index.hpp"
-#include "../execution/executor/executor_shape.hpp"
+#include "../execution/executor/executor_coordinate.hpp"
 #include "../execution/executor/is_device_executor.hpp"
 #include "../execution/executor/stream_executor.hpp"
 #include "../lazy/detail/invocable_as_receiver.hpp"
@@ -169,11 +168,11 @@ class future_base
 
     template<class DeviceExecutor,
              class R,
-             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_index_t<DeviceExecutor>>::value),
+             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_coordinate_t<DeviceExecutor>>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value)
             >
     CUSEND_ANNOTATION
-    detail::event bulk_then_set_value_and_move_event(const DeviceExecutor& ex, R receiver, execution::executor_shape_t<DeviceExecutor> shape) &&
+    detail::event bulk_then_set_value_and_move_event(const DeviceExecutor& ex, R receiver, execution::executor_coordinate_t<DeviceExecutor> shape) &&
     {
       // invalidate ourself
       invalidate();
@@ -380,13 +379,13 @@ class future : private detail::future_base<Executor>
              class R,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_index_t<DeviceExecutor>, T&>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_coordinate_t<DeviceExecutor>, T&>::value)
             >
     CUSEND_ANNOTATION
-    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, execution::executor_shape_t<DeviceExecutor> shape) &&
+    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, execution::executor_coordinate_t<DeviceExecutor> shape) &&
     {
       // close over receiver and our state
-      auto wrapped_receiver = detail::make_receive_indirectly_with_index(receiver, value_.get());
+      auto wrapped_receiver = detail::make_receive_indirectly_with_coord(receiver, value_.get());
 
       // return a future corresponding to the completion of the receiver
       // move the base's event when we do this
@@ -396,10 +395,10 @@ class future : private detail::future_base<Executor>
 
     template<class R,
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_index_t<Executor>, T&>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_coordinate_t<Executor>, T&>::value)
             >
     CUSEND_ANNOTATION
-    future<T,Executor> bulk_then(R receiver, execution::executor_index_t<Executor> shape) &&
+    future<T,Executor> bulk_then(R receiver, execution::executor_coordinate_t<Executor> shape) &&
     {
       return std::move(*this).bulk_then(executor(), receiver, shape);
     }
@@ -409,10 +408,10 @@ class future : private detail::future_base<Executor>
              class F,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
-             CUSEND_REQUIRES(detail::is_invocable<F, execution::executor_index_t<DeviceExecutor>, T&>::value)
+             CUSEND_REQUIRES(detail::is_invocable<F, execution::executor_coordinate_t<DeviceExecutor>, T&>::value)
             >
     CUSEND_ANNOTATION
-    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, execution::executor_shape_t<DeviceExecutor> shape) &&
+    future<T,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, execution::executor_coordinate_t<DeviceExecutor> shape) &&
     {
       return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
     }
@@ -420,10 +419,10 @@ class future : private detail::future_base<Executor>
 
     template<class F,
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
-             CUSEND_REQUIRES(detail::is_invocable<F, execution::executor_index_t<Executor>, T&>::value)
+             CUSEND_REQUIRES(detail::is_invocable<F, execution::executor_coordinate_t<Executor>, T&>::value)
             >
     CUSEND_ANNOTATION
-    future<T,Executor> bulk_then(F f, execution::executor_shape_t<Executor> shape) &&
+    future<T,Executor> bulk_then(F f, execution::executor_coordinate_t<Executor> shape) &&
     {
       return std::move(*this).bulk_then(executor(), f, shape);
     }
@@ -432,13 +431,13 @@ class future : private detail::future_base<Executor>
     template<class DeviceExecutor,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
             >
-    detail::bulk_future<future, DeviceExecutor> bulk(const DeviceExecutor& ex, execution::executor_shape_t<DeviceExecutor> shape) &&
+    detail::bulk_future<future, DeviceExecutor> bulk(const DeviceExecutor& ex, execution::executor_coordinate_t<DeviceExecutor> shape) &&
     {
       return {std::move(*this), ex, shape};
     }
 
 
-    detail::bulk_future<future, Executor> bulk(execution::executor_shape_t<Executor> shape) &&
+    detail::bulk_future<future, Executor> bulk(execution::executor_coordinate_t<Executor> shape) &&
     {
       return std::move(*this).bulk(executor(), shape);
     }
@@ -576,10 +575,10 @@ class future<void,Executor> : private detail::future_base<Executor>
              class R,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_index_t<DeviceExecutor>>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_coordinate_t<DeviceExecutor>>::value)
             >
     CUSEND_ANNOTATION
-    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, execution::executor_shape_t<DeviceExecutor> shape) &&
+    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, R receiver, execution::executor_coordinate_t<DeviceExecutor> shape) &&
     {
       // return a future corresponding to the completion of the receiver
       return detail::make_unready_future(ex, std::move(*this).bulk_then_set_value_and_move_event(ex, receiver, shape));
@@ -588,10 +587,10 @@ class future<void,Executor> : private detail::future_base<Executor>
 
     template<class R,
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<R>::value),
-             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_index_t<Executor>>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<R, execution::executor_coordinate_t<Executor>>::value)
             >
     CUSEND_ANNOTATION
-    future<void,Executor> bulk_then(R receiver, execution::executor_shape_t<Executor> shape) &&
+    future<void,Executor> bulk_then(R receiver, execution::executor_coordinate_t<Executor> shape) &&
     {
       return std::move(*this).bulk_then(executor(), receiver, shape);
     }
@@ -601,10 +600,10 @@ class future<void,Executor> : private detail::future_base<Executor>
              class F,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value),
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
-             CUSEND_REQUIRES(detail::is_invocable<F, execution::executor_index_t<DeviceExecutor>>::value)
+             CUSEND_REQUIRES(detail::is_invocable<F, execution::executor_coordinate_t<DeviceExecutor>>::value)
             >
     CUSEND_ANNOTATION
-    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, execution::executor_shape_t<DeviceExecutor> shape) &&
+    future<void,DeviceExecutor> bulk_then(const DeviceExecutor& ex, F f, execution::executor_coordinate_t<DeviceExecutor> shape) &&
     {
       return std::move(*this).bulk_then(ex, detail::as_receiver(f), shape);
     }
@@ -612,10 +611,10 @@ class future<void,Executor> : private detail::future_base<Executor>
 
     template<class F,
              CUSEND_REQUIRES(std::is_trivially_copy_constructible<F>::value),
-             CUSEND_REQUIRES(detail::is_invocable<F, execution::executor_index_t<Executor>>::value)
+             CUSEND_REQUIRES(detail::is_invocable<F, execution::executor_coordinate_t<Executor>>::value)
             >
     CUSEND_ANNOTATION
-    future<void,Executor> bulk_then(F f, execution::executor_shape_t<Executor> shape) &&
+    future<void,Executor> bulk_then(F f, execution::executor_coordinate_t<Executor> shape) &&
     {
       return std::move(*this).bulk_then(executor(), f, shape);
     }
@@ -624,13 +623,13 @@ class future<void,Executor> : private detail::future_base<Executor>
     template<class DeviceExecutor,
              CUSEND_REQUIRES(execution::is_device_executor<DeviceExecutor>::value)
             >
-    detail::bulk_future<future, DeviceExecutor> bulk(const DeviceExecutor& ex, execution::executor_shape_t<DeviceExecutor> shape) &&
+    detail::bulk_future<future, DeviceExecutor> bulk(const DeviceExecutor& ex, execution::executor_coordinate_t<DeviceExecutor> shape) &&
     {
       return {std::move(*this), ex, shape};
     }
 
 
-    detail::bulk_future<future, Executor> bulk(execution::executor_shape_t<Executor> shape) &&
+    detail::bulk_future<future, Executor> bulk(execution::executor_coordinate_t<Executor> shape) &&
     {
       return std::move(*this).bulk(executor(), shape);
     }

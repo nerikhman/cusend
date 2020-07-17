@@ -35,8 +35,7 @@
 #include "../../../../detail/type_traits/is_detected.hpp"
 #include "../../../../detail/utility/index_sequence.hpp"
 #include "../../../../execution/executor/bulk_execute.hpp"
-#include "../../../../execution/executor/executor_index.hpp"
-#include "../../../../execution/executor/executor_shape.hpp"
+#include "../../../../execution/executor/executor_coordinate.hpp"
 #include "../../../receiver/is_many_receiver_of.hpp"
 #include "../../../receiver/set_done.hpp"
 #include "../../../receiver/set_error.hpp"
@@ -87,18 +86,17 @@ class fan_out_receiver
     using receiver_type = remove_cvref_t<ManyReceiver>;
     using variant_of_tuples_type = typename sender_traits<sender_type>::template value_types<tuple, variant>;
 
-    using index_type = execution::executor_index_t<Executor>;
-    using shape_type = execution::executor_shape_t<Executor>;
+    using coordinate_type = execution::executor_coordinate_t<Executor>;
   
     detail::optional<variant_of_tuples_type> maybe_variant_of_tuples_;
     Executor ex_;
-    shape_type shape_;
+    coordinate_type shape_;
     receiver_type receiver_;
 
   public:
     CUSEND_EXEC_CHECK_DISABLE
     CUSEND_ANNOTATION
-    fan_out_receiver(const Executor& ex, shape_type shape, receiver_type&& receiver)
+    fan_out_receiver(const Executor& ex, coordinate_type shape, receiver_type&& receiver)
       : maybe_variant_of_tuples_{},
         ex_{ex},
         shape_{shape},
@@ -134,19 +132,19 @@ class fan_out_receiver
       receiver_type receiver;
 
       template<std::size_t... I,
-               CUSEND_REQUIRES(is_many_receiver_of<receiver_type, index_type, Args&...>::value)
+               CUSEND_REQUIRES(is_many_receiver_of<receiver_type, coordinate_type, Args&...>::value)
               >
       CUSEND_ANNOTATION
-      void impl(index_type idx, index_sequence<I...>)
+      void impl(coordinate_type coord, index_sequence<I...>)
       {
-        CUSEND_NAMESPACE::set_value(receiver, idx, detail::get<I>(args)...);
+        CUSEND_NAMESPACE::set_value(receiver, coord, detail::get<I>(args)...);
       }
 
-      template<CUSEND_REQUIRES(is_many_receiver_of<receiver_type, index_type, Args&...>::value)>
+      template<CUSEND_REQUIRES(is_many_receiver_of<receiver_type, coordinate_type, Args&...>::value)>
       CUSEND_ANNOTATION
-      void operator()(index_type idx)
+      void operator()(coordinate_type coord)
       {
-        this->impl(idx, index_sequence_for<Args...>{});
+        this->impl(coord, index_sequence_for<Args...>{});
       }
     };
 
@@ -154,7 +152,7 @@ class fan_out_receiver
     struct set_value_visitor
     {
       Executor ex;
-      shape_type shape;
+      coordinate_type shape;
       receiver_type receiver;
 
       template<class... Args>
@@ -170,7 +168,7 @@ class fan_out_receiver
 
   public:
     template<class... Args,
-             CUSEND_REQUIRES(is_many_receiver_of<receiver_type, index_type, remove_cvref_t<Args>&...>::value)
+             CUSEND_REQUIRES(is_many_receiver_of<receiver_type, coordinate_type, remove_cvref_t<Args>&...>::value)
              // XXX not sure how to spell this requirement
              //, CUSEND_REQUIRES(fan_out_receiver_detail::can_emplace<optional<variant_of_tuples_type>, tuple<Args&&...>>::value)
             >
@@ -190,18 +188,18 @@ namespace fan_out_receiver_detail
 {
 
 
-template<class Index, class Tuple>
-struct index_and_lvalue_references;
+template<class Coord, class Tuple>
+struct coord_and_lvalue_references;
 
-template<class Index, class... Types>
-struct index_and_lvalue_references<Index, tuple<Types...>>
+template<class Coord, class... Types>
+struct coord_and_lvalue_references<Coord, tuple<Types...>>
 {
-  using type = tuple<Index, typename std::add_lvalue_reference<Types>::type...>;
+  using type = tuple<Coord, typename std::add_lvalue_reference<Types>::type...>;
 };
 
 
-template<class Index, class Tuple>
-using index_and_lvalue_references_t = typename index_and_lvalue_references<Index,Tuple>::type;
+template<class Coord, class Tuple>
+using coord_and_lvalue_references_t = typename coord_and_lvalue_references<Coord,Tuple>::type;
 
 
 template<class VariantOfTuples>
@@ -210,7 +208,7 @@ struct bulk_sender_value_types;
 template<class... Tuples>
 struct bulk_sender_value_types<variant<Tuples...>>
 {
-  using type = variant<index_and_lvalue_references_t<std::size_t, Tuples>...>;
+  using type = variant<coord_and_lvalue_references_t<std::size_t, Tuples>...>;
 };
 
 template<class VariantOfTuples>
@@ -227,7 +225,7 @@ template<class TypedSender, class Executor, class ManyReceiver,
          // get the type of values sent by the sender
          , class SenderValueTypes = typename sender_traits<TypedSender&&>::template value_types<tuple, variant>
 
-         // prepend an index to the values sent by the sender and add a lvalue reference to the elements in the tail
+         // prepend an coord to the values sent by the sender and add a lvalue reference to the elements in the tail
          , class BulkSenderValueTypes = fan_out_receiver_detail::bulk_sender_value_types_t<SenderValueTypes>
 
          // require that ex is an executor
@@ -237,7 +235,7 @@ template<class TypedSender, class Executor, class ManyReceiver,
          , CUSEND_REQUIRES(fan_out_receiver_detail::is_many_receiver_of_all_of<ManyReceiver&&,BulkSenderValueTypes>::value)
         >
 CUSEND_ANNOTATION
-fan_out_receiver<TypedSender,Executor,ManyReceiver> make_fan_out_receiver(const Executor& ex, execution::executor_shape_t<Executor> shape, ManyReceiver&& r)
+fan_out_receiver<TypedSender,Executor,ManyReceiver> make_fan_out_receiver(const Executor& ex, execution::executor_coordinate_t<Executor> shape, ManyReceiver&& r)
 {
   return {ex, shape, std::forward<ManyReceiver>(r)};
 }

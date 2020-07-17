@@ -34,8 +34,7 @@
 #include "scheduler/is_device_scheduler.hpp"
 #include "scheduler/is_scheduler.hpp"
 #include "scheduler/schedule.hpp"
-#include "scheduler/scheduler_index.hpp"
-#include "scheduler/scheduler_shape.hpp"
+#include "scheduler/scheduler_coordinate.hpp"
 
 #include "../detail/epilogue.hpp"
 

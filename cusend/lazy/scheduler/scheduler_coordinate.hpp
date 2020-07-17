@@ -26,65 +26,40 @@
 
 #pragma once
 
-#include "../../../detail/prologue.hpp"
+#include "../../detail/prologue.hpp"
 
-#include <type_traits>
-#include <utility>
-#include "../../../lazy/receiver/set_error.hpp"
-#include "../../../lazy/receiver/set_value.hpp"
+#include <cstdint>
+#include "../../detail/type_traits/is_detected.hpp"
+#include "../../execution/executor/executor_coordinate.hpp"
+#include "get_executor.hpp"
 
 
 CUSEND_NAMESPACE_OPEN_BRACE
 
 
-namespace detail
+template<class Scheduler>
+struct scheduler_coordinate
 {
+  private:
+    template<class T>
+    using nested_coordinate_t = typename T::coordinate_type;
 
-
-template<class ManyReceiver, class ValuePointer>
-struct receive_indirectly_with_index
-{
-  ManyReceiver r;
-  ValuePointer value_ptr;
-
-  template<class Index>
-  CUSEND_ANNOTATION
-  void set_value(Index idx)
-  {
-    CUSEND_NAMESPACE::set_value(r, idx, *value_ptr);
-  }
-
-  template<class E>
-  CUSEND_ANNOTATION
-  void set_error(E&& e) && noexcept
-  {
-    CUSEND_NAMESPACE::set_error(std::move(r), std::forward<E>(e));
-  }
-
-  CUSEND_ANNOTATION
-  void set_done() && noexcept
-  {
-    set_done(std::move(r));
-  }
+  public:
+    using type = detail::detected_or_t<
+      execution::executor_coordinate_t<get_executor_t<Scheduler>>,
+      nested_coordinate_t,
+      Scheduler
+    >;
 };
 
 
-template<class ManyReceiver, class ValuePointer,
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ManyReceiver>::value),
-         CUSEND_REQUIRES(std::is_trivially_copy_constructible<ValuePointer>::value)
-        >
-CUSEND_ANNOTATION
-receive_indirectly_with_index<ManyReceiver,ValuePointer> make_receive_indirectly_with_index(ManyReceiver r, ValuePointer value_ptr)
-{
-  return {r, value_ptr};
-}
-
-
-} // end detail
+template<class Scheduler>
+using scheduler_coordinate_t = typename scheduler_coordinate<Scheduler>::type;
 
 
 CUSEND_NAMESPACE_CLOSE_BRACE
 
-#include "../../../detail/epilogue.hpp"
+
+#include "../../detail/epilogue.hpp"
 
 

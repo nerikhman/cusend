@@ -39,8 +39,7 @@
 #include "../../start.hpp"
 #include "../get_executor.hpp"
 #include "../is_device_scheduler.hpp"
-#include "../scheduler_index.hpp"
-#include "../scheduler_shape.hpp"
+#include "../scheduler_coordinate.hpp"
 #include "detail/unpack_second_receiver.hpp"
 #include "detail/variant.hpp"
 
@@ -59,12 +58,11 @@ class bulk_schedule_on_device_sender
     static_assert(is_typed_sender<TypedSender>::value, "TypedSender must be a typed sender.");
     static_assert(is_device_scheduler<DeviceScheduler>::value, "DeviceScheduler must be a device scheduler.");
 
-    using index_type = scheduler_index_t<DeviceScheduler>;
-    using shape_type = scheduler_shape_t<DeviceScheduler>;
+    using coordinate_type = scheduler_coordinate_t<DeviceScheduler>;
 
     TypedSender prologue_;
     DeviceScheduler scheduler_;
-    shape_type shape_;
+    coordinate_type shape_;
 
     template<template<class...> class Tuple, template<class...> class Variant>
     using predecessor_value_types = typename sender_traits<TypedSender>::template value_types<Tuple, Variant>;
@@ -74,16 +72,16 @@ class bulk_schedule_on_device_sender
     {
       // this template is passed to sender_traits::value_types below
       template<class... Types>
-      using index_and_values_tuple = Tuple<index_type, Types...>;
+      using coord_and_values_tuple = Tuple<coordinate_type, Types...>;
 
       // the value_types this sender sends is the predecessor sender's value_types,
-      // with the executor's index_type prepended into each tuple of value types
-      using type = predecessor_value_types<index_and_values_tuple, Variant>;
+      // with the executor's coordinate_type prepended into each tuple of value types
+      using type = predecessor_value_types<coord_and_values_tuple, Variant>;
     };
 
 
   public:
-    // this sender prepends the executor index into each set of values sent from the predecessor sender
+    // this sender prepends the executor coordinate into each set of values sent from the predecessor sender
     template<template<class...> class Tuple, template<class...> class Variant>
     using value_types = typename value_types_impl<Tuple,Variant>::type;
 
@@ -94,7 +92,7 @@ class bulk_schedule_on_device_sender
 
 
     template<class OtherSender>
-    bulk_schedule_on_device_sender(OtherSender&& prologue, const DeviceScheduler& scheduler, shape_type shape)
+    bulk_schedule_on_device_sender(OtherSender&& prologue, const DeviceScheduler& scheduler, coordinate_type shape)
       : prologue_{std::forward<OtherSender>(prologue)},
         scheduler_{scheduler},
         shape_{shape}
@@ -153,7 +151,7 @@ class bulk_schedule_on_device_sender
         CUSEND_NAMESPACE::connect(cusend::pack(std::move(prologue_)), std::move(promise)),
 
         // ...unpacked by the epilogue
-        // note that we use an unpack_second_receiver because future.bulk() sends (index, tuple<predecessor_values...>)
+        // note that we use an unpack_second_receiver because future.bulk() sends (coord, tuple<predecessor_values...>)
         CUSEND_NAMESPACE::connect(std::move(future).bulk(shape_), detail::make_unpack_second_receiver(std::move(r)))
       );
     }
@@ -190,7 +188,7 @@ template<class DeviceScheduler, class TypedSender,
          CUSEND_REQUIRES(is_typed_sender<TypedSender&&>::value)
         >
 bulk_schedule_on_device_sender<remove_cvref_t<TypedSender>,DeviceScheduler>
-  bulk_schedule_on_device(const DeviceScheduler& scheduler, scheduler_shape_t<DeviceScheduler> shape, TypedSender&& sender)
+  bulk_schedule_on_device(const DeviceScheduler& scheduler, scheduler_coordinate_t<DeviceScheduler> shape, TypedSender&& sender)
 {
   return {std::forward<TypedSender>(sender), scheduler, shape};
 }
